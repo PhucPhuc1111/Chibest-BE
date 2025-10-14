@@ -85,31 +85,58 @@ CREATE TABLE [Unit] (
     UpdatedAt DATETIME NOT NULL DEFAULT GETDATE()
 );
 
+
+
+
+-- ==============================
+-- PRODUCT (SẢN PHẨM GỐC)
+-- ==============================
 CREATE TABLE [Product] (
     ProductID BIGINT IDENTITY(1,1) PRIMARY KEY,
-    Code NVARCHAR(100) NOT NULL UNIQUE,   -- Mã nội bộ / SKU
-    Name NVARCHAR(255) NOT NULL,
-    Barcode NVARCHAR(100) NULL,           
+    ProductCode NVARCHAR(100) NOT NULL UNIQUE,   -- Mã sản phẩm gốc
+    ProductName NVARCHAR(255) NOT NULL,
     Description NVARCHAR(MAX) NULL,
-    UnitID BIGINT NOT NULL,           -- đơn vị lưu kho/đơn vị cơ sở
     CategoryID BIGINT NOT NULL,
-    CostPrice DECIMAL(18,4) NOT NULL DEFAULT(0),  -- giá vốn
-    SalePrice DECIMAL(18,4) NOT NULL DEFAULT(0),  -- giá bán mặc định
-    CurrentStock DECIMAL(18,4) NOT NULL DEFAULT(0), -- tồn kho theo BaseUnit
+    UnitID BIGINT NOT NULL,                      -- Đơn vị cơ sở (VD: cái, hộp)
     IsActive BIT NOT NULL DEFAULT 1,
     CreatedAt DATETIME NOT NULL DEFAULT GETDATE(),
     UpdatedAt DATETIME NOT NULL DEFAULT GETDATE(),
-    CONSTRAINT FK_Product_Cate FOREIGN KEY (CategoryID) REFERENCES [Category](CategoryID),
+    CONSTRAINT FK_Product_Category FOREIGN KEY (CategoryID) REFERENCES [Category](CategoryID),
     CONSTRAINT FK_Product_Unit FOREIGN KEY (UnitID) REFERENCES [Unit](UnitID)
 );
 
-CREATE TABLE [Tag] (
-    TagID BIGINT IDENTITY(1,1) PRIMARY KEY,
+-- ==============================
+-- PRODUCT VARIANT (BIẾN THỂ SẢN PHẨM)
+-- ==============================
+CREATE TABLE [ProductVariant] (
+    VariantID BIGINT IDENTITY(1,1) PRIMARY KEY,
     ProductID BIGINT NOT NULL,
-    Code NVARCHAR(100) NOT NULL UNIQUE,   
+    VariantCode NVARCHAR(100) NOT NULL UNIQUE,  -- Mã SKU cụ thể của biến thể
+    Color NVARCHAR(100) NULL,
+    Size NVARCHAR(100) NULL,
+    CostPrice DECIMAL(18,4) NOT NULL DEFAULT(0),
+    SalePrice DECIMAL(18,4) NOT NULL DEFAULT(0),
+    IsActive BIT NOT NULL DEFAULT 1,
     CreatedAt DATETIME NOT NULL DEFAULT GETDATE(),
     UpdatedAt DATETIME NOT NULL DEFAULT GETDATE(),
-    FOREIGN KEY (ProductID) REFERENCES [Product](ProductID)
+    CONSTRAINT FK_Variant_Product FOREIGN KEY (ProductID) REFERENCES [Product](ProductID)
+);
+
+CREATE TABLE [Chip] (
+    ChipID BIGINT IDENTITY(1,1) PRIMARY KEY,
+    ChipCode NVARCHAR(100) NOT NULL UNIQUE,
+);
+
+-- ==============================
+-- PRODUCT VARIANT TAG (QUAN HỆ N-N GIỮA VARIANT VÀ TAG)
+-- ==============================
+CREATE TABLE [VariantChip] (
+    VariantID BIGINT NOT NULL,
+    ChipID BIGINT NOT NULL,
+    CreatedAt DATETIME NOT NULL DEFAULT GETDATE(),
+    PRIMARY KEY (VariantID, ChipID),
+    CONSTRAINT FK_PVT_Variant FOREIGN KEY (VariantID) REFERENCES [ProductVariant](VariantID),
+    CONSTRAINT FK_PVT_Tag FOREIGN KEY (ChipID) REFERENCES [Chip](ChipID)
 );
 
 CREATE TABLE [Inventory] (
@@ -121,7 +148,7 @@ CREATE TABLE [Inventory] (
     UpdatedAt DATETIME NOT NULL DEFAULT GETDATE(),
     FOREIGN KEY (WarehouseID) REFERENCES [Warehouse](WarehouseID),
     FOREIGN KEY (ProductID) REFERENCES [Product](ProductID),
-    CONSTRAINT UQ_Inventory UNIQUE (WarehouseID, ProductID) -- 1 sản phẩm chỉ có 1 dòng tồn trong mỗi kho
+    CONSTRAINT UQ_Inventory UNIQUE (WarehouseID, ProductID) -- 1 biến thể sản phẩm chỉ có 1 dòng tồn trong mỗi kho
 );
 
 CREATE TABLE [InventoryHistory] (
@@ -138,78 +165,136 @@ CREATE TABLE [InventoryHistory] (
     FOREIGN KEY (CreatedBy) REFERENCES [User](UserID)
 );
 
-CREATE TABLE [Stockin] (
-    PurchaseOrderID BIGINT IDENTITY(1,1) PRIMARY KEY,
-    Code NVARCHAR(50) UNIQUE NOT NULL,            -- Số chứng từ (VD: PO2025-0001)
-    SupplierID BIGINT NOT NULL,
-    WarehouseID BIGINT NOT NULL,
-    CreatedBy BIGINT NOT NULL,                    -- Người tạo phiếu
-    Status NVARCHAR(50) CHECK (Status IN ('Pending', 'Received', 'Completed', 'Cancelled')) DEFAULT 'Pending',
-    TotalAmount DECIMAL(18,2) NOT NULL DEFAULT 0, -- Tổng tiền đơn hàng
-    PaidAmount DECIMAL(18,2) NOT NULL DEFAULT 0,  -- Đã thanh toán
-    Note NVARCHAR(255),
-    CreatedAt DATETIME DEFAULT GETDATE(),
-    UpdatedAt DATETIME DEFAULT GETDATE(),
-    FOREIGN KEY (SupplierID) REFERENCES [Supplier](SupplierID),
-    FOREIGN KEY (WarehouseID) REFERENCES [Warehouse](WarehouseID),
-    FOREIGN KEY (CreatedBy) REFERENCES [User](UserID)
-);
-CREATE TABLE [StockinDetail] (
-    PODetailID BIGINT IDENTITY(1,1) PRIMARY KEY,
-    PurchaseOrderID BIGINT NOT NULL,
-    ProductID BIGINT NOT NULL,
-    OrderedQuantity DECIMAL(18,2) NOT NULL,        -- Số lượng trên phiếu
-    ReceivedQuantity DECIMAL(18,2) NULL,           -- Số lượng thực tế
-    UnitCost DECIMAL(18,2) NOT NULL,
-    TotalCost AS (ISNULL(ReceivedQuantity, OrderedQuantity) * UnitCost) PERSISTED,
-    FOREIGN KEY (PurchaseOrderID) REFERENCES [PurchaseOrder](PurchaseOrderID),
-    FOREIGN KEY (ProductID) REFERENCES [Product](ProductID)
+CREATE TABLE [Supplier] (
+    SupplierID BIGINT IDENTITY(1,1) PRIMARY KEY,
+    SupplierCode NVARCHAR(100) NOT NULL UNIQUE,
+    SupplierName NVARCHAR(255) NOT NULL,
+    ContactName NVARCHAR(100),
+    Phone NVARCHAR(20),
+    Email NVARCHAR(100),
+    Address NVARCHAR(255),
+    TaxCode NVARCHAR(50),
+    IsActive BIT NOT NULL DEFAULT 1,
+    CreatedAt DATETIME NOT NULL DEFAULT GETDATE()
 );
 
-
-CREATE TABLE [PurchaseAdjustmentRequest] (
-    AdjustmentID BIGINT IDENTITY(1,1) PRIMARY KEY,
-    PurchaseOrderID BIGINT NOT NULL,
-    RequestedBy BIGINT NOT NULL,
-    Status NVARCHAR(50) CHECK (Status IN ('Pending', 'Approved', 'Rejected')) DEFAULT 'Pending',
-    Reason NVARCHAR(255),
-    CreatedAt DATETIME DEFAULT GETDATE(),
-    FOREIGN KEY (PurchaseOrderID) REFERENCES [PurchaseOrder](PurchaseOrderID),
-    FOREIGN KEY (RequestedBy) REFERENCES [User](UserID)
-);
-
-CREATE TABLE [PurchaseAdjustmentDetail] (
-    AdjustmentDetailID BIGINT IDENTITY(1,1) PRIMARY KEY,
-    AdjustmentID BIGINT NOT NULL,
-    ProductID BIGINT NOT NULL,
-    OldQuantity DECIMAL(18,2) NOT NULL,     -- Số lượng gốc
-    NewQuantity DECIMAL(18,2) NOT NULL,     -- Số lượng sau điều chỉnh
-    Note NVARCHAR(255),
-    FOREIGN KEY (AdjustmentID) REFERENCES [PurchaseAdjustmentRequest](AdjustmentID),
-    FOREIGN KEY (ProductID) REFERENCES [Product](ProductID)
-);
-
-
-CREATE TABLE [SupplierTransaction] (
-    TransactionID BIGINT IDENTITY(1,1) PRIMARY KEY,
-    SupplierID BIGINT NOT NULL,
-    PurchaseOrderID BIGINT NULL,
-    TransactionType NVARCHAR(50) CHECK (TransactionType IN ('Purchase', 'Payment', 'Adjustment', 'Return')) NOT NULL,
-    Amount DECIMAL(18,2) NOT NULL,
-    Note NVARCHAR(255),
-    CreatedAt DATETIME DEFAULT GETDATE(),
-    CreatedBy BIGINT NULL,
-    FOREIGN KEY (SupplierID) REFERENCES [Supplier](SupplierID),
-    FOREIGN KEY (PurchaseOrderID) REFERENCES [PurchaseOrder](PurchaseOrderID),
-    FOREIGN KEY (CreatedBy) REFERENCES [User](UserID)
-);
-
-CREATE TABLE [SupplierBalance] (
-    SupplierID BIGINT PRIMARY KEY,
-    TotalPurchase DECIMAL(18,2) DEFAULT 0,
-    TotalPayment DECIMAL(18,2) DEFAULT 0,
-    Balance AS (TotalPurchase - TotalPayment) PERSISTED,
+CREATE TABLE [StockIn] (
+    StockInID BIGINT IDENTITY(1,1) PRIMARY KEY,
+    SupplierID BIGINT NULL,                       
+    StockInCode NVARCHAR(100) NOT NULL UNIQUE,    
+    StockInDate DATETIME NOT NULL DEFAULT GETDATE(),
+    TotalAmount DECIMAL(18,4) NOT NULL DEFAULT 0,     
+    Note NVARCHAR(255) NULL,
+    Status NVARCHAR(50) 
+        CHECK (Status IN ('Draft', 'PartialReceived', 'Received', 'Cancelled')) DEFAULT 'Draft',
+    CreatedAt DATETIME NOT NULL DEFAULT GETDATE(),
     FOREIGN KEY (SupplierID) REFERENCES [Supplier](SupplierID)
 );
 
-CREATE TABLE [StockTransfer]
+CREATE TABLE [StockInDetail] (
+    StockInDetailID BIGINT IDENTITY(1,1) PRIMARY KEY,
+    StockInID BIGINT NOT NULL,
+    ProductID BIGINT NOT NULL,
+    Quantity DECIMAL(18,4) NOT NULL,
+    ReceivedQuantity DECIMAL(18,4) NOT NULL DEFAULT 0,
+    UnitCost DECIMAL(18,4) NOT NULL,
+    ExtraFee DECIMAL(18,4) NOT NULL DEFAULT 0,        
+    DiscountAmount DECIMAL(18,4) NOT NULL DEFAULT 0,  
+    Subtotal AS ((UnitCost - DiscountAmount) * ReceivedQuantity) PERSISTED,  -- Công nợ NCC
+    FOREIGN KEY (StockInID) REFERENCES [StockIn](StockInID),
+    FOREIGN KEY (ProductID) REFERENCES [Product](ProductID)
+);
+
+CREATE TABLE [StockInDistribution] (
+    DistributionID BIGINT IDENTITY(1,1) PRIMARY KEY,
+    StockInDetailID BIGINT NOT NULL,
+    WarehouseID BIGINT NOT NULL,
+    ProductID BIGINT NOT NULL,
+    Quantity DECIMAL(18,4) NOT NULL,               
+    ReceivedQuantity DECIMAL(18,4) NOT NULL DEFAULT 0, 
+    UnitCost DECIMAL(18,4) NOT NULL,               -- Giá nhập gốc
+    ExtraFee DECIMAL(18,4) NOT NULL DEFAULT 0,     -- Phụ phí phân bổ riêng từng kho
+    BranchDebt AS ((UnitCost + ExtraFee) * ReceivedQuantity) PERSISTED, -- Tiền chi nhánh nợ
+    Status NVARCHAR(50) 
+        CHECK (Status IN ('Draft', 'PartialReceived', 'Received', 'Cancelled')) DEFAULT 'Draft',
+    FOREIGN KEY (StockInDetailID) REFERENCES [StockInDetail](StockInDetailID),
+    FOREIGN KEY (WarehouseID) REFERENCES [Warehouse](WarehouseID),
+    FOREIGN KEY (ProductID) REFERENCES [Product](ProductID),
+    CONSTRAINT UQ_StockInDistribution UNIQUE (StockInDetailID, WarehouseID, ProductID)
+);
+
+
+CREATE TABLE [SupplierDebt] (
+    SupplierDebtID BIGINT PRIMARY KEY,
+    SupplierID BIGINT,
+    Debt DECIMAL(18,4) NOT NULL DEFAULT 0,
+    CreatedAt DATETIME NOT NULL DEFAULT GETDATE(),
+    FOREIGN KEY (SupplierID) REFERENCES [Supplier](SupplierID)
+);
+
+CREATE TABLE [WarehouseDebt] (
+    WarehouseDebtID BIGINT PRIMARY KEY,
+    WarehouseID BIGINT,
+    Debt DECIMAL(18,4) NOT NULL DEFAULT 0,  
+    CreatedAt DATETIME NOT NULL DEFAULT GETDATE(),
+    FOREIGN KEY (WarehouseID) REFERENCES [Warehouse](WarehouseID)
+);
+
+-- ==============================
+-- PHIẾU TRẢ HÀNG CHO NCC
+-- ==============================
+CREATE TABLE [NGProduct] (
+    NGProductID BIGINT IDENTITY(1,1) PRIMARY KEY,
+    Code NVARCHAR(100) NOT NULL UNIQUE,
+    SupplierID BIGINT NOT NULL,
+    ReturnDate DATETIME NOT NULL DEFAULT GETDATE(),
+    TotalAmount DECIMAL(18,4) NOT NULL DEFAULT 0,
+    Note NVARCHAR(255),
+    Status NVARCHAR(50) 
+        CHECK (Status IN ('Draft','Completed','Cancelled')) DEFAULT 'Draft',
+    CreatedAt DATETIME NOT NULL DEFAULT GETDATE(),
+    FOREIGN KEY (SupplierID) REFERENCES [Supplier](SupplierID)
+);
+
+-- ==============================
+-- CHI TIẾT TRẢ HÀNG CHO NCC
+-- ==============================
+CREATE TABLE [NGProductDetail] (
+    NGProductDetailID BIGINT IDENTITY(1,1) PRIMARY KEY,
+    ReturnToSupplierID BIGINT NOT NULL,
+    ProductID BIGINT NOT NULL,
+    Quantity DECIMAL(18,4) NOT NULL,
+    UnitCost DECIMAL(18,4) NOT NULL,
+    Subtotal AS (UnitCost * Quantity) PERSISTED,
+    FOREIGN KEY (ReturnToSupplierID) REFERENCES [NGProduct](NGProductID),
+    FOREIGN KEY (ProductID) REFERENCES [Product](ProductID)
+);
+
+
+-- ==============================
+-- Chuyển kho
+-- ==============================
+CREATE TABLE [TransferProduct] (
+    TransferProductID BIGINT IDENTITY(1,1) PRIMARY KEY,
+    ReturnCode NVARCHAR(100) NOT NULL UNIQUE,
+    Type NVARCHAR(50) NOT NULL CHECK (Type IN ('NGProduct', 'Transfer')),
+    FromWarehouseID BIGINT NOT NULL,    -- Shop/kho trả
+    ToWarehouseID BIGINT NULL,      -- Kho nhận
+    ReturnDate DATETIME NOT NULL DEFAULT GETDATE(),
+    TotalAmount DECIMAL(18,4) NOT NULL DEFAULT 0,
+    Note NVARCHAR(255),
+    Status NVARCHAR(50)
+        CHECK (Status IN ('Draft','Completed','Cancelled')) DEFAULT 'Draft',
+    CreatedAt DATETIME NOT NULL DEFAULT GETDATE(),
+    FOREIGN KEY (FromWarehouseID) REFERENCES [Warehouse](WarehouseID),
+    FOREIGN KEY (ToWarehouseID) REFERENCES [Warehouse](WarehouseID)
+);
+
+CREATE TABLE [TransferProductDetail] (
+    TransferProductDetailID BIGINT IDENTITY(1,1) PRIMARY KEY,
+    ProductID BIGINT NOT NULL,
+    Quantity DECIMAL(18,4) NOT NULL,
+    UnitCost DECIMAL(18,4) NOT NULL,
+    Subtotal AS (UnitCost * Quantity) PERSISTED,
+    FOREIGN KEY (ProductID) REFERENCES [Product](ProductID)
+);
