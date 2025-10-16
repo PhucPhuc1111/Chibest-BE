@@ -7,6 +7,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="dsfcsdf\**" />
+    <EmbeddedResource Remove="dsfcsdf\**" />
+    <None Remove="dsfcsdf\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Chibest.Common\Chibest.Common.csproj" />
     <ProjectReference Include="..\Chibest.Repository\Chibest.Repository.csproj" />
   </ItemGroup>
