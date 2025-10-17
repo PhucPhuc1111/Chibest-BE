@@ -10,5 +10,7 @@ namespace Chibest.Common.Enums
     {
         Admin = 1,
         Customer = 2,
+        BranchAdmin =3,
+        Cashier = 4,
     }
 }

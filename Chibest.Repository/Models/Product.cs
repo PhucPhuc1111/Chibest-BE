@@ -1,0 +1,53 @@
+﻿using System;
+using System.Collections.Generic;
+
+namespace Chibest.Repository.Models;
+
+public partial class Product
+{
+    public Guid Id { get; set; }
+
+    public string? AvartarUrl { get; set; }
+
+    public string Sku { get; set; } = null!;
+
+    public string Name { get; set; } = null!;
+
+    public string? Description { get; set; }
+
+    public string? Color { get; set; }
+
+    public string? Size { get; set; }
+
+    public string? Style { get; set; }
+
+    public string? Brand { get; set; }
+
+    public string? Material { get; set; }
+
+    public int Weight { get; set; }
+
+    public bool IsMaster { get; set; }
+
+    public string Status { get; set; } = null!;
+
+    public Guid CategoryId { get; set; }
+
+    public string? ParentSku { get; set; }
+
+    public virtual ICollection<BranchStock> BranchStocks { get; set; } = new List<BranchStock>();
+
+    public virtual Category Category { get; set; } = null!;
+
+    public virtual ICollection<Product> InverseParentSkuNavigation { get; set; } = new List<Product>();
+
+    public virtual Product? ParentSkuNavigation { get; set; }
+
+    public virtual ICollection<ProductDetail> ProductDetails { get; set; } = new List<ProductDetail>();
+
+    public virtual ICollection<SalesOrderDetail> SalesOrderDetailProductSkuNavigations { get; set; } = new List<SalesOrderDetail>();
+
+    public virtual ICollection<SalesOrderDetail> SalesOrderDetailProducts { get; set; } = new List<SalesOrderDetail>();
+
+    public virtual ICollection<TransactionOrderDetail> TransactionOrderDetails { get; set; } = new List<TransactionOrderDetail>();
+}
