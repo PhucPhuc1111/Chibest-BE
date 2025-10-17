@@ -6,11 +6,6 @@ using Chibest.Service.Interface;
 using Chibest.Service.ModelDTOs.Request;
 using Chibest.Service.ModelDTOs.Response;
 using Mapster;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Chibest.Service.Services
 {
@@ -66,16 +61,14 @@ namespace Chibest.Service.Services
         }
         public async Task<IBusinessResult> UpdateWarehouse(Guid id, WarehouseRequest request)
         {
-            var warehouse = await _unitOfWork.WarehouseRepository.GetByIdAsync(id);
-            if (warehouse == null)
+            var warehouseEntity = await _unitOfWork.WarehouseRepository.GetByIdAsync(id);
+            if (warehouseEntity == null)
             {
                 return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, "Warehouse not found");
             }
-            warehouse.Name = request.Name;
-            warehouse.Address = request.Address;
-            warehouse.FaxNumber = request.FaxNumber;
-            warehouse.UpdatedAt = DateTime.Now;
-            await _unitOfWork.WarehouseRepository.UpdateAsync(warehouse);
+            warehouseEntity = request.Adapt<Warehouse>();
+            warehouseEntity.UpdatedAt = DateTime.Now;
+            await _unitOfWork.WarehouseRepository.UpdateAsync(warehouseEntity);
             await _unitOfWork.SaveChangesAsync();
 
             return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_UPDATE_MSG);

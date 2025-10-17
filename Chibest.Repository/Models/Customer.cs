@@ -33,6 +33,8 @@ public partial class Customer
 
     public Guid? GroupId { get; set; }
 
+    public virtual ICollection<CustomerVoucher> CustomerVouchers { get; set; } = new List<CustomerVoucher>();
+
     public virtual Customer? Group { get; set; }
 
     public virtual ICollection<Customer> InverseGroup { get; set; } = new List<Customer>();

@@ -21,6 +21,8 @@ public partial class ChiBestDbContext : DbContext
 
     public virtual DbSet<Attendance> Attendances { get; set; }
 
+    public virtual DbSet<Branch> Branches { get; set; }
+
     public virtual DbSet<BranchStock> BranchStocks { get; set; }
 
     public virtual DbSet<Category> Categories { get; set; }
@@ -65,13 +67,15 @@ public partial class ChiBestDbContext : DbContext
     {
         modelBuilder.Entity<Account>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Account__3214EC07A7AF9627");
+            entity.HasKey(e => e.Id).HasName("PK__Account__3214EC07855C9220");
 
             entity.ToTable("Account");
 
-            entity.HasIndex(e => e.Code, "UQ__Account__A25C5AA7D01D7899").IsUnique();
+            entity.HasIndex(e => e.PhoneNumber, "IX_Account_PhoneNumber");
 
-            entity.HasIndex(e => e.Email, "UQ__Account__A9D10534C8348AE5").IsUnique();
+            entity.HasIndex(e => e.Code, "UQ__Account__A25C5AA7689515CE").IsUnique();
+
+            entity.HasIndex(e => e.Email, "UQ__Account__A9D105342F83E1FB").IsUnique();
 
             entity.Property(e => e.Id).HasDefaultValueSql("(newid())");
             entity.Property(e => e.AvartarUrl).HasColumnName("AvartarURL");
@@ -101,9 +105,13 @@ public partial class ChiBestDbContext : DbContext
 
         modelBuilder.Entity<AccountRole>(entity =>
         {
-            entity.HasKey(e => new { e.AccountId, e.RoleId }).HasName("PK__AccountR__8C320947A1610E13");
+            entity.HasKey(e => new { e.AccountId, e.RoleId }).HasName("PK__AccountR__8C320947C5931409");
 
             entity.ToTable("AccountRole");
+
+            entity.HasIndex(e => new { e.AccountId, e.StartDate }, "IX_AccountRole_AccountId_StartDate");
+
+            entity.HasIndex(e => new { e.BranchId, e.RoleId }, "IX_AccountRole_BranchId_RoleId");
 
             entity.Property(e => e.EndDate).HasColumnType("datetime");
             entity.Property(e => e.StartDate)
@@ -113,21 +121,21 @@ public partial class ChiBestDbContext : DbContext
             entity.HasOne(d => d.Account).WithMany(p => p.AccountRoles)
                 .HasForeignKey(d => d.AccountId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__AccountRo__Accou__4AB81AF0");
+                .HasConstraintName("FK__AccountRo__Accou__4F7CD00D");
 
             entity.HasOne(d => d.Branch).WithMany(p => p.AccountRoles)
                 .HasForeignKey(d => d.BranchId)
-                .HasConstraintName("FK__AccountRo__Branc__49C3F6B7");
+                .HasConstraintName("FK__AccountRo__Branc__4E88ABD4");
 
             entity.HasOne(d => d.Role).WithMany(p => p.AccountRoles)
                 .HasForeignKey(d => d.RoleId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__AccountRo__RoleI__4BAC3F29");
+                .HasConstraintName("FK__AccountRo__RoleI__5070F446");
         });
 
         modelBuilder.Entity<Attendance>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Attendan__3214EC078472ADA1");
+            entity.HasKey(e => e.Id).HasName("PK__Attendan__3214EC074828B63B");
 
             entity.ToTable("Attendance");
 
@@ -156,25 +164,44 @@ public partial class ChiBestDbContext : DbContext
             entity.HasOne(d => d.Branch).WithMany(p => p.Attendances)
                 .HasForeignKey(d => d.BranchId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Attendanc__Branc__4A8310C6");
+                .HasConstraintName("FK__Attendanc__Branc__55009F39");
 
             entity.HasOne(d => d.Employee).WithMany(p => p.Attendances)
                 .HasForeignKey(d => d.EmployeeId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Attendanc__Emplo__498EEC8D");
+                .HasConstraintName("FK__Attendanc__Emplo__540C7B00");
 
             entity.HasOne(d => d.WorkShift).WithMany(p => p.Attendances)
                 .HasForeignKey(d => d.WorkShiftId)
-                .HasConstraintName("FK__Attendanc__WorkS__4B7734FF");
+                .HasConstraintName("FK__Attendanc__WorkS__55F4C372");
+        });
+
+        modelBuilder.Entity<Branch>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__Branch__3214EC077035E5DC");
+
+            entity.ToTable("Branch");
+
+            entity.Property(e => e.Id).HasDefaultValueSql("(newid())");
+            entity.Property(e => e.Address).HasMaxLength(500);
+            entity.Property(e => e.Name).HasMaxLength(255);
+            entity.Property(e => e.PhoneNumber).HasMaxLength(15);
+            entity.Property(e => e.Status)
+                .HasMaxLength(40)
+                .HasDefaultValue("Hoạt Động");
         });
 
         modelBuilder.Entity<BranchStock>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__BranchSt__3214EC071312C8BB");
+            entity.HasKey(e => e.Id).HasName("PK__BranchSt__3214EC0797BF805B");
 
             entity.ToTable("BranchStock");
 
-            entity.HasIndex(e => new { e.ProductId, e.BranchId }, "UQ__BranchSt__FE1A443000DED79A").IsUnique();
+            entity.HasIndex(e => new { e.BranchId, e.AvailableQty }, "IX_BranchStock_BranchId_AvailableQty");
+
+            entity.HasIndex(e => e.ProductId, "IX_BranchStock_ProductId");
+
+            entity.HasIndex(e => new { e.ProductId, e.BranchId }, "UQ__BranchSt__FE1A44303A94E91B").IsUnique();
 
             entity.Property(e => e.Id).HasDefaultValueSql("(newid())");
             entity.Property(e => e.LastUpdated)
@@ -185,19 +212,21 @@ public partial class ChiBestDbContext : DbContext
             entity.HasOne(d => d.Branch).WithMany(p => p.BranchStocks)
                 .HasForeignKey(d => d.BranchId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__BranchSto__Branc__778AC167");
+                .HasConstraintName("FK__BranchSto__Branc__7C4F7684");
 
             entity.HasOne(d => d.Product).WithMany(p => p.BranchStocks)
                 .HasForeignKey(d => d.ProductId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__BranchSto__Produ__76969D2E");
+                .HasConstraintName("FK__BranchSto__Produ__7B5B524B");
         });
 
         modelBuilder.Entity<Category>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Category__3214EC07A59C1109");
+            entity.HasKey(e => e.Id).HasName("PK__Category__3214EC07667F0583");
 
             entity.ToTable("Category");
+
+            entity.HasIndex(e => new { e.Type, e.Name }, "IX_Category_Type_Name");
 
             entity.Property(e => e.Id).HasDefaultValueSql("(newid())");
             entity.Property(e => e.Name).HasMaxLength(150);
@@ -206,7 +235,7 @@ public partial class ChiBestDbContext : DbContext
 
         modelBuilder.Entity<Commission>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Commissi__3214EC0710D49F2A");
+            entity.HasKey(e => e.Id).HasName("PK__Commissi__3214EC07BC5C909C");
 
             entity.ToTable("Commission");
 
@@ -226,20 +255,24 @@ public partial class ChiBestDbContext : DbContext
             entity.HasOne(d => d.Employee).WithMany(p => p.Commissions)
                 .HasForeignKey(d => d.EmployeeId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Commissio__Emplo__55009F39");
+                .HasConstraintName("FK__Commissio__Emplo__59C55456");
 
             entity.HasOne(d => d.SalesOrder).WithMany(p => p.Commissions)
                 .HasForeignKey(d => d.SalesOrderId)
-                .HasConstraintName("FK__Commissio__Sales__55F4C372");
+                .HasConstraintName("FK__Commissio__Sales__5AB9788F");
         });
 
         modelBuilder.Entity<Customer>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Customer__3214EC07063204DE");
+            entity.HasKey(e => e.Id).HasName("PK__Customer__3214EC071CF57DBA");
 
             entity.ToTable("Customer");
 
-            entity.HasIndex(e => e.Code, "UQ__Customer__A25C5AA7E16EEF2E").IsUnique();
+            entity.HasIndex(e => e.GroupId, "IX_Customer_GroupId");
+
+            entity.HasIndex(e => e.PhoneNumber, "IX_Customer_PhoneNumber");
+
+            entity.HasIndex(e => e.Code, "UQ__Customer__A25C5AA74AD9E762").IsUnique();
 
             entity.Property(e => e.Id).HasDefaultValueSql("(newid())");
             entity.Property(e => e.AvartarUrl).HasColumnName("AvartarURL");
@@ -263,12 +296,12 @@ public partial class ChiBestDbContext : DbContext
 
             entity.HasOne(d => d.Group).WithMany(p => p.InverseGroup)
                 .HasForeignKey(d => d.GroupId)
-                .HasConstraintName("FK__Customer__GroupI__5441852A");
+                .HasConstraintName("FK__Customer__GroupI__59063A47");
         });
 
         modelBuilder.Entity<CustomerVoucher>(entity =>
         {
-            entity.HasKey(e => new { e.VoucherId, e.AccountId }).HasName("PK__Customer__49A7A37BDB7DE69D");
+            entity.HasKey(e => new { e.VoucherId, e.CustomerId }).HasName("PK__Customer__A0A49F6C0D9BE027");
 
             entity.ToTable("CustomerVoucher");
 
@@ -278,20 +311,20 @@ public partial class ChiBestDbContext : DbContext
                 .HasDefaultValue("Đã Nhận");
             entity.Property(e => e.UsedDate).HasColumnType("datetime");
 
-            entity.HasOne(d => d.Account).WithMany(p => p.CustomerVouchers)
-                .HasForeignKey(d => d.AccountId)
+            entity.HasOne(d => d.Customer).WithMany(p => p.CustomerVouchers)
+                .HasForeignKey(d => d.CustomerId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__CustomerV__Accou__619B8048");
+                .HasConstraintName("FK__CustomerV__Custo__66603565");
 
             entity.HasOne(d => d.Voucher).WithMany(p => p.CustomerVouchers)
                 .HasForeignKey(d => d.VoucherId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__CustomerV__Vouch__60A75C0F");
+                .HasConstraintName("FK__CustomerV__Vouch__656C112C");
         });
 
         modelBuilder.Entity<Deduction>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Deductio__3214EC0780C6A0C6");
+            entity.HasKey(e => e.Id).HasName("PK__Deductio__3214EC07735A29F0");
 
             entity.ToTable("Deduction");
 
@@ -309,12 +342,12 @@ public partial class ChiBestDbContext : DbContext
             entity.HasOne(d => d.Employee).WithMany(p => p.Deductions)
                 .HasForeignKey(d => d.EmployeeId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Deduction__Emplo__5AB9788F");
+                .HasConstraintName("FK__Deduction__Emplo__5F7E2DAC");
         });
 
         modelBuilder.Entity<Payroll>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Payroll__3214EC0722EED29C");
+            entity.HasKey(e => e.Id).HasName("PK__Payroll__3214EC0700607425");
 
             entity.ToTable("Payroll");
 
@@ -324,7 +357,7 @@ public partial class ChiBestDbContext : DbContext
 
             entity.HasIndex(e => e.PaymentStatus, "IX_Payroll_Status");
 
-            entity.HasIndex(e => new { e.EmployeeId, e.PeriodYear, e.PeriodMonth }, "UQ__Payroll__32843B6DB5CB9B28").IsUnique();
+            entity.HasIndex(e => new { e.EmployeeId, e.PeriodYear, e.PeriodMonth }, "UQ__Payroll__32843B6D0E15C6FC").IsUnique();
 
             entity.Property(e => e.Id).HasDefaultValueSql("(newid())");
             entity.Property(e => e.ActualBaseSalary).HasColumnType("money");
@@ -364,17 +397,17 @@ public partial class ChiBestDbContext : DbContext
             entity.HasOne(d => d.Branch).WithMany(p => p.Payrolls)
                 .HasForeignKey(d => d.BranchId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Payroll__BranchI__6166761E");
+                .HasConstraintName("FK__Payroll__BranchI__662B2B3B");
 
             entity.HasOne(d => d.Employee).WithMany(p => p.Payrolls)
                 .HasForeignKey(d => d.EmployeeId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Payroll__Employe__607251E5");
+                .HasConstraintName("FK__Payroll__Employe__65370702");
         });
 
         modelBuilder.Entity<PayrollDetail>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__PayrollD__3214EC070724E55C");
+            entity.HasKey(e => e.Id).HasName("PK__PayrollD__3214EC071058221D");
 
             entity.ToTable("PayrollDetail");
 
@@ -389,16 +422,22 @@ public partial class ChiBestDbContext : DbContext
             entity.HasOne(d => d.Payroll).WithMany(p => p.PayrollDetails)
                 .HasForeignKey(d => d.PayrollId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__PayrollDe__Payro__7849DB76");
+                .HasConstraintName("FK__PayrollDe__Payro__7D0E9093");
         });
 
         modelBuilder.Entity<Product>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Product__3214EC07865827FF");
+            entity.HasKey(e => e.Id).HasName("PK__Product__3214EC0757CFA1C0");
 
             entity.ToTable("Product");
 
-            entity.HasIndex(e => e.Sku, "UQ__Product__CA1ECF0D8AB0ECFD").IsUnique();
+            entity.HasIndex(e => new { e.CategoryId, e.IsMaster }, "IX_Product_Category_IsMaster");
+
+            entity.HasIndex(e => e.Name, "IX_Product_Name");
+
+            entity.HasIndex(e => e.ParentSku, "IX_Product_ParentSKU");
+
+            entity.HasIndex(e => e.Sku, "UQ__Product__CA1ECF0D515F605C").IsUnique();
 
             entity.Property(e => e.Id).HasDefaultValueSql("(newid())");
             entity.Property(e => e.AvartarUrl).HasColumnName("AvartarURL");
@@ -424,17 +463,17 @@ public partial class ChiBestDbContext : DbContext
             entity.HasOne(d => d.Category).WithMany(p => p.Products)
                 .HasForeignKey(d => d.CategoryId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Product__Categor__6C190EBB");
+                .HasConstraintName("FK__Product__Categor__70DDC3D8");
 
             entity.HasOne(d => d.ParentSkuNavigation).WithMany(p => p.InverseParentSkuNavigation)
                 .HasPrincipalKey(p => p.Sku)
                 .HasForeignKey(d => d.ParentSku)
-                .HasConstraintName("FK__Product__ParentS__6D0D32F4");
+                .HasConstraintName("FK__Product__ParentS__71D1E811");
         });
 
         modelBuilder.Entity<ProductDetail>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__ProductD__3214EC07BAC1094D");
+            entity.HasKey(e => e.Id).HasName("PK__ProductD__3214EC07A76E664D");
 
             entity.ToTable("ProductDetail");
 
@@ -459,23 +498,25 @@ public partial class ChiBestDbContext : DbContext
             entity.HasOne(d => d.ContainerCodeNavigation).WithMany(p => p.ProductDetails)
                 .HasPrincipalKey(p => p.ContainerCode)
                 .HasForeignKey(d => d.ContainerCode)
-                .HasConstraintName("FK__ProductDe__Conta__17036CC0");
+                .HasConstraintName("FK__ProductDe__Conta__1BC821DD");
 
             entity.HasOne(d => d.Product).WithMany(p => p.ProductDetails)
                 .HasForeignKey(d => d.ProductId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__ProductDe__Produ__151B244E");
+                .HasConstraintName("FK__ProductDe__Produ__19DFD96B");
 
             entity.HasOne(d => d.Warehouse).WithMany(p => p.ProductDetails)
                 .HasForeignKey(d => d.WarehouseId)
-                .HasConstraintName("FK__ProductDe__Wareh__160F4887");
+                .HasConstraintName("FK__ProductDe__Wareh__1AD3FDA4");
         });
 
         modelBuilder.Entity<Role>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Role__3214EC073B1E2623");
+            entity.HasKey(e => e.Id).HasName("PK__Role__3214EC07FF58DF57");
 
             entity.ToTable("Role");
+
+            entity.HasIndex(e => e.Name, "IX_Role_Name");
 
             entity.Property(e => e.Id).HasDefaultValueSql("(newid())");
             entity.Property(e => e.Name).HasMaxLength(200);
@@ -483,7 +524,7 @@ public partial class ChiBestDbContext : DbContext
 
         modelBuilder.Entity<SalaryConfig>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__SalaryCo__3214EC075775DE9A");
+            entity.HasKey(e => e.Id).HasName("PK__SalaryCo__3214EC07807E5108");
 
             entity.ToTable("SalaryConfig");
 
@@ -516,17 +557,17 @@ public partial class ChiBestDbContext : DbContext
             entity.HasOne(d => d.Branch).WithMany(p => p.SalaryConfigs)
                 .HasForeignKey(d => d.BranchId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__SalaryCon__Branc__3C34F16F");
+                .HasConstraintName("FK__SalaryCon__Branc__40F9A68C");
 
             entity.HasOne(d => d.Employee).WithMany(p => p.SalaryConfigs)
                 .HasForeignKey(d => d.EmployeeId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__SalaryCon__Emplo__3B40CD36");
+                .HasConstraintName("FK__SalaryCon__Emplo__40058253");
         });
 
         modelBuilder.Entity<SalesOrder>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__SalesOrd__3214EC07517FB7D5");
+            entity.HasKey(e => e.Id).HasName("PK__SalesOrd__3214EC07C0DC6389");
 
             entity.ToTable("SalesOrder");
 
@@ -542,7 +583,7 @@ public partial class ChiBestDbContext : DbContext
 
             entity.HasIndex(e => e.Status, "IX_SalesOrder_Status");
 
-            entity.HasIndex(e => e.InvoiceCode, "UQ__SalesOrd__0D9D7FF303CAB2F8").IsUnique();
+            entity.HasIndex(e => e.InvoiceCode, "UQ__SalesOrd__0D9D7FF3D61C594D").IsUnique();
 
             entity.Property(e => e.Id).HasDefaultValueSql("(newid())");
             entity.Property(e => e.ActualDeliveryDate).HasColumnType("datetime");
@@ -586,26 +627,26 @@ public partial class ChiBestDbContext : DbContext
             entity.HasOne(d => d.Branch).WithMany(p => p.SalesOrders)
                 .HasForeignKey(d => d.BranchId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__SalesOrde__Branc__2739D489");
+                .HasConstraintName("FK__SalesOrde__Branc__2BFE89A6");
 
             entity.HasOne(d => d.Customer).WithMany(p => p.SalesOrders)
                 .HasForeignKey(d => d.CustomerId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__SalesOrde__Custo__29221CFB");
+                .HasConstraintName("FK__SalesOrde__Custo__2DE6D218");
 
             entity.HasOne(d => d.Employee).WithMany(p => p.SalesOrders)
                 .HasForeignKey(d => d.EmployeeId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__SalesOrde__Emplo__282DF8C2");
+                .HasConstraintName("FK__SalesOrde__Emplo__2CF2ADDF");
 
             entity.HasOne(d => d.Voucher).WithMany(p => p.SalesOrders)
                 .HasForeignKey(d => d.VoucherId)
-                .HasConstraintName("FK__SalesOrde__Vouch__2A164134");
+                .HasConstraintName("FK__SalesOrde__Vouch__2EDAF651");
         });
 
         modelBuilder.Entity<SalesOrderDetail>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__SalesOrd__3214EC07535ECC1C");
+            entity.HasKey(e => e.Id).HasName("PK__SalesOrd__3214EC0791308730");
 
             entity.ToTable("SalesOrderDetail");
 
@@ -628,27 +669,27 @@ public partial class ChiBestDbContext : DbContext
 
             entity.HasOne(d => d.ProductDetail).WithMany(p => p.SalesOrderDetails)
                 .HasForeignKey(d => d.ProductDetailId)
-                .HasConstraintName("FK__SalesOrde__Produ__32AB8735");
+                .HasConstraintName("FK__SalesOrde__Produ__37703C52");
 
             entity.HasOne(d => d.Product).WithMany(p => p.SalesOrderDetailProducts)
                 .HasForeignKey(d => d.ProductId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__SalesOrde__Produ__30C33EC3");
+                .HasConstraintName("FK__SalesOrde__Produ__3587F3E0");
 
             entity.HasOne(d => d.ProductSkuNavigation).WithMany(p => p.SalesOrderDetailProductSkuNavigations)
                 .HasPrincipalKey(p => p.Sku)
                 .HasForeignKey(d => d.ProductSku)
-                .HasConstraintName("FK__SalesOrde__Produ__31B762FC");
+                .HasConstraintName("FK__SalesOrde__Produ__367C1819");
 
             entity.HasOne(d => d.SalesOrder).WithMany(p => p.SalesOrderDetails)
                 .HasForeignKey(d => d.SalesOrderId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__SalesOrde__Sales__2FCF1A8A");
+                .HasConstraintName("FK__SalesOrde__Sales__3493CFA7");
         });
 
         modelBuilder.Entity<SystemLog>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__SystemLo__3214EC07B9ABEE76");
+            entity.HasKey(e => e.Id).HasName("PK__SystemLo__3214EC077C2D6A11");
 
             entity.ToTable("SystemLog");
 
@@ -678,12 +719,12 @@ public partial class ChiBestDbContext : DbContext
 
             entity.HasOne(d => d.Account).WithMany(p => p.SystemLogs)
                 .HasForeignKey(d => d.AccountId)
-                .HasConstraintName("FK__SystemLog__Accou__7D0E9093");
+                .HasConstraintName("FK__SystemLog__Accou__01D345B0");
         });
 
         modelBuilder.Entity<TransactionOrder>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Transact__3214EC071004B594");
+            entity.HasKey(e => e.Id).HasName("PK__Transact__3214EC07F6ADD143");
 
             entity.ToTable("TransactionOrder");
 
@@ -693,7 +734,7 @@ public partial class ChiBestDbContext : DbContext
 
             entity.HasIndex(e => e.Type, "IX_TransactionOrder_Type");
 
-            entity.HasIndex(e => e.InvoiceCode, "UQ__Transact__0D9D7FF327017CD7").IsUnique();
+            entity.HasIndex(e => e.InvoiceCode, "UQ__Transact__0D9D7FF3E0B4E842").IsUnique();
 
             entity.Property(e => e.Id).HasDefaultValueSql("(newid())");
             entity.Property(e => e.ActualDeliveryDate).HasColumnType("datetime");
@@ -721,24 +762,24 @@ public partial class ChiBestDbContext : DbContext
 
             entity.HasOne(d => d.Employee).WithMany(p => p.TransactionOrderEmployees)
                 .HasForeignKey(d => d.EmployeeId)
-                .HasConstraintName("FK__Transacti__Emplo__04E4BC85");
+                .HasConstraintName("FK__Transacti__Emplo__09A971A2");
 
             entity.HasOne(d => d.FromWarehouse).WithMany(p => p.TransactionOrderFromWarehouses)
                 .HasForeignKey(d => d.FromWarehouseId)
-                .HasConstraintName("FK__Transacti__FromW__02FC7413");
+                .HasConstraintName("FK__Transacti__FromW__07C12930");
 
             entity.HasOne(d => d.Supplier).WithMany(p => p.TransactionOrderSuppliers)
                 .HasForeignKey(d => d.SupplierId)
-                .HasConstraintName("FK__Transacti__Suppl__05D8E0BE");
+                .HasConstraintName("FK__Transacti__Suppl__0A9D95DB");
 
             entity.HasOne(d => d.ToWarehouse).WithMany(p => p.TransactionOrderToWarehouses)
                 .HasForeignKey(d => d.ToWarehouseId)
-                .HasConstraintName("FK__Transacti__ToWar__03F0984C");
+                .HasConstraintName("FK__Transacti__ToWar__08B54D69");
         });
 
         modelBuilder.Entity<TransactionOrderDetail>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Transact__3214EC077F1F2170");
+            entity.HasKey(e => e.Id).HasName("PK__Transact__3214EC07351BDB23");
 
             entity.ToTable("TransactionOrderDetail");
 
@@ -748,7 +789,7 @@ public partial class ChiBestDbContext : DbContext
 
             entity.HasIndex(e => e.ProductId, "IX_TransactionOrderDetail_ProductId");
 
-            entity.HasIndex(e => e.ContainerCode, "UQ__Transact__874FE470E4F83D7F").IsUnique();
+            entity.HasIndex(e => e.ContainerCode, "UQ__Transact__874FE470A58DCF41").IsUnique();
 
             entity.Property(e => e.Id).HasDefaultValueSql("(newid())");
             entity.Property(e => e.ContainerCode).HasMaxLength(100);
@@ -765,21 +806,21 @@ public partial class ChiBestDbContext : DbContext
             entity.HasOne(d => d.Product).WithMany(p => p.TransactionOrderDetails)
                 .HasForeignKey(d => d.ProductId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Transacti__Produ__0E6E26BF");
+                .HasConstraintName("FK__Transacti__Produ__1332DBDC");
 
             entity.HasOne(d => d.TransactionOrder).WithMany(p => p.TransactionOrderDetails)
                 .HasForeignKey(d => d.TransactionOrderId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Transacti__Trans__0D7A0286");
+                .HasConstraintName("FK__Transacti__Trans__123EB7A3");
         });
 
         modelBuilder.Entity<Voucher>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Voucher__3214EC0722CB1D68");
+            entity.HasKey(e => e.Id).HasName("PK__Voucher__3214EC07D3E88A92");
 
             entity.ToTable("Voucher");
 
-            entity.HasIndex(e => e.Code, "UQ__Voucher__A25C5AA7C387F380").IsUnique();
+            entity.HasIndex(e => e.Code, "UQ__Voucher__A25C5AA71F4B512C").IsUnique();
 
             entity.Property(e => e.Id).HasDefaultValueSql("(newid())");
             entity.Property(e => e.AvailableDate)
@@ -797,33 +838,33 @@ public partial class ChiBestDbContext : DbContext
 
         modelBuilder.Entity<Warehouse>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Warehous__3214EC07FC07D679");
+            entity.HasKey(e => e.Id).HasName("PK__Warehous__3214EC07F368063B");
 
             entity.ToTable("Warehouse");
 
-            entity.HasIndex(e => e.ParentWarehouseId, "IX_Warehouse_ParentWarehouseID");
-
             entity.Property(e => e.Id).HasDefaultValueSql("(newid())");
             entity.Property(e => e.Address).HasMaxLength(500);
+            entity.Property(e => e.BranchId).HasColumnName("BranchID");
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime");
-            entity.Property(e => e.FaxNumber).HasMaxLength(15);
             entity.Property(e => e.Name).HasMaxLength(255);
-            entity.Property(e => e.ParentWarehouseId).HasColumnName("ParentWarehouseID");
             entity.Property(e => e.PhoneNumber).HasMaxLength(15);
+            entity.Property(e => e.Status)
+                .HasMaxLength(40)
+                .HasDefaultValue("Hoạt Động");
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime");
 
-            entity.HasOne(d => d.ParentWarehouse).WithMany(p => p.InverseParentWarehouse)
-                .HasForeignKey(d => d.ParentWarehouseId)
-                .HasConstraintName("FK__Warehouse__Paren__3B75D760");
+            entity.HasOne(d => d.Branch).WithMany(p => p.Warehouses)
+                .HasForeignKey(d => d.BranchId)
+                .HasConstraintName("FK__Warehouse__Branc__403A8C7D");
         });
 
         modelBuilder.Entity<WorkShift>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__WorkShif__3214EC075C3BFE66");
+            entity.HasKey(e => e.Id).HasName("PK__WorkShif__3214EC072792944B");
 
             entity.ToTable("WorkShift");
 

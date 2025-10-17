@@ -45,8 +45,6 @@ public partial class Account
 
     public virtual ICollection<Commission> Commissions { get; set; } = new List<Commission>();
 
-    public virtual ICollection<CustomerVoucher> CustomerVouchers { get; set; } = new List<CustomerVoucher>();
-
     public virtual ICollection<Deduction> Deductions { get; set; } = new List<Deduction>();
 
     public virtual ICollection<Payroll> Payrolls { get; set; } = new List<Payroll>();
