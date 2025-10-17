@@ -3,12 +3,14 @@ using Chibest.API.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
+DotNetEnv.Env.Load("../.env");
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddHttpClient();
 builder.Services.AddSwaggerGen();
 builder.Services.AddControllers();
 builder.Services.AddMemoryCache();
 ServiceRegister.RegisterServices(builder.Services, builder.Configuration);
+builder.Services.AddAuthorization();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 
@@ -27,6 +29,7 @@ app.UseMiddleware<GlobalExceptionMiddleware>();
 
 app.UseHttpsRedirection();
 
+//Authentication & Authorization
 app.UseAuthentication();
 app.UseAuthorization();
 

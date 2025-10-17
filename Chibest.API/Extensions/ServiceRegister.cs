@@ -1,5 +1,5 @@
-﻿using Chibest.Repository;
-using Chibest.Repository.Interface;
+﻿using Chibest.Service.ModelDTOs.StrongTypedModels;
+using Chibest.Repository;
 using Chibest.Repository.Models;
 using Chibest.Service.Interface;
 using Chibest.Service.Services;
@@ -13,80 +13,98 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace Chibest.API.Extensions
+namespace Chibest.API.Extensions;
+
+public static class ServiceRegister
 {
-    public static class ServiceRegister
+    public static void RegisterServices(IServiceCollection services, IConfiguration configuration)
     {
-        public static void RegisterServices(IServiceCollection services, IConfiguration configuration)
+        var connectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING");
+
+        services.AddDbContext<ChiBestDbContext>(options =>
         {
-            DotNetEnv.Env.Load("../.env");
+            options.UseSqlServer(connectionString);
+            options.EnableSensitiveDataLogging();
+        });
 
-            var connectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING");
+        services.AddAuthorizeService(configuration);
+        AddCorsToThisWeb(services);
+        AddEnum(services);
+        AddKebab(services);
+        services.AddScoped<IUnitOfWork, UnitOfWork>();
+        services.AddScoped<ITokenService, TokenService>();
+        services.AddScoped<IWarehouseService, WarehouseService>();
+        services.AddScoped<IAccountService, AccountService>();
+    }
 
-            services.AddDbContext<ChiBestDbContext>(options =>
+    public static IServiceCollection AddAuthorizeService(this IServiceCollection services, IConfiguration configuration)
+    {
+        var jwtOps = new JwtSettings
+        {
+            Key = configuration["Jwt_Key"] ?? Environment.GetEnvironmentVariable("Jwt_Key") ?? string.Empty,
+            Issuer = configuration["Jwt_Issuer"] ?? Environment.GetEnvironmentVariable("Jwt_Issuer") ?? string.Empty,
+            Audience = configuration["Jwt_Audience"] ?? Environment.GetEnvironmentVariable("Jwt_Audience") ?? string.Empty,
+            AccessTokenExpirationMinutes = int.TryParse(configuration["Jwt_AccessTokenExpirationMinutes"] ?? Environment.GetEnvironmentVariable("Jwt_AccessTokenExpirationMinutes"), out var m) ? m : 15,
+            RefreshTokenExpirationDays = int.TryParse(configuration["Jwt_RefreshTokenExpirationDays"] ?? Environment.GetEnvironmentVariable("Jwt_RefreshTokenExpirationDays"), out var d) ? d : 7
+        };
+
+        //Register JwtSettings as a singleton
+        services.AddSingleton(jwtOps);
+
+        services.AddAuthentication(options =>
+        {
+            options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+            options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            options.DefaultSignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+        })
+        .AddJwtBearer(options =>
+        {
+            options.TokenValidationParameters = new TokenValidationParameters
             {
-                options.UseSqlServer(connectionString);
-                options.EnableSensitiveDataLogging();
+                ValidateIssuer = true,
+                ValidateAudience = true,
+                ValidateLifetime = true,
+                ValidateIssuerSigningKey = true,
+                ValidIssuer = jwtOps.Issuer,
+                ValidAudience = jwtOps.Audience,
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOps.Key)),
+                ClockSkew = TimeSpan.Zero // Không cho phép độ trễ
+            };
+
+            options.Events = new JwtBearerEvents
+            {
+                OnAuthenticationFailed = context =>
+                {
+                    if (context.Exception.GetType() == typeof(SecurityTokenExpiredException))
+                    {
+                        context.Response.Headers.Add("Token-Expired", "true");
+                    }
+                    return Task.CompletedTask;
+                }
+            };
+        });
+
+        services.AddSwaggerGen(c =>
+        {
+            c.SwaggerDoc("v1", new OpenApiInfo
+            {
+                Title = "ChiBest_API",
+                Version = "v1",
+                Description = "API for managing ChiBest app",
             });
 
-            services.AddAuthorizeService(configuration);
-            AddCorsToThisWeb(services);
-            AddEnum(services);
-            AddKebab(services);
-            services.AddScoped<IUnitOfWork, UnitOfWork>();
-            services.AddScoped<IWarehouseService, WarehouseService>();
-        }
-
-        public static IServiceCollection AddAuthorizeService(this IServiceCollection services, IConfiguration configuration)
-        {
-            services.AddAuthentication(options =>
+            c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
             {
-                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-                options.DefaultSignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-            })
-            .AddJwtBearer(options =>
-            {
-                options.TokenValidationParameters = new TokenValidationParameters
-                {
-                    ValidateIssuer = true,
-                    ValidateAudience = true,
-                    ValidateLifetime = true,
-                    ValidateIssuerSigningKey = true,
-                    ValidIssuer = configuration["Jwt:Issuer"],
-                    ValidAudience = configuration["Jwt:Audience"],
-                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["Jwt:Key"]))
-                };
+                Name = "JWT Authentication",
+                Description = "Enter your JWT token in this field",
+                In = ParameterLocation.Header,
+                Type = SecuritySchemeType.Http,
+                Scheme = "bearer",
+                BearerFormat = "JWT"
             });
 
-            //.AddCookie(CookieAuthenticationDefaults.AuthenticationScheme, options =>
-            //{
-            //    options.LoginPath = "/Account/Login";
-            //    options.AccessDeniedPath = "/Account/AccessDenied";
-            //});
-
-
-            services.AddSwaggerGen(c =>
+            c.AddSecurityRequirement(new OpenApiSecurityRequirement
             {
-                c.SwaggerDoc("v1", new OpenApiInfo
-                {
-                    Title = "NutriDiet_API",
-                    Version = "v1",
-                    Description = "API for managing NutriDiet app",
-                });
-
-                c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
-                {
-                    Name = "JWT Authentication",
-                    Description = "Enter your JWT token in this field",
-                    In = ParameterLocation.Header,
-                    Type = SecuritySchemeType.Http,
-                    Scheme = "bearer",
-                    BearerFormat = "JWT"
-                });
-
-                c.AddSecurityRequirement(new OpenApiSecurityRequirement
-                {
                     {
                         new OpenApiSecurityScheme
                         {
@@ -98,44 +116,43 @@ namespace Chibest.API.Extensions
                         },
                         Array.Empty<string>()
                     }
+            });
+
+        });
+
+        return services;
+    }
+
+    private static void AddCorsToThisWeb(IServiceCollection services)
+    {
+        services.AddCors(options =>
+        {
+            options.AddPolicy("AllowAll",
+                builder =>
+                {
+                    builder.AllowAnyOrigin()
+                        .AllowAnyMethod()
+                        .AllowAnyHeader();
                 });
+        });
+    }
 
-            });
-
-            return services;
-        }
-
-        private static void AddCorsToThisWeb(IServiceCollection services)
+    private static void AddEnum(IServiceCollection services)
+    {
+        services.AddControllers().AddJsonOptions(options =>
         {
-            services.AddCors(options =>
-            {
-                options.AddPolicy("AllowAll",
-                    builder =>
-                    {
-                        builder.AllowAnyOrigin()
-                            .AllowAnyMethod()
-                            .AllowAnyHeader();
-                    });
-            });
-        }
+            options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+        });
+    }
 
-        private static void AddEnum(IServiceCollection services)
-        {
-            services.AddControllers().AddJsonOptions(options =>
-            {
-                options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
-            });
-        }
+    private static void AddKebab(IServiceCollection services)
+    {
+        services.AddControllers(opts =>
+                opts.Conventions.Add(new RouteTokenTransformerConvention(new ToKebabParameterTransformer())))
 
-        private static void AddKebab(IServiceCollection services)
-        {
-            services.AddControllers(opts =>
-                    opts.Conventions.Add(new RouteTokenTransformerConvention(new ToKebabParameterTransformer())))
-
-                    .AddJsonOptions(options =>
-                    {
-                        options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
-                    });
-        }
+                .AddJsonOptions(options =>
+                {
+                    options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+                });
     }
 }
