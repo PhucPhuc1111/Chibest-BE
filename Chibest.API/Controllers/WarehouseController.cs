@@ -3,7 +3,7 @@ using Chibest.Service.ModelDTOs.Request;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Chibest.API.Controller
+namespace Chibest.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]

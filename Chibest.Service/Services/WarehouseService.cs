@@ -1,6 +1,6 @@
 ﻿using Chibest.Common;
 using Chibest.Common.BusinessResult;
-using Chibest.Repository.Interface;
+using Chibest.Repository;
 using Chibest.Repository.Models;
 using Chibest.Service.Interface;
 using Chibest.Service.ModelDTOs.Request;

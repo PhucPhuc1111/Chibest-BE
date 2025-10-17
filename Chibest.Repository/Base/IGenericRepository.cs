@@ -1,6 +1,6 @@
 ﻿using System.Linq.Expressions;
 
-namespace Chibest.Repository.Repositories.Base
+namespace Chibest.Repository.Base
 {
     public interface IGenericRepository<TEntity> where TEntity : class
     {
@@ -9,6 +9,7 @@ namespace Chibest.Repository.Repositories.Base
         Task<TEntity> GetByIdAsync(object id);
         IQueryable<TEntity> GetByWhere(Expression<Func<TEntity, bool>> predicate);
 
+        bool HasChanges(TEntity newEntity, TEntity trackedEntity);
         Task Attach(TEntity entity);
 
         Task AddAsync(TEntity entity);

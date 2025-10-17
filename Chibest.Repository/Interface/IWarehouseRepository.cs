@@ -1,5 +1,5 @@
-﻿using Chibest.Repository.Models;
-using Chibest.Repository.Repositories.Base;
+﻿using Chibest.Repository.Base;
+using Chibest.Repository.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;

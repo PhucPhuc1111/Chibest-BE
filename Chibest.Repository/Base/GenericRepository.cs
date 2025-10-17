@@ -1,9 +1,8 @@
 ﻿using Chibest.Repository.Models;
 using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
-using Chibest.Repository.Repositories.Base;
 
-namespace NutriDiet.Repository.Repositories
+namespace Chibest.Repository.Base
 {
     public class GenericRepository<TEntity> : IGenericRepository<TEntity> where TEntity : class
     {
@@ -11,7 +10,7 @@ namespace NutriDiet.Repository.Repositories
 
         public GenericRepository()
         {
-            this._context = new ChiBestDbContext();
+            _context = new ChiBestDbContext();
         }
 
         public GenericRepository(ChiBestDbContext context)
@@ -23,6 +22,20 @@ namespace NutriDiet.Repository.Repositories
         {
             _context.Set<TEntity>().Attach(entity);
             _context.Entry(entity).State = EntityState.Unchanged;
+        }
+
+        public bool HasChanges(TEntity newEntity, TEntity trackedEntity)
+        {
+            foreach (var prop in typeof(TEntity).GetProperties())
+            {
+                var val1 = prop.GetValue(trackedEntity);
+                var val2 = prop.GetValue(newEntity);
+
+                //If not equal => true
+                if (!Equals(val1, val2)) return true;
+            }
+
+            return false;
         }
 
         public IQueryable<TEntity> GetAll()
