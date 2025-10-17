@@ -1,6 +1,8 @@
 ﻿using Chibest.Repository;
 using Chibest.Repository.Interface;
 using Chibest.Repository.Models;
+using Chibest.Service.Interface;
+using Chibest.Service.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc.ApplicationModels;
@@ -32,7 +34,7 @@ namespace Chibest.API.Extensions
             AddEnum(services);
             AddKebab(services);
             services.AddScoped<IUnitOfWork, UnitOfWork>();
-
+            services.AddScoped<IWarehouseService, WarehouseService>();
         }
 
         public static IServiceCollection AddAuthorizeService(this IServiceCollection services, IConfiguration configuration)

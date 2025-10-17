@@ -9,6 +9,7 @@ namespace Chibest.Repository.Interface
         Task RollbackTransaction();
         Task SaveChangesAsync();
 
+        IWarehouseRepository WarehouseRepository { get; }
         //IUserRepository UserRepository { get; }
         //IFoodRepository FoodRepository { get; }
         //IGeneralHealthProfileRepository HealthProfileRepository { get; }

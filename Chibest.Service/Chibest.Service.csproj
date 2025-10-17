@@ -17,4 +17,8 @@
     <ProjectReference Include="..\Chibest.Repository\Chibest.Repository.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Mapster" Version="7.4.0" />
+  </ItemGroup>
+
 </Project>

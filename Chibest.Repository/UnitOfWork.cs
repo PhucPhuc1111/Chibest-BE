@@ -1,11 +1,13 @@
 ﻿using Chibest.Repository.Interface;
 using Chibest.Repository.Models;
+using Chibest.Repository.Repositories;
 
 namespace Chibest.Repository
 {
     public class UnitOfWork : IUnitOfWork
     {
         protected readonly ChiBestDbContext _context;
+        private IWarehouseRepository _warehouseRepository;
         //private IUserRepository _userRepository;
         //private IFoodRepository _foodRepository;
         //private IGeneralHealthProfileRepository _healthProfileRepository;
@@ -32,7 +34,7 @@ namespace Chibest.Repository
         {
             _context = context;
         }
-
+        public IWarehouseRepository WarehouseRepository => _warehouseRepository ??= new WarehouseRepository(_context);
         //public IUserRepository UserRepository => _userRepository ??= new UserRepository(_context);
         //public IFoodRepository FoodRepository => _foodRepository ??= new FoodRepository(_context);
         //public IGeneralHealthProfileRepository HealthProfileRepository => _healthProfileRepository ??= new GeneralHealthProfileRepository(_context);
