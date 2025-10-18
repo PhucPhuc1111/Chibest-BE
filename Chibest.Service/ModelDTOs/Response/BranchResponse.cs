@@ -12,6 +12,8 @@ namespace Chibest.Service.ModelDTOs.Response
         public string Name { get; set; } = null!;
         public string Address { get; set; } = null!;
         public string? PhoneNumber { get; set; }
+        public bool IsFranchise { get; set; }
+        public string? OwnerName { get; set; }
         public string Status { get; set; } = null!;
         public int UserCount { get; set; }     
         public int WarehouseCount { get; set; }

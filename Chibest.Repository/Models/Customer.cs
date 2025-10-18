@@ -13,8 +13,6 @@ public partial class Customer
 
     public string Name { get; set; } = null!;
 
-    public string? Gender { get; set; }
-
     public string? Address { get; set; }
 
     public string? PhoneNumber { get; set; }
@@ -22,8 +20,6 @@ public partial class Customer
     public DateTime? DateOfBirth { get; set; }
 
     public string Type { get; set; } = null!;
-
-    public string? Note { get; set; }
 
     public DateTime CreatedDate { get; set; }
 

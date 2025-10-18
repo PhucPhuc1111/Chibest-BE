@@ -68,11 +68,10 @@ namespace Chibest.Service.Services
 
         public async Task<IBusinessResult> GetWarehouseList(int pageIndex, int pageSize, string search)
         {
-            string searchTerm = search?.ToLower() ?? string.Empty;
+            string searchTerm = search?.Trim().ToLower() ?? string.Empty;
             var query = _unitOfWork.WarehouseRepository
                 .GetByWhere(x => string.IsNullOrEmpty(searchTerm) || x.Name.ToLower().Contains(searchTerm))
                 .Include(x => x.Branch);
-
             var warehouses = await query
                 .OrderByDescending(x => x.CreatedAt)
                 .Skip((pageIndex - 1) * pageSize)
@@ -80,22 +79,21 @@ namespace Chibest.Service.Services
                 .ToListAsync();
 
             if (warehouses == null || !warehouses.Any())
-            {
                 return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, Const.FAIL_READ_MSG);
-            }
 
             var response = warehouses.Select(x => new WarehouseResponse
             {
                 Id = x.Id,
                 Name = x.Name,
                 Address = x.Address,
-                BranchName = x.Branch?.Name, // ✅ hiển thị tên chi nhánh
+                BranchName = x.Branch?.Name,
                 CreatedAt = x.CreatedAt,
                 UpdatedAt = x.UpdatedAt
             }).ToList();
 
             return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_READ_MSG, response);
         }
+
 
         public async Task<IBusinessResult> UpdateWarehouse(Guid id, WarehouseRequest request)
         {
@@ -108,6 +106,7 @@ namespace Chibest.Service.Services
             warehouseEntity.Name = request.Name;
             warehouseEntity.Address = request.Address;
             warehouseEntity.BranchId = request.BranchId;
+            warehouseEntity.Status = string.IsNullOrEmpty(request.Status) ? warehouseEntity.Status : request.Status;
             warehouseEntity.UpdatedAt = DateTime.Now;
 
             await _unitOfWork.WarehouseRepository.UpdateAsync(warehouseEntity);

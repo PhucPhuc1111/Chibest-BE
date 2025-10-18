@@ -22,7 +22,12 @@ CREATE TABLE Branch (
     [Address] NVARCHAR(500) NOT NULL,
     PhoneNumber NVARCHAR(15),
     [Status] NVARCHAR(40) NOT NULL DEFAULT N'Hoạt Động',
+    IsFranchise BIT NOT NULL DEFAULT 0,          -- 0: Không nhượng quyền, 1: Nhượng quyền
+    OwnerName NVARCHAR(255) NULL,                 -- Tên chủ chi nhánh (nếu có)
+    CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	UpdatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 );
+
 
 CREATE TABLE Warehouse (
     Id UNIQUEIDENTIFIER DEFAULT NEWID() PRIMARY KEY,
@@ -65,7 +70,7 @@ CREATE NONCLUSTERED INDEX IX_Account_PhoneNumber ON dbo.Account(PhoneNumber);
 GO
 
 -- =====================================================================
--- Admin    |    Nhà Cung Cấp   |   Nhân Viên Chi Nhánh(Thu ngân, sale)
+-- Admin    |    Nhà Cung Cấp   |   Nhân Viên Chi Nhánh(Thu ngân, sale) | Nhân viên văn phòng
 CREATE TABLE [Role] (
     Id UNIQUEIDENTIFIER DEFAULT NEWID() PRIMARY KEY,
     [Name] NVARCHAR(200) NOT NULL,
@@ -104,7 +109,6 @@ CREATE TABLE Customer (
 	[Address] NVARCHAR(MAX),
     PhoneNumber NVARCHAR(15),
 	DateOfBirth DATETIME,
-    [Type] NVARCHAR(40) NOT NULL DEFAULt N'Cá Nhân',		-- Tổ Chức
 	CreatedDate DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	LastActive DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	[Status] NVARCHAR(30) NOT NULL DEFAULT N'Đã Tạo',		-- Bị Cấm	|   Đã Xóa

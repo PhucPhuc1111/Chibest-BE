@@ -18,5 +18,6 @@ namespace Chibest.Service.ModelDTOs.Request
 
         public bool IsMainWarehouse { get; set; }
 
+        public string? Status { get; set; }
     }
 }

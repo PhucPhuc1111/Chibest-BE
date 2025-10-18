@@ -35,6 +35,7 @@ public class BranchService : IBranchService
             Name = branch.Name,
             Address = branch.Address,
             PhoneNumber = branch.PhoneNumber,
+            IsFranchise = branch.IsFranchise,
             Status = branch.Status,
             UserCount = branch.AccountRoles?.Count ?? 0,
             WarehouseCount = branch.Warehouses?.Count ?? 0
@@ -55,7 +56,11 @@ public class BranchService : IBranchService
             Id = Guid.NewGuid(),
             Name = request.Name,
             Address = request.Address,
-            PhoneNumber = request.PhoneNumber
+            PhoneNumber = request.PhoneNumber,
+            IsFranchise= request.IsFranchise,
+            OwnerName = request.OwnerName,
+            CreatedAt = DateTime.Now,
+            UpdatedAt = DateTime.Now
         };
 
         await _unitOfWork.BranchRepository.AddAsync(branchEntity);
@@ -86,6 +91,8 @@ public class BranchService : IBranchService
             Name = branch.Name,
             Address = branch.Address,
             PhoneNumber = branch.PhoneNumber,
+            IsFranchise = branch.IsFranchise,
+            OwnerName = branch.OwnerName,
             Status = branch.Status,
             UserCount = branch.AccountRoles?.Count ?? 0,
             WarehouseCount = branch.Warehouses?.Count ?? 0
@@ -101,14 +108,15 @@ public class BranchService : IBranchService
         {
             return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, "Branch not found");
         }
-
         branchEntity.Name = request.Name;
         branchEntity.Address = request.Address;
         branchEntity.PhoneNumber = request.PhoneNumber;
+        branchEntity.IsFranchise = request.IsFranchise;
+        branchEntity.OwnerName = request.OwnerName;
         branchEntity.Status = string.IsNullOrEmpty(request.Status) ? branchEntity.Status : request.Status;
+        branchEntity.UpdatedAt = DateTime.Now;
         await _unitOfWork.BranchRepository.UpdateAsync(branchEntity);
         await _unitOfWork.SaveChangesAsync();
-
         return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_UPDATE_MSG);
     }
 
