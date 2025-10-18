@@ -14,5 +14,6 @@ namespace Chibest.Repository
         IAccountRepository AccountRepository { get; }
         IAccountRoleRepository AccountRoleRepository { get; }
         IRoleRepository RoleRepository { get; }
+        IBranchRepository BranchRepository { get; }
     }
 }

@@ -11,7 +11,7 @@ namespace Chibest.Repository
         private IAccountRepository _accountRepository;
         private IAccountRoleRepository _accountRoleRepository;
         private IRoleRepository _roleRepository;
-
+        private IBranchRepository _branchRepository;
         public UnitOfWork(ChiBestDbContext context)
         {
             _context = context;
@@ -20,7 +20,7 @@ namespace Chibest.Repository
         public IAccountRepository AccountRepository => _accountRepository ??= new AccountRepository(_context);
         public IAccountRoleRepository AccountRoleRepository => _accountRoleRepository ??= new AccountRoleRepository(_context);
         public IRoleRepository RoleRepository => _roleRepository ??= new RoleRepository(_context);
-
+        public IBranchRepository BranchRepository => _branchRepository ??= new BranchRepository(_context);
         public async Task BeginTransaction()
         {
             await _context.Database.BeginTransactionAsync();

@@ -101,12 +101,10 @@ CREATE TABLE Customer (
     AvartarURL NVARCHAR(MAX),
     Code NVARCHAR(20) UNIQUE NOT NULL,
     [Name] NVARCHAR(200) NOT NULL, 
-	Gender NVARCHAR (20),
 	[Address] NVARCHAR(MAX),
     PhoneNumber NVARCHAR(15),
 	DateOfBirth DATETIME,
     [Type] NVARCHAR(40) NOT NULL DEFAULt N'Cá Nhân',		-- Tổ Chức
-    Note NVARCHAR(MAX),
 	CreatedDate DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	LastActive DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	[Status] NVARCHAR(30) NOT NULL DEFAULT N'Đã Tạo',		-- Bị Cấm	|   Đã Xóa
@@ -288,7 +286,6 @@ CREATE TABLE ProductDetail (
     ImportDate DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, -- Ngày nhập vào hệ thống
     LastTransactionDate DATETIME,
     [Status] NVARCHAR(50) DEFAULT 'Khả Dụng',               -- Đã Đặt , Đã Bán, Bị Hư, Đang Giao
-
     ProductId UNIQUEIDENTIFIER NOT NULL FOREIGN KEY REFERENCES [Product](Id),
     WarehouseId UNIQUEIDENTIFIER FOREIGN KEY REFERENCES [Warehouse](Id),                            -- hiện thuộc chi nhánh nào
     ContainerCode NVARCHAR(100) FOREIGN KEY REFERENCES [TransactionOrderDetail](ContainerCode)      -- thuộc lô hàng nào
@@ -359,7 +356,6 @@ CREATE TABLE SalesOrderDetail (
     DiscountAmount MONEY NOT NULL DEFAULT 0,
     TotalPrice AS (Quantity * UnitPrice - DiscountAmount) PERSISTED,
     Note NVARCHAR(MAX),
-    
     SalesOrderId UNIQUEIDENTIFIER NOT NULL FOREIGN KEY REFERENCES [SalesOrder](Id),
     ProductId UNIQUEIDENTIFIER NOT NULL FOREIGN KEY REFERENCES [Product](Id),
     ProductSKU VARCHAR(50) FOREIGN KEY REFERENCES [Product](SKU),
