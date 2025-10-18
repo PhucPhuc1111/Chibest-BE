@@ -19,6 +19,9 @@ public class TokenService : ITokenService
         _jwtSettings = jwtSettings;
     }
 
+    public (int accessMinute, int refreshDay) GetExpirationTimes()
+        => (_jwtSettings.AccessTokenExpirationMinutes, _jwtSettings.RefreshTokenExpirationDays);
+
     public string GenerateAccessToken(Account account, string roleName)
     {
         var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.Key));

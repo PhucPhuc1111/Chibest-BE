@@ -5,6 +5,8 @@ namespace Chibest.Service.Interface;
 
 public interface IAccountService
 {
-    Task<IBusinessResult> GetAccountByIdAsync(Guid id);
     Task<IBusinessResult> LoginByPasswordAsync(AuthRequest authRequest);
+    Task<IBusinessResult> RefreshTokenAsync(AuthTokenRequest request);
+    Task RevokeRefreshTokenAsync(Guid accountId);
+    Task<IBusinessResult> GetAccountByIdAsync(Guid id);
 }
