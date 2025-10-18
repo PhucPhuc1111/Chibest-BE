@@ -1,7 +1,8 @@
-﻿using Chibest.Service.ModelDTOs.StrongTypedModels;
+﻿using Chibest.API.Extensions.CustomKebabCase;
 using Chibest.Repository;
 using Chibest.Repository.Models;
 using Chibest.Service.Interface;
+using Chibest.Service.ModelDTOs.StrongTypedModels;
 using Chibest.Service.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -9,8 +10,8 @@ using Microsoft.AspNetCore.Mvc.ApplicationModels;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Newtonsoft.Json.Serialization;
 using System.Text;
-using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace Chibest.API.Extensions;
@@ -30,7 +31,7 @@ public static class ServiceRegister
         services.AddAuthorizeService(configuration);
         AddCorsToThisWeb(services);
         AddEnum(services);
-        AddKebab(services);
+        ConfigKebabCase(services);
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<ITokenService, TokenService>();
         services.AddScoped<IWarehouseService, WarehouseService>();
@@ -84,11 +85,12 @@ public static class ServiceRegister
             };
         });
 
+        // Config Bearer Auth in swagger
         services.AddSwaggerGen(c =>
         {
             c.SwaggerDoc("v1", new OpenApiInfo
             {
-                Title = "ChiBest_API",
+                Title = "ChiBest API",
                 Version = "v1",
                 Description = "API for managing ChiBest app",
             });
@@ -145,14 +147,20 @@ public static class ServiceRegister
         });
     }
 
-    private static void AddKebab(IServiceCollection services)
+    private static void ConfigKebabCase(IServiceCollection services)
     {
-        services.AddControllers(opts =>
-                opts.Conventions.Add(new RouteTokenTransformerConvention(new ToKebabParameterTransformer())))
+        services.AddControllers(options =>
+        {
+            options.Conventions.Add(new RouteTokenTransformerConvention(new KebabParameterTransformer()));
+        }).AddNewtonsoftJson(options =>
+        {//If using NewtonSoft in project then must orride default Naming rule of System.text
+            options.SerializerSettings.ContractResolver = new DefaultContractResolver
+            {
+                NamingStrategy = new KebabCaseNamingStrategy()
+            };
+        });
 
-                .AddJsonOptions(options =>
-                {
-                    options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
-                });
+        //Config Swagger to use KebabCase
+        services.AddSwaggerGen(c => { c.SchemaFilter<KebabSwaggerSchema>(); });
     }
 }
