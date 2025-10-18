@@ -13,9 +13,9 @@ public partial class CustomerVoucher
 
     public Guid VoucherId { get; set; }
 
-    public Guid AccountId { get; set; }
+    public Guid CustomerId { get; set; }
 
-    public virtual Account Account { get; set; } = null!;
+    public virtual Customer Customer { get; set; } = null!;
 
     public virtual Voucher Voucher { get; set; } = null!;
 }

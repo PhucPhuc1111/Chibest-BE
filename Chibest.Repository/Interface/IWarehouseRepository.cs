@@ -1,4 +1,4 @@
-﻿using Chibest.Repository.Base;
+using Chibest.Repository.Base;
 using Chibest.Repository.Models;
 using System;
 using System.Collections.Generic;

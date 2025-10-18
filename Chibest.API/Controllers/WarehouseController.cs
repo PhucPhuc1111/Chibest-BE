@@ -26,19 +26,20 @@ namespace Chibest.API.Controllers
             return StatusCode(result.StatusCode, result);
         }
 
-
         [HttpGet("{id}")]
         public async Task<IActionResult> GetWarehouseByID(Guid id)
         {
             var result = await _warehouseService.GetWarehouseById(id);
             return StatusCode(result.StatusCode, result);
         }
+
         [HttpPost]
         public async Task<IActionResult> CreateWarehouse([FromBody] WarehouseRequest request)
         {
             var result = await _warehouseService.CreateWarehouse(request);
             return StatusCode(result.StatusCode, result);
         }
+
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateWarehouse(Guid id, [FromBody] WarehouseRequest request)
         {

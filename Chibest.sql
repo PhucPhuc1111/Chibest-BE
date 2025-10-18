@@ -16,24 +16,27 @@ GO
 
 -- =====================================================================
 -- Kho/Chi nhánh
+CREATE TABLE Branch (
+    Id UNIQUEIDENTIFIER DEFAULT NEWID() PRIMARY KEY,
+    [Name] NVARCHAR(255) NOT NULL,
+    [Address] NVARCHAR(500) NOT NULL,
+    PhoneNumber NVARCHAR(15),
+    [Status] NVARCHAR(40) NOT NULL DEFAULT N'Hoạt Động',
+);
+
 CREATE TABLE Warehouse (
     Id UNIQUEIDENTIFIER DEFAULT NEWID() PRIMARY KEY,
     [Name] NVARCHAR(255) NOT NULL,
     [Address] NVARCHAR(500) NOT NULL,
     PhoneNumber NVARCHAR(15),
-    FaxNumber NVARCHAR(15),
-    IsMainWarehouse BIT NOT NULL DEFAULT 0,                                 -- 1 = Kho tổng, 0 = Chi nhánh
+    IsMainWarehouse BIT NOT NULL DEFAULT 0,          
+    [Status] NVARCHAR(40) NOT NULL DEFAULT N'Hoạt Động',
     CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	UpdatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    -- Tham chiếu đến kho tổng nếu là chi nhánh
-    ParentWarehouseID UNIQUEIDENTIFIER NULL FOREIGN KEY REFERENCES [Warehouse](Id)
+    BranchID UNIQUEIDENTIFIER NULL FOREIGN KEY REFERENCES [Branch](Id)
 );
 GO
 
--- Chỉ mục cho ParentWarehouseID để tối ưu truy vấn cha-con
-CREATE NONCLUSTERED INDEX IX_Warehouse_ParentWarehouseID ON [Warehouse](ParentWarehouseID);
-GO
 
 -- =====================================================================
 CREATE TABLE Account (
@@ -79,7 +82,7 @@ CREATE TABLE AccountRole (
     PRIMARY KEY (AccountId, RoleId),
     StartDate DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	EndDate DATETIME,
-    BranchId UNIQUEIDENTIFIER FOREIGN KEY REFERENCES [Warehouse](Id), -- Thuộc chi nhánh nào
+    BranchId UNIQUEIDENTIFIER FOREIGN KEY REFERENCES [Branch](Id), -- Thuộc chi nhánh nào
     AccountId UNIQUEIDENTIFIER NOT NULL FOREIGN KEY REFERENCES [Account](Id),
     RoleId UNIQUEIDENTIFIER NOT NULL FOREIGN KEY REFERENCES [Role](Id),
 );

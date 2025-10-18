@@ -13,25 +13,21 @@ public partial class Warehouse
 
     public string? PhoneNumber { get; set; }
 
-    public string? FaxNumber { get; set; }
-
     public bool IsMainWarehouse { get; set; }
+
+    public string Status { get; set; } = null!;
 
     public DateTime CreatedAt { get; set; }
 
     public DateTime UpdatedAt { get; set; }
 
-    public Guid? ParentWarehouseId { get; set; }
-
-    public virtual ICollection<AccountRole> AccountRoles { get; set; } = new List<AccountRole>();
+    public Guid? BranchId { get; set; }
 
     public virtual ICollection<Attendance> Attendances { get; set; } = new List<Attendance>();
 
+    public virtual Branch? Branch { get; set; }
+
     public virtual ICollection<BranchStock> BranchStocks { get; set; } = new List<BranchStock>();
-
-    public virtual ICollection<Warehouse> InverseParentWarehouse { get; set; } = new List<Warehouse>();
-
-    public virtual Warehouse? ParentWarehouse { get; set; }
 
     public virtual ICollection<Payroll> Payrolls { get; set; } = new List<Payroll>();
 

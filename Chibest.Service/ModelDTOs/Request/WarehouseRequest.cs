@@ -14,8 +14,6 @@ namespace Chibest.Service.ModelDTOs.Request
 
         public string? PhoneNumber { get; set; }
 
-        public string? FaxNumber { get; set; }
-
-        public bool IsMainWarehouse { get; set; }
+        public Guid? BranchId { get; set; }
     }
 }
