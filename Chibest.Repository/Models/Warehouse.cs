@@ -27,11 +27,15 @@ public partial class Warehouse
 
     public virtual Branch? Branch { get; set; }
 
-    public virtual ICollection<BranchStock> BranchStocks { get; set; } = new List<BranchStock>();
+    public virtual ICollection<BranchStock> BranchStockOnlineWarehouses { get; set; } = new List<BranchStock>();
+
+    public virtual ICollection<BranchStock> BranchStockWarehouses { get; set; } = new List<BranchStock>();
 
     public virtual ICollection<Payroll> Payrolls { get; set; } = new List<Payroll>();
 
-    public virtual ICollection<ProductDetail> ProductDetails { get; set; } = new List<ProductDetail>();
+    public virtual ICollection<ProductDetail> ProductDetailOnlineWarehouses { get; set; } = new List<ProductDetail>();
+
+    public virtual ICollection<ProductDetail> ProductDetailWarehouses { get; set; } = new List<ProductDetail>();
 
     public virtual ICollection<SalaryConfig> SalaryConfigs { get; set; } = new List<SalaryConfig>();
 

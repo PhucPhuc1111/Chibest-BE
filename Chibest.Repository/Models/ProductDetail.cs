@@ -19,11 +19,19 @@ public partial class ProductDetail
 
     public Guid ProductId { get; set; }
 
+    public Guid BranchId { get; set; }
+
     public Guid? WarehouseId { get; set; }
+
+    public Guid? OnlineWarehouseId { get; set; }
 
     public string? ContainerCode { get; set; }
 
+    public virtual Branch Branch { get; set; } = null!;
+
     public virtual TransactionOrderDetail? ContainerCodeNavigation { get; set; }
+
+    public virtual Warehouse? OnlineWarehouse { get; set; }
 
     public virtual Product Product { get; set; } = null!;
 

@@ -206,8 +206,9 @@ CREATE TABLE BranchStock (
     LastUpdated DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     ProductId UNIQUEIDENTIFIER NOT NULL FOREIGN KEY REFERENCES [Product](Id),
-    BranchId UNIQUEIDENTIFIER NOT NULL FOREIGN KEY REFERENCES [Warehouse](Id),
-    UNIQUE (ProductId, BranchId)                    -- 1 branch : 1 product
+    BranchId UNIQUEIDENTIFIER NOT NULL FOREIGN KEY REFERENCES [Branch](Id),
+    WarehouseId UNIQUEIDENTIFIER FOREIGN KEY REFERENCES [Warehouse](Id),
+    OnlineWarehouseId UNIQUEIDENTIFIER FOREIGN KEY REFERENCES [Warehouse](Id)
 );
 GO
 
@@ -290,7 +291,9 @@ CREATE TABLE ProductDetail (
     [Status] NVARCHAR(50) DEFAULT 'Khả Dụng',               -- Đã Đặt , Đã Bán, Bị Hư, Đang Giao
 
     ProductId UNIQUEIDENTIFIER NOT NULL FOREIGN KEY REFERENCES [Product](Id),
+    BranchId UNIQUEIDENTIFIER NOT NULL FOREIGN KEY REFERENCES [Branch](Id),
     WarehouseId UNIQUEIDENTIFIER FOREIGN KEY REFERENCES [Warehouse](Id),                            -- hiện thuộc chi nhánh nào
+    OnlineWarehouseId UNIQUEIDENTIFIER FOREIGN KEY REFERENCES [Warehouse](Id),
     ContainerCode NVARCHAR(100) FOREIGN KEY REFERENCES [TransactionOrderDetail](ContainerCode)      -- thuộc lô hàng nào
 );
 GO

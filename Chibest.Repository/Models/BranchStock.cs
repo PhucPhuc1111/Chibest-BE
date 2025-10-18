@@ -23,7 +23,15 @@ public partial class BranchStock
 
     public Guid BranchId { get; set; }
 
-    public virtual Warehouse Branch { get; set; } = null!;
+    public Guid? WarehouseId { get; set; }
+
+    public Guid? OnlineWarehouseId { get; set; }
+
+    public virtual Branch Branch { get; set; } = null!;
+
+    public virtual Warehouse? OnlineWarehouse { get; set; }
 
     public virtual Product Product { get; set; } = null!;
+
+    public virtual Warehouse? Warehouse { get; set; }
 }
