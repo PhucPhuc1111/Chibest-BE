@@ -19,8 +19,6 @@ public partial class Customer
 
     public DateTime? DateOfBirth { get; set; }
 
-    public string Type { get; set; } = null!;
-
     public DateTime CreatedDate { get; set; }
 
     public DateTime LastActive { get; set; }

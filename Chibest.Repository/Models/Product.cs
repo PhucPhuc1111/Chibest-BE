@@ -45,9 +45,13 @@ public partial class Product
 
     public virtual ICollection<ProductDetail> ProductDetails { get; set; } = new List<ProductDetail>();
 
+    public virtual ICollection<PurchaseOrderDetail> PurchaseOrderDetails { get; set; } = new List<PurchaseOrderDetail>();
+
+    public virtual ICollection<PurchaseReturnDetail> PurchaseReturnDetails { get; set; } = new List<PurchaseReturnDetail>();
+
     public virtual ICollection<SalesOrderDetail> SalesOrderDetailProductSkuNavigations { get; set; } = new List<SalesOrderDetail>();
 
     public virtual ICollection<SalesOrderDetail> SalesOrderDetailProducts { get; set; } = new List<SalesOrderDetail>();
 
-    public virtual ICollection<TransactionOrderDetail> TransactionOrderDetails { get; set; } = new List<TransactionOrderDetail>();
+    public virtual ICollection<TransferOrderDetail> TransferOrderDetails { get; set; } = new List<TransferOrderDetail>();
 }

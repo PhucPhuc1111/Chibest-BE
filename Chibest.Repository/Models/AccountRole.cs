@@ -1,4 +1,7 @@
-﻿namespace Chibest.Repository.Models;
+﻿using System;
+using System.Collections.Generic;
+
+namespace Chibest.Repository.Models;
 
 public partial class AccountRole
 {

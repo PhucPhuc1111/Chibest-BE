@@ -182,7 +182,6 @@ CREATE TABLE [Product] (
     [Weight] INT NOT NULL DEFAULT 0,                    -- gram
     IsMaster BIT NOT NULL DEFAULT 1,                    -- 1 = sản phẩm gốc, 0 = biến thể
     [Status] NVARCHAR(40) NOT NULL DEFAULT N'Khả Dụng', -- Tạm Ngưng | Ngừng Nhập
-
     CategoryId UNIQUEIDENTIFIER NOT NULL FOREIGN KEY REFERENCES [Category](Id),
     -- Tham chiếu đến mã SKU gốc
     ParentSKU VARCHAR(50) NULL FOREIGN KEY REFERENCES [Product](SKU)
@@ -220,65 +219,195 @@ CREATE NONCLUSTERED INDEX IX_BranchStock_ProductId ON dbo.BranchStock(ProductId)
 GO
 
 -- =====================================================================
--- Quản Lí đơn/ yêu cầu các loại
-CREATE TABLE TransactionOrder (
+-- Quản Lí Nhập hàng/ yêu cầu các loại
+CREATE TABLE PurchaseOrder (
     Id UNIQUEIDENTIFIER DEFAULT NEWID() PRIMARY KEY,
-    InvoiceCode NVARCHAR(100) NOT NULL UNIQUE,              -- NYC-CUST105-INV78 (location + client + sequence)
-    [Type] NVARCHAR(100),                                   -- Nhập Hàng | Xuất Hàng | Vận Chuyển  | Trả Hàng Nhập | Trả Hàng Xuất | Other (Utilities, Rent, Transport)
+    InvoiceCode NVARCHAR(100) NOT NULL UNIQUE,              -- NYC-CUST105-INV78 (location + client + sequence)                                
     OrderDate DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    -- Thông tin giao hàng
-    ReceiverName NVARCHAR(250) NOT NULL,
-    ReceiverPhone NVARCHAR(15),
-    ReceiverAddress NVARCHAR(MAX) NOT NULL,
-
-    -- Thông tin giao hàng
-    ExpectedDeliveryDate DATETIME,
+    -- Thời gian giao hàng
+    CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	UpdatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     ActualDeliveryDate DATETIME,
-
     -- Thông tin thanh toán
-    PayMethod NVARCHAR(40) NOT NULL DEFAULT N'Tiền Mặt',
+    PayMethod NVARCHAR(40) DEFAULT N'Tiền Mặt',
     SubTotal MONEY NOT NULL DEFAULT 0,
     DiscountAmount MONEY NOT NULL DEFAULT 0,
     TaxAmount MONEY NOT NULL DEFAULT 0,
-    ShippingFee MONEY NOT NULL DEFAULT 0,
-    FinalCost AS (SubTotal - DiscountAmount + TaxAmount + ShippingFee) PERSISTED,
+    Paid MONEY NOT NULL DEFAULT 0,
     Note NVARCHAR(MAX),
     [Status] NVARCHAR(40) NOT NULL DEFAULT 'Chờ Xử Lý',
-
-    FromWarehouseId UNIQUEIDENTIFIER FOREIGN KEY REFERENCES [Warehouse](Id),                    -- Kho nguồn (NULL nếu nhập từ nhà cung cấp)
-    ToWarehouseId UNIQUEIDENTIFIER FOREIGN KEY REFERENCES [Warehouse](Id),                      -- Kho đích
-    EmployeeId UNIQUEIDENTIFIER FOREIGN KEY REFERENCES [Account](Id),                           -- Nhân viên thực hiện giao dịch
-    SupplierId UNIQUEIDENTIFIER FOREIGN KEY REFERENCES [Account](Id),                           -- Nhà cung cấp (chỉ khi TransactionType = 'Import')
+    WarehouseId UNIQUEIDENTIFIER FOREIGN KEY REFERENCES [Warehouse](Id),                        -- Kho nhận
+    EmployeeId UNIQUEIDENTIFIER FOREIGN KEY REFERENCES [Account](Id),                           -- Nhân viên xác nhận giao dịch
+    SupplierId UNIQUEIDENTIFIER FOREIGN KEY REFERENCES [Account](Id),                           
 );
 GO
 
-CREATE NONCLUSTERED INDEX IX_TransactionOrder_Type ON [TransactionOrder]([Type]);
-CREATE NONCLUSTERED INDEX IX_TransactionOrder_Status ON [TransactionOrder]([Status]);
-CREATE NONCLUSTERED INDEX IX_TransactionOrder_OrderDate ON [TransactionOrder](OrderDate DESC);
+CREATE NONCLUSTERED INDEX IX_TransactionOrder_Status ON [PurchaseOrder]([Status]);
+CREATE NONCLUSTERED INDEX IX_TransactionOrder_OrderDate ON [PurchaseOrder](OrderDate DESC);
 GO
 
 -- =====================================================================
--- Chi Tiết Đơn Xuất Nhập
-CREATE TABLE TransactionOrderDetail (
+-- Chi Tiết Đơn  Nhập
+CREATE TABLE PurchaseOrderDetail (
     Id UNIQUEIDENTIFIER DEFAULT NEWID() PRIMARY KEY,
     ContainerCode NVARCHAR(100) NOT NULL UNIQUE,                -- Mã lô hàng
     Quantity INT NOT NULL,
+    ActualQuantity INT,
     UnitPrice MONEY NOT NULL,
-    DiscountPercent DECIMAL(5,2) NOT NULL DEFAULT 0,
-    DiscountAmount MONEY NOT NULL DEFAULT 0,
-    TotalPrice AS (Quantity * UnitPrice - DiscountAmount) PERSISTED,
-    PurchaseDate DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    Discount DECIMAL(5,2) NOT NULL DEFAULT 0,
     Note NVARCHAR(MAX),
-
-    TransactionOrderId UNIQUEIDENTIFIER NOT NULL FOREIGN KEY REFERENCES [TransactionOrder](Id),
+    PurchaseOrderId UNIQUEIDENTIFIER NOT NULL FOREIGN KEY REFERENCES [PurchaseOrder](Id),
     ProductId UNIQUEIDENTIFIER NOT NULL FOREIGN KEY REFERENCES [Product](Id)
 );
 GO
 
-CREATE NONCLUSTERED INDEX IX_TransactionOrderDetail_OrderId ON [TransactionOrderDetail](TransactionOrderId);
-CREATE NONCLUSTERED INDEX IX_TransactionOrderDetail_ProductId ON [TransactionOrderDetail](ProductId);
-CREATE NONCLUSTERED INDEX IX_TransactionOrderDetail_ContainerCode ON [TransactionOrderDetail](ContainerCode);
+CREATE NONCLUSTERED INDEX IX_TransactionOrderDetail_OrderId ON [PurchaseOrderDetail](PurchaseOrderId);
+CREATE NONCLUSTERED INDEX IX_TransactionOrderDetail_ProductId ON [PurchaseOrderDetail](ProductId);
+CREATE NONCLUSTERED INDEX IX_TransactionOrderDetail_ContainerCode ON [PurchaseOrderDetail](ContainerCode);
+GO
+
+-- =====================================================================
+-- Quản Lí Chuyển hàng/ yêu cầu các loại
+CREATE TABLE TransferOrder (
+    Id UNIQUEIDENTIFIER DEFAULT NEWID() PRIMARY KEY,
+    InvoiceCode NVARCHAR(100) NOT NULL UNIQUE,              -- NYC-CUST105-INV78 (location + client + sequence)                                
+    OrderDate DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    -- Thời gian giao hàng
+    CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	UpdatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    ActualDeliveryDate DATETIME,
+    -- Thông tin thanh toán
+    PayMethod NVARCHAR(40) DEFAULT N'Tiền Mặt',
+    SubTotal MONEY NOT NULL DEFAULT 0,
+    DiscountAmount MONEY NOT NULL DEFAULT 0,
+    TaxAmount MONEY NOT NULL DEFAULT 0,
+    Paid MONEY NOT NULL DEFAULT 0,
+    Note NVARCHAR(MAX),
+    [Status] NVARCHAR(40) NOT NULL DEFAULT 'Chờ Xử Lý',
+    EmployeeId UNIQUEIDENTIFIER FOREIGN KEY REFERENCES [Account](Id),                           -- Nhân viên xác nhận giao dịch
+    FromWarehouseId UNIQUEIDENTIFIER FOREIGN KEY REFERENCES [Warehouse](Id),                    -- Kho nguồn 
+    ToWarehouseId UNIQUEIDENTIFIER FOREIGN KEY REFERENCES [Warehouse](Id),                      -- Kho đích
+);
+GO
+
+CREATE NONCLUSTERED INDEX IX_TransferOrder_Status ON [TransferOrder]([Status]);
+CREATE NONCLUSTERED INDEX IX_TransferOrder_OrderDate ON [TransferOrder](OrderDate DESC);
+GO
+
+-- =====================================================================
+-- Chi Tiết Đơn  chuyển
+CREATE TABLE TransferOrderDetail (
+    Id UNIQUEIDENTIFIER DEFAULT NEWID() PRIMARY KEY,
+    ContainerCode NVARCHAR(100) NOT NULL UNIQUE,                -- Mã lô hàng
+    Quantity INT NOT NULL,
+    ActualQuantity INT,
+    UnitPrice MONEY NOT NULL,
+    Discount DECIMAL(5,2) NOT NULL DEFAULT 0,
+    Note NVARCHAR(MAX),
+    TransferOrderId UNIQUEIDENTIFIER NOT NULL FOREIGN KEY REFERENCES [TransferOrder](Id),
+    ProductId UNIQUEIDENTIFIER NOT NULL FOREIGN KEY REFERENCES [Product](Id)
+);
+GO
+
+CREATE NONCLUSTERED INDEX IX_TransferOrderDetail_OrderId ON [TransferOrderDetail](TransferOrderId);
+CREATE NONCLUSTERED INDEX IX_TransferOrderDetail_ProductId ON [TransferOrderDetail](ProductId);
+CREATE NONCLUSTERED INDEX IX_TransferOrderDetail_ContainerCode ON [TransferOrderDetail](ContainerCode);
+GO
+
+
+-- Quản Lí Trả hàng lỗi/ yêu cầu các loại
+CREATE TABLE PurchaseReturn (
+    Id UNIQUEIDENTIFIER DEFAULT NEWID() PRIMARY KEY,
+    InvoiceCode NVARCHAR(100) NOT NULL UNIQUE,              -- NYC-CUST105-INV78 (location + client + sequence)
+    OrderDate DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UpdatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PayMethod NVARCHAR(40) DEFAULT N'Tiền Mặt',
+    SubTotal MONEY NOT NULL DEFAULT 0,
+    DiscountAmount MONEY NOT NULL DEFAULT 0,
+    TaxAmount MONEY NOT NULL DEFAULT 0,
+    Paid MONEY NOT NULL DEFAULT 0,
+    Note NVARCHAR(MAX),
+    [Status] NVARCHAR(40) NOT NULL DEFAULT N'Chờ Xử Lý',
+    EmployeeId UNIQUEIDENTIFIER NULL,
+    WarehouseId UNIQUEIDENTIFIER NULL,
+    SupplierId UNIQUEIDENTIFIER NULL,
+    CONSTRAINT FK_PurchaseReturn_Employee FOREIGN KEY (EmployeeId) REFERENCES [Account](Id),
+    CONSTRAINT FK_PurchaseReturn_Warehouse FOREIGN KEY (WarehouseId) REFERENCES [Warehouse](Id),
+    CONSTRAINT FK_PurchaseReturn_Supplier FOREIGN KEY (SupplierId) REFERENCES [Account](Id)
+);
+
+GO
+
+CREATE NONCLUSTERED INDEX IX_PurchaseReturn_Status ON [PurchaseReturn]([Status]);
+CREATE NONCLUSTERED INDEX IX_PurchaseReturn_OrderDate ON [PurchaseReturn](OrderDate DESC);
+GO
+
+-- =====================================================================
+-- Chi Tiết Đơn lỗi
+CREATE TABLE PurchaseReturnDetail (
+    Id UNIQUEIDENTIFIER DEFAULT NEWID() PRIMARY KEY,
+    ContainerCode NVARCHAR(100) NOT NULL UNIQUE,                -- Mã lô hàng
+    Quantity INT NOT NULL,
+    ActualQuantity INT,
+    UnitPrice MONEY NOT NULL,
+    Discount DECIMAL(5,2) NOT NULL DEFAULT 0,
+    Note NVARCHAR(MAX),
+    PurchaseReturnId UNIQUEIDENTIFIER NOT NULL FOREIGN KEY REFERENCES [PurchaseReturn](Id),
+    ProductId UNIQUEIDENTIFIER NOT NULL FOREIGN KEY REFERENCES [Product](Id)
+);
+GO
+CREATE NONCLUSTERED INDEX IX_PurchaseReturnDetail_OrderId ON [PurchaseReturnDetail](PurchaseReturnId);
+CREATE NONCLUSTERED INDEX IX_PurchaseReturnDetail_ProductId ON [PurchaseReturnDetail](ProductId);
+CREATE NONCLUSTERED INDEX IX_PurchaseReturnDetail_ContainerCode ON [PurchaseReturnDetail](ContainerCode);
+GO
+
+CREATE TABLE SupplierDebt (
+    Id UNIQUEIDENTIFIER DEFAULT NEWID() PRIMARY KEY,
+    SupplierId UNIQUEIDENTIFIER NOT NULL,                   -- Liên kết với Account
+    TotalDebt MONEY NOT NULL DEFAULT 0,                     -- Tổng nợ hiện tại
+    LastUpdated DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT FK_SupplierDebt_Supplier FOREIGN KEY (SupplierId) REFERENCES [Account](Id),
+    CONSTRAINT UQ_SupplierDebt_Supplier UNIQUE (SupplierId) -- 1 NCC chỉ có 1 bản ghi nợ duy nhất
+);
+GO
+
+CREATE TABLE SupplierDebtHistory (
+    Id UNIQUEIDENTIFIER DEFAULT NEWID() PRIMARY KEY,
+    SupplierId UNIQUEIDENTIFIER NOT NULL,                           -- Nhà cung cấp
+    TransactionId UNIQUEIDENTIFIER NULL,                            -- Liên kết phiếu nhập / trả hàng (nếu có)
+    TransactionType NVARCHAR(50) NOT NULL,                           -- [Phát Sinh Nợ] | [Thanh Toán] | [Điều Chỉnh]
+    TransactionDate DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,     -- Ngày phát sinh
+    Amount MONEY NOT NULL,                                           -- Số tiền giao dịch
+    Note NVARCHAR(MAX) NULL,                                         -- Ghi chú
+    CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT FK_SupplierDebtHistory_Supplier FOREIGN KEY (SupplierId) REFERENCES [Account](Id),
+);
+GO
+
+CREATE TABLE BranchDebt (
+    Id UNIQUEIDENTIFIER DEFAULT NEWID() PRIMARY KEY,
+    BranchId UNIQUEIDENTIFIER NOT NULL,                     -- Chi nhánh
+    TotalDebt MONEY NOT NULL DEFAULT 0,                     -- Tổng nợ hiện tại của chi nhánh
+    LastUpdated DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT FK_BranchDebt_Branch FOREIGN KEY (BranchId) REFERENCES [Branch](Id),
+    CONSTRAINT UQ_BranchDebt_Branch UNIQUE (BranchId)       -- 1 chi nhánh chỉ có 1 bản ghi công nợ
+);
+GO
+CREATE TABLE BranchDebtHistory (
+    Id UNIQUEIDENTIFIER DEFAULT NEWID() PRIMARY KEY,
+    BranchId UNIQUEIDENTIFIER NOT NULL,                          -- Chi nhánh liên quan
+    TransactionId UNIQUEIDENTIFIER NULL,                      -- Phiếu nhập/xuất hoặc thanh toán liên quan
+    TransactionType NVARCHAR(50) NOT NULL,                       -- [Phát Sinh Nợ] | [Thanh Toán] | [Điều Chỉnh]
+    TransactionDate DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, -- Ngày phát sinh
+    Amount MONEY NOT NULL,                                       -- Số tiền giao dịch
+    Note NVARCHAR(MAX) NULL,                                     -- Ghi chú chi tiết
+    CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT FK_BranchDebtHistory_Branch FOREIGN KEY (BranchId) REFERENCES [Branch](Id)
+);
 GO
 
 -- =====================================================================
@@ -292,7 +421,7 @@ CREATE TABLE ProductDetail (
     [Status] NVARCHAR(50) DEFAULT 'Khả Dụng',               -- Đã Đặt , Đã Bán, Bị Hư, Đang Giao
     ProductId UNIQUEIDENTIFIER NOT NULL FOREIGN KEY REFERENCES [Product](Id),
     WarehouseId UNIQUEIDENTIFIER FOREIGN KEY REFERENCES [Warehouse](Id),                            -- hiện thuộc chi nhánh nào
-    ContainerCode NVARCHAR(100) FOREIGN KEY REFERENCES [TransactionOrderDetail](ContainerCode)      -- thuộc lô hàng nào
+    ContainerCode NVARCHAR(100) FOREIGN KEY REFERENCES [PurchaseOrderDetail](ContainerCode)      -- thuộc lô hàng nào
 );
 GO
 

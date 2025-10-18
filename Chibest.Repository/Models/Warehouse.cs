@@ -33,11 +33,15 @@ public partial class Warehouse
 
     public virtual ICollection<ProductDetail> ProductDetails { get; set; } = new List<ProductDetail>();
 
+    public virtual ICollection<PurchaseOrder> PurchaseOrders { get; set; } = new List<PurchaseOrder>();
+
+    public virtual ICollection<PurchaseReturn> PurchaseReturns { get; set; } = new List<PurchaseReturn>();
+
     public virtual ICollection<SalaryConfig> SalaryConfigs { get; set; } = new List<SalaryConfig>();
 
     public virtual ICollection<SalesOrder> SalesOrders { get; set; } = new List<SalesOrder>();
 
-    public virtual ICollection<TransactionOrder> TransactionOrderFromWarehouses { get; set; } = new List<TransactionOrder>();
+    public virtual ICollection<TransferOrder> TransferOrderFromWarehouses { get; set; } = new List<TransferOrder>();
 
-    public virtual ICollection<TransactionOrder> TransactionOrderToWarehouses { get; set; } = new List<TransactionOrder>();
+    public virtual ICollection<TransferOrder> TransferOrderToWarehouses { get; set; } = new List<TransferOrder>();
 }
