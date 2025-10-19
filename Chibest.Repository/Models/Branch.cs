@@ -15,11 +15,19 @@ public partial class Branch
 
     public string Status { get; set; } = null!;
 
+    public bool IsFranchise { get; set; }
+
+    public string? OwnerName { get; set; }
+
+    public DateTime CreatedAt { get; set; }
+
+    public DateTime UpdatedAt { get; set; }
+
     public virtual ICollection<AccountRole> AccountRoles { get; set; } = new List<AccountRole>();
 
-    public virtual ICollection<BranchStock> BranchStocks { get; set; } = new List<BranchStock>();
+    public virtual BranchDebt? BranchDebt { get; set; }
 
-    public virtual ICollection<ProductDetail> ProductDetails { get; set; } = new List<ProductDetail>();
+    public virtual ICollection<BranchDebtHistory> BranchDebtHistories { get; set; } = new List<BranchDebtHistory>();
 
     public virtual ICollection<Warehouse> Warehouses { get; set; } = new List<Warehouse>();
 }

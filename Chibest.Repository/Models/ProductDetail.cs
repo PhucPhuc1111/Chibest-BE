@@ -27,9 +27,7 @@ public partial class ProductDetail
 
     public string? ContainerCode { get; set; }
 
-    public virtual Branch Branch { get; set; } = null!;
-
-    public virtual TransactionOrderDetail? ContainerCodeNavigation { get; set; }
+    public virtual PurchaseOrderDetail? ContainerCodeNavigation { get; set; }
 
     public virtual Warehouse? OnlineWarehouse { get; set; }
 

@@ -6,26 +6,16 @@ using System.Threading.Tasks;
 
 namespace Chibest.Service.ModelDTOs.Response
 {
-    public class WarehouseResponse
+    public class BranchResponse
     {
         public Guid Id { get; set; }
-
         public string Name { get; set; } = null!;
-
         public string Address { get; set; } = null!;
-
         public string? PhoneNumber { get; set; }
-
-        public string? BranchName {  get; set; }
-
-        public bool IsMainWarehouse { get; set; }
-
+        public bool IsFranchise { get; set; }
+        public string? OwnerName { get; set; }
         public string Status { get; set; } = null!;
-
-        public DateTime CreatedAt { get; set; }
-
-        public DateTime UpdatedAt { get; set; }
-
-
+        public int UserCount { get; set; }     
+        public int WarehouseCount { get; set; }
     }
 }
