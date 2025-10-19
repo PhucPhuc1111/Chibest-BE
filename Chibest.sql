@@ -423,6 +423,7 @@ CREATE TABLE ProductDetail (
     ProductId UNIQUEIDENTIFIER NOT NULL FOREIGN KEY REFERENCES [Product](Id),
     BranchId UNIQUEIDENTIFIER NOT NULL FOREIGN KEY REFERENCES [Branch](Id),
     WarehouseId UNIQUEIDENTIFIER FOREIGN KEY REFERENCES [Warehouse](Id),                            -- hiện thuộc chi nhánh nào
+    OnlineWarehouseId UNIQUEIDENTIFIER FOREIGN KEY REFERENCES [Warehouse](Id),
     ContainerCode NVARCHAR(100) FOREIGN KEY REFERENCES [PurchaseOrderDetail](ContainerCode)      -- thuộc lô hàng nào
 );
 GO
