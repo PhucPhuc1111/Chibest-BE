@@ -29,7 +29,7 @@ namespace Chibest.Repository.Base
         Task<IEnumerable<TEntity>> GetPagedAsync(
             int pageNumber,
             int pageSize,
-            Expression<Func<TEntity, bool>> predicate = null,
+            Expression<Func<TEntity, bool>>? predicate = null,
             Func<IQueryable<TEntity>, IOrderedQueryable<TEntity>> orderBy = null,
             Func<IQueryable<TEntity>, IQueryable<TEntity>> include = null);
     }

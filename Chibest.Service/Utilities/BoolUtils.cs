@@ -11,4 +11,10 @@ public static class BoolUtils
         catch
         { return false; }
     }
+
+    //Example: BoolUtils.IsEmptyString(inputData.Code, inputData.Name)
+    public static bool IsEmptyString(params string?[] fields)
+    {
+        return fields.Any(string.IsNullOrWhiteSpace);
+    }
 }
