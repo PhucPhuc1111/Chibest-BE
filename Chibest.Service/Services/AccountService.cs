@@ -1,6 +1,7 @@
 ﻿using Azure.Core;
 using Chibest.Common;
 using Chibest.Common.BusinessResult;
+using Chibest.Common.Enums;
 using Chibest.Repository;
 using Chibest.Repository.Models;
 using Chibest.Service.Interface;
@@ -9,7 +10,9 @@ using Chibest.Service.ModelDTOs.Response;
 using Chibest.Service.Utilities;
 using Mapster;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Identity.Client;
 using Microsoft.IdentityModel.Tokens;
+using System.Linq.Expressions;
 using System.Security.Claims;
 
 
@@ -159,156 +162,181 @@ public class AccountService : IAccountService
         return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_READ_MSG, response);
     }
 
-    public async Task<IBusinessResult> GetAccountsListAsync(AccountRequest queryCondition)
+    public async Task<IBusinessResult> GetAccountsListAsync(int pageIndex, int pageSize, string? search)
     {
-        return null;
-        //var (result, totalCount) = await _unitOfWork.GetAccountRepository().GetAccountsListAsync
-        //    (queryCondition.KeyWord,
-        //    queryCondition.Gender,
-        //    queryCondition.Role,
-        //    queryCondition.Status);
+        if (pageIndex <= 0) pageIndex = 1;
+        if (pageSize <= 0) pageSize = 10;
 
-        //if (totalCount == 0) { throw new NotFoundException("Not found any account"); }
+        Expression<Func<Account, bool>>? predicate = null;
 
-        //// Convert to return data type
-        //var mappedResult = result.Adapt<List<BM_AccountBaseInfo>>();
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            predicate = q => q.Code.ToLower().Contains(search.ToLower()) ||
+                            q.Email.ToLower().Contains(search.ToLower()) ||
+                            q.Name.ToLower().Contains(search.ToLower()) ||
+                            q.PhoneNumber!.Contains(search);
+        }
 
-        //return new BM_PagingResults<BM_AccountBaseInfo>
-        //{
-        //    TotalCount = totalCount,
-        //    DataList = mappedResult
-        //};
+        Func<IQueryable<Account>, IOrderedQueryable<Account>> orderBy =
+            q => q.OrderByDescending(x => x.CreatedAt);
+
+        var accounts = await _unitOfWork.AccountRepository.GetPagedAsync(
+            pageIndex, pageSize, predicate, orderBy);
+
+        var totalCount = await _unitOfWork.AccountRepository.CountAsync();
+
+        var response = accounts.Adapt<List<AccountResponse>>();
+        var pagedResult = new PagedResult<AccountResponse>
+        {
+            DataList = response,
+            TotalCount = totalCount,
+            PageIndex = pageIndex,
+            PageSize = pageSize
+        };
+
+        return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_READ_MSG, pagedResult);
     }
 
-    public async Task<BusinessResult> CreateAccountAsync(AccountRequest request)
+    public async Task<IBusinessResult> CreateAccountAsync(AccountRequest request)
     {
-        return null;
-        //if (request.)
-        //    return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
+        // Validate input
+        if (request == null || BoolUtils.IsEmptyString(request.Code, request.Email,
+            request.Password, request.Name, request.Status))
+            return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
 
-        //// You can add additional validation here (uniqueness, required fields, etc.)
-        //var account = request.Adapt<Account>();
-        //account.Id = Guid.NewGuid();
-        //account.CreatedAt = DateTime.UtcNow;
-        //account.UpdatedAt = DateTime.UtcNow;
+        // Check if code, email already exists
+        var existingAccount = await _unitOfWork.AccountRepository
+            .GetByWhere(acc => acc.Code.ToLower().Equals(request.Code!.ToLower()) ||
+            acc.Email.ToLower().Equals(request.Email!.ToLower()))
+            .FirstOrDefaultAsync();
+        if (existingAccount != null)
+            return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, Const.SUCCESS_CREATE_MSG);
 
-        //await _unitOfWork.AccountRepository.AddAsync(account);
-        //var saved = await _unitOfWork.SaveChangesAsync();
-        //if (saved <= 0)
-        //    return new BusinessResult(Const.HTTP_STATUS_INTERNAL_SERVER_ERROR, Const.FAIL_CREATE_MSG);
+        // Create new account
+        var account = request.Adapt<Account>();
+        account.Id = Guid.NewGuid();
+        account.CreatedAt = DateTime.Now;
+        account.UpdatedAt = DateTime.Now;
+        await _unitOfWork.AccountRepository.AddAsync(account);
 
-        //var response = account.Adapt<AccountResponse>();
-        //return new BusinessResult(Const.HTTP_STATUS_CREATED, Const.SUCCESS_CREATE_MSG, response);
+        // If Role and branch is specific
+        if (request.RoleId is not null && request.BranchId is not null)
+        {
+            // Validate Role and Branch
+            bool isValid = true;
+            var existedRole = await _unitOfWork.RoleRepository.GetByIdAsync(request.RoleId);
+            var existedBracch = await _unitOfWork.BranchRepository.GetByIdAsync(request.BranchId);
+
+            // Flag wrong condition
+            isValid = existedRole is not null? true : false;
+            isValid = await _unitOfWork.BranchRepository.GetByIdAsync(request.BranchId) is Repository.Models.Branch _;
+
+            // If those ids are valid, create AccountRole
+            if (isValid)
+            {
+                var accountRole = new AccountRole
+                {
+                    AccountId = account.Id,
+                    RoleId = existedRole!.Id,
+                    BranchId = request.BranchId,
+                    StartDate = DateTime.Now,
+                    EndDate = null
+                };
+                await _unitOfWork.AccountRoleRepository.AddAsync(accountRole);
+            }
+        }
+
+        await _unitOfWork.SaveChangesAsync();
+
+        return new BusinessResult(Const.HTTP_STATUS_CREATED, Const.SUCCESS_CREATE_MSG);
     }
 
-    public async Task<bool> UpdateAccountAsync(AccountRequest updateAccount)
+    public async Task<IBusinessResult> UpdateAccountAsync(AccountRequest newData)
     {
-        return true;
-        // Find Account of current email access this method
-        //Account oldAccount = await _unitOfWork.GetAccountRepository().GetByIdAsync(updateAccount.Id)
-        //    ?? throw new NotFoundException("Current Account Access Is Not Exist!");
+        // Validation
+        if (newData.Id == Guid.Empty || newData.Id is null || newData == null)
+            return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
+        if (BoolUtils.IsEmptyString(newData.Code, newData.Email, newData.Name, newData.Status))
+            return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
 
-        //oldAccount.FullName = updateAccount.FullName;
-        //oldAccount.Address = updateAccount.Address;
-        //oldAccount.PhoneNumber = updateAccount.PhoneNumber;
-        //oldAccount.Cccd = updateAccount.Cccd;
-        //oldAccount.DateOfBirth = updateAccount.DateOfBirth;
-        //oldAccount.Gender = updateAccount.Gender;
-        //oldAccount.LastUpdated = DateTime.Now;
-        //oldAccount.Expertise = updateAccount.Expertise;
-        //oldAccount.Language = updateAccount.Language;
-        //oldAccount.CompanyName = updateAccount.CompanyName;
+        // Find if exist
+        var existingAccount = await _unitOfWork.AccountRepository.GetByIdAsync(newData.Id);
+        if (existingAccount == null)
+            return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, Const.FAIL_READ_MSG);
 
-        //return await _unitOfWork.GetAccountRepository().SaveChangeAsync();
+        // Check for duplicate email if email is being updated
+        if (!newData.Email!.Equals(existingAccount.Email))
+        {
+            var duplicateEmail = await _unitOfWork.AccountRepository
+                .GetByWhere(acc => acc.Email.ToLower().Equals(newData.Email.ToLower()) &&
+                acc.Id != newData.Id)
+                .AsNoTracking()
+                .FirstOrDefaultAsync();
+
+            if (duplicateEmail != null)
+                return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Email already exists");
+        }
+
+        // Update properties
+        newData.Adapt(existingAccount);
+        existingAccount.UpdatedAt = DateTime.Now;
+
+        await _unitOfWork.AccountRepository.UpdateAsync(existingAccount);
+        await _unitOfWork.SaveChangesAsync();
+
+        return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_UPDATE_MSG);
     }
 
-    public async Task<bool> ChangeRoleAccountAsync(AccountRequest clientRequest, Guid targetAid)
+    public async Task<IBusinessResult> ChangeAccountStatusAsync(Guid accountId, string status)
     {
-        return true;
-        //CheckValidEmail(clientRequest.Email);
+        if (accountId == Guid.Empty || string.IsNullOrEmpty(status))
+            return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
 
-        //// Find Account of current email access this method
-        //var currentAccess = await _unitOfWork.GetAccountRepository().GetOneAsync(acc =>
-        //acc.Email.ToLower().Equals(clientRequest.Email.ToLower()))
-        //    ?? throw new NotFoundException("Current Account Access Is Not Exist!");
+        var account = await _unitOfWork.AccountRepository.GetByIdAsync(accountId);
+        if (account == null)
+            return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, Const.FAIL_READ_MSG);
 
-        //// Confirm Owner is doing
-        //if (!currentAccess.Password.Equals(HashStringSHA256(clientRequest.Password)))
-        //{ throw new BadRequestException("Sai mật khẩu! Xác nhận chủ tài khoản lỗi!"); }
+        account.Status = status;
+        account.UpdatedAt = DateTime.Now;
 
-        ////Default target
-        //Account targetChangeRole = currentAccess;
+        await _unitOfWork.AccountRepository.UpdateAsync(account);
+        await _unitOfWork.SaveChangesAsync();
 
-        //if (targetAid != Guid.Empty)
-        //{
-        //    //If specific id target is different
-        //    if (currentAccess.Id != targetAid)
-        //    {
-        //        targetChangeRole = await _unitOfWork.GetAccountRepository().GetByIdAsync(targetAid)
-        //            ?? throw new NotFoundException("The selected account to delete is not exist!");
-        //    }
-
-        //    //If non-admin target admin
-        //    if (!currentAccess.Role.ToLower().Equals("admin") ||
-        //        !currentAccess.Role.ToLower().Equals("nhân viên quản lý"))
-        //    {
-        //        if (clientRequest.Role.ToLower().Equals("admin") ||
-        //            clientRequest.Role.ToLower().Equals("nhân viên quản lý"))
-        //        {
-        //            throw new UnauthorizedException("You don't have permission to change role of that Account!");
-        //        }
-        //    }
-
-        //    targetChangeRole.Role = clientRequest.Role;
-        //}
-        //return await _unitOfWork.GetAccountRepository().SaveChangeAsync();
+        return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_UPDATE_MSG);
     }
 
-    public async Task<bool> ChangePasswordAccountAsync(AuthRequest clientRequest, Guid targetAid, string newPassword)
+    public async Task<IBusinessResult> ChangeAccountPasswordAsync(Guid accountId, string newPassword)
     {
-        return true;
-        //CheckValidEmail(clientRequest.Email);
+        // Validation
+        if (accountId == Guid.Empty || string.IsNullOrEmpty(newPassword))
+            return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
 
-        //// Find Account of current email access this method
-        //var currentAccess = await _unitOfWork.GetAccountRepository().GetOneAsync(acc =>
-        //acc.Email.ToLower().Equals(clientRequest.Email.ToLower()))
-        //    ?? throw new NotFoundException("Current Account Access Is Not Exist!");
+        var account = await _unitOfWork.AccountRepository.GetByIdAsync(accountId);
+        if (account == null)
+            return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, Const.FAIL_READ_MSG);
 
-        //// Confirm Owner is doing
-        //if (!currentAccess.Password.Equals(HashStringSHA256(clientRequest.Password)))
-        //{ throw new BadRequestException("Sai mật khẩu! Xác nhận chủ tài khoản lỗi!"); }
+        //Secure new password
+        account.Password = StringUtils.HashStringSHA256(newPassword); ;
+        account.UpdatedAt = DateTime.Now;
 
-        ////Default target
-        //Account targetChangePass = currentAccess;
+        await _unitOfWork.AccountRepository.UpdateAsync(account);
+        await _unitOfWork.SaveChangesAsync();
 
-        //if (targetAid != Guid.Empty)
-        //{
-        //    //If specific id target is different
-        //    if (currentAccess.Id != targetAid)
-        //    {
-        //        targetChangePass = await _unitOfWork.GetAccountRepository().GetByIdAsync(targetAid)
-        //            ?? throw new NotFoundException("The selected account to change password is not exist!");
-        //    }
-
-        //    //If non-admin target admin
-        //    if (!currentAccess.Role.ToLower().Equals("admin") ||
-        //        !currentAccess.Role.ToLower().Equals("nhân viên quản lý"))
-        //    {
-        //        if (targetChangePass.Role.ToLower().Equals("admin") ||
-        //            targetChangePass.Role.ToLower().Equals("nhân viên quản lý"))
-        //        {
-        //            throw new UnauthorizedException("You don't have permission to change password of that Account!");
-        //        }
-        //    }
-
-        //    targetChangePass.Password = HashStringSHA256(newPassword);
-        //}
-        //return await _unitOfWork.GetAccountRepository().SaveChangeAsync();
+        return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_UPDATE_MSG);
     }
 
-    public async Task<bool> DeleteAccountAsync(Guid targetAid)
+    public async Task<IBusinessResult> DeleteAccountAsync(Guid id)
     {
-        //CheckValidEmail(clientRequest.Email);
-        return true;
+        if (id == Guid.Empty)
+            return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
+
+        var account = await _unitOfWork.AccountRepository.GetByIdAsync(id);
+        if (account == null)
+            return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, Const.FAIL_READ_MSG);
+
+        await _unitOfWork.AccountRepository.DeleteAsync(account);
+        await _unitOfWork.SaveChangesAsync();
+
+        return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_DELETE_MSG);
     }
 }
