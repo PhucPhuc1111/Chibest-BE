@@ -2,4 +2,5 @@
 using Chibest.Repository.Models;
 
 namespace Chibest.Repository.Interface;
-public interface IRoleRepository : IGenericRepository<Role> { }
+
+public interface ICategoryRepository : IGenericRepository<Category> { }
