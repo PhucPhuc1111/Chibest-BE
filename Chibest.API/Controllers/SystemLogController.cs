@@ -1,5 +1,7 @@
-﻿using Chibest.Service.Interface;
+﻿using Chibest.Common;
+using Chibest.Service.Interface;
 using Chibest.Service.ModelDTOs.Request;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Chibest.API.Controllers;
@@ -15,6 +17,7 @@ public class SystemLogsController : ControllerBase
         _systemLogService = systemLogService;
     }
 
+    [Authorize]
     [HttpGet]
     public async Task<IActionResult> GetPaged([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10,
         [FromQuery] string? search = null, [FromQuery] string? logLevel = null, [FromQuery] string? module = null)
@@ -23,6 +26,7 @@ public class SystemLogsController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
+    [Authorize]
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(Guid id)
     {
@@ -30,6 +34,7 @@ public class SystemLogsController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
+    [Authorize(Roles = Const.Roles.Admin)]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] SystemLogRequest request)
     {
@@ -37,6 +42,7 @@ public class SystemLogsController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
+    [Authorize(Roles = Const.Roles.Admin)]
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(Guid id)
     {
@@ -44,6 +50,7 @@ public class SystemLogsController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
+    [Authorize(Roles = Const.Roles.Admin)]
     [HttpDelete("cleanup")]
     public async Task<IActionResult> DeleteOldLogs([FromQuery] DateTime olderThan)
     {

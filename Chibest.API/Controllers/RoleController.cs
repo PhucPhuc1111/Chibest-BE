@@ -1,5 +1,7 @@
-﻿using Chibest.Service.Interface;
+﻿using Chibest.Common;
+using Chibest.Service.Interface;
 using Chibest.Service.ModelDTOs.Request;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Chibest.API.Controllers;
@@ -15,6 +17,7 @@ public class RoleController : ControllerBase
         _roleService = roleService;
     }
 
+    [Authorize(Roles = Const.Roles.Admin)]
     [HttpGet]
     public async Task<IActionResult> GetPaged([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10,
         [FromQuery] string? search = null)
@@ -23,6 +26,7 @@ public class RoleController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
+    [Authorize(Roles = Const.Roles.Admin)]
     [HttpGet("all")]
     public async Task<IActionResult> GetAll()
     {
@@ -30,6 +34,7 @@ public class RoleController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
+    [Authorize(Roles = Const.Roles.Admin)]
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById([FromRoute] Guid id)
     {
@@ -37,6 +42,7 @@ public class RoleController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
+    [Authorize(Roles = Const.Roles.Admin)]
     [HttpGet("{id}/with-accounts")]
     public async Task<IActionResult> GetWithAccounts([FromRoute] Guid id)
     {
@@ -44,6 +50,7 @@ public class RoleController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
+    [Authorize(Roles = Const.Roles.Admin)]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] RoleRequest request)
     {
@@ -51,6 +58,7 @@ public class RoleController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
+    [Authorize(Roles = Const.Roles.Admin)]
     [HttpPut]
     public async Task<IActionResult> Update([FromBody] RoleRequest request)
     {
@@ -58,6 +66,7 @@ public class RoleController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
+    [Authorize(Roles = Const.Roles.Admin)]
     [HttpPatch("{roleId}/{accountId}")]
     public async Task<IActionResult> ChangeAccountRole([FromRoute] Guid accountId, [FromRoute] Guid roleId)
     {
@@ -65,6 +74,7 @@ public class RoleController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
+    [Authorize(Roles = Const.Roles.Admin)]
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete([FromRoute] Guid id)
     {

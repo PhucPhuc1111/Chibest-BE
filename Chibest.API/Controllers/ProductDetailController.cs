@@ -1,11 +1,12 @@
 ﻿using Chibest.Service.Interface;
 using Chibest.Service.ModelDTOs.Request;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Chibest.API.Controllers;
 
-[Route("api/[controller]")]
 [ApiController]
+[Route("api/[controller]")]
 public class ProductDetailController : ControllerBase
 {
     private readonly IProductDetailService _productDetailService;
@@ -15,6 +16,7 @@ public class ProductDetailController : ControllerBase
         _productDetailService = productDetailService;
     }
 
+    [Authorize]
     [HttpGet]
     public async Task<IActionResult> GetPaged([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10,
         [FromQuery] Guid? productId = null, [FromQuery] Guid? branchId = null, [FromQuery] string? status = null)
@@ -23,6 +25,7 @@ public class ProductDetailController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
+    [Authorize]
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById([FromRoute] Guid id)
     {
@@ -30,6 +33,7 @@ public class ProductDetailController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
+    [Authorize]
     [HttpGet("product/{productId}/branch/{branchId}")]
     public async Task<IActionResult> GetByProductAndBranch([FromRoute] Guid productId, [FromRoute] Guid branchId)
     {
@@ -37,6 +41,7 @@ public class ProductDetailController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
+    [Authorize]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] ProductDetailRequest request)
     {
@@ -44,6 +49,7 @@ public class ProductDetailController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
+    [Authorize]
     [HttpPut("{id}")]
     public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] ProductDetailRequest request)
     {
@@ -51,6 +57,7 @@ public class ProductDetailController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
+    [Authorize]
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete([FromRoute] Guid id)
     {

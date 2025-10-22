@@ -1,5 +1,4 @@
 ﻿using Chibest.Common;
-using Chibest.Common.BusinessResult;
 using Chibest.Service.Interface;
 using Chibest.Service.ModelDTOs.Request;
 using Microsoft.AspNetCore.Authorization;
@@ -8,8 +7,8 @@ using System.Security.Claims;
 
 namespace Chibest.API.Controllers;
 
-[Route("api/[controller]")]
 [ApiController]
+[Route("api/[controller]")]
 public class AccountController : ControllerBase
 {
     private readonly IAccountService _accountService;
@@ -114,14 +113,15 @@ public class AccountController : ControllerBase
 
     //----------------------------------------------------------------------------
     //==============================[ ADMIN APIs ]================================
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = Const.Roles.Admin)]
     [HttpPost]
     public async Task<IActionResult> CreateAccount([FromBody] AccountRequest newAccount)
     {
         var result = await _accountService.CreateAccountAsync(newAccount);
         return StatusCode(result.StatusCode, result);
     }
-    [Authorize(Roles = "Admin")]
+
+    [Authorize(Roles = Const.Roles.Admin)]
     [HttpDelete]
     public async Task<IActionResult> DeleteByAdmin()
     {

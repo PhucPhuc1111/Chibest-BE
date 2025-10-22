@@ -1,5 +1,6 @@
 ﻿using Chibest.Service.Interface;
 using Chibest.Service.ModelDTOs.Request;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Chibest.API.Controllers;
@@ -15,6 +16,7 @@ public class CategoryController : ControllerBase
         _categoryService = categoryService;
     }
 
+    [Authorize]
     [HttpGet]
     public async Task<IActionResult> GetPaged([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10,
         [FromQuery] string? search = null, [FromQuery] string? type = null)
@@ -23,6 +25,7 @@ public class CategoryController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
+    [Authorize]
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(Guid id)
     {
@@ -30,6 +33,7 @@ public class CategoryController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
+    [Authorize]
     [HttpGet("with-products")]
     public async Task<IActionResult> GetWithProducts()
     {
@@ -37,6 +41,7 @@ public class CategoryController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
+    [Authorize]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CategoryRequest request)
     {
@@ -44,6 +49,7 @@ public class CategoryController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
+    [Authorize]
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] CategoryRequest request)
     {
@@ -51,6 +57,7 @@ public class CategoryController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
+    [Authorize]
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(Guid id)
     {

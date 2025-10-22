@@ -1,5 +1,6 @@
 ﻿using Chibest.Service.Interface;
 using Chibest.Service.ModelDTOs.Request;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Chibest.API.Controllers;
@@ -15,6 +16,7 @@ public class BranchStockController : ControllerBase
         _branchStockService = branchStockService;
     }
 
+    [Authorize]
     [HttpGet]
     public async Task<IActionResult> GetPaged([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10,
         [FromQuery] Guid? productId = null, [FromQuery] Guid? branchId = null)
@@ -23,6 +25,7 @@ public class BranchStockController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
+    [Authorize]
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById([FromRoute] Guid id)
     {
@@ -30,6 +33,7 @@ public class BranchStockController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
+    [Authorize]
     [HttpGet("product/{productId}/branch/{branchId}")]
     public async Task<IActionResult> GetByProductAndBranch([FromRoute] Guid productId, [FromRoute] Guid branchId)
     {
@@ -37,6 +41,7 @@ public class BranchStockController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
+    [Authorize]
     [HttpGet("low-stock/{branchId}")]
     public async Task<IActionResult> GetLowStockItems([FromRoute] Guid branchId)
     {
@@ -44,6 +49,7 @@ public class BranchStockController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
+    [Authorize]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] BranchStockRequest request)
     {
@@ -51,6 +57,7 @@ public class BranchStockController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
+    [Authorize]
     [HttpPut("{id}")]
     public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] BranchStockRequest request)
     {
@@ -58,6 +65,7 @@ public class BranchStockController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
+    [Authorize]
     [HttpPatch("{id}/stock")]
     public async Task<IActionResult> UpdateStock([FromRoute] Guid id, [FromBody] UpdateStockRequest request)
     {
@@ -65,6 +73,7 @@ public class BranchStockController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
+    [Authorize]
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete([FromRoute] Guid id)
     {
