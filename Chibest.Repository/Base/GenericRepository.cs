@@ -6,7 +6,7 @@ namespace Chibest.Repository.Base
 {
     public class GenericRepository<TEntity> : IGenericRepository<TEntity> where TEntity : class
     {
-        protected readonly ChiBestDbContext _context = null;
+        protected readonly ChiBestDbContext _context;
 
         public GenericRepository()
         {
@@ -18,7 +18,7 @@ namespace Chibest.Repository.Base
             _context = context ?? throw new ArgumentNullException(nameof(context));
         }
 
-        public async Task Attach(TEntity entity)
+        public void Attach(TEntity entity)
         {
             _context.Set<TEntity>().Attach(entity);
             _context.Entry(entity).State = EntityState.Unchanged;
@@ -43,7 +43,7 @@ namespace Chibest.Repository.Base
             return _context.Set<TEntity>().AsQueryable().AsNoTracking();
         }
 
-        public async Task<TEntity> GetByIdAsync(object id)
+        public async Task<TEntity?> GetByIdAsync(object id)
         {
             return await _context.Set<TEntity>().FindAsync(id);
         }
@@ -63,23 +63,23 @@ namespace Chibest.Repository.Base
             await _context.Set<TEntity>().AddRangeAsync(entities);
         }
 
-        public async Task UpdateAsync(TEntity entity)
+        public void Update(TEntity entity)
         {
             _context.Entry(entity).State = EntityState.Modified;
         }
 
-        public async Task UpdateRangeAsync(IEnumerable<TEntity> entities)
+        public void UpdateRange(IEnumerable<TEntity> entities)
         {
             _context.Set<TEntity>().UpdateRange(entities);
         }
 
 
-        public async Task DeleteAsync(TEntity entity)
+        public void Delete(TEntity entity)
         {
             _context.Set<TEntity>().Remove(entity);
         }
 
-        public async Task RemoveRange(IEnumerable<TEntity> entities)
+        public void RemoveRange(IEnumerable<TEntity> entities)
         {
             _context.Set<TEntity>().RemoveRange(entities);
         }
@@ -93,8 +93,8 @@ namespace Chibest.Repository.Base
             int pageNumber,
             int pageSize,
             Expression<Func<TEntity, bool>>? predicate = null,
-            Func<IQueryable<TEntity>, IOrderedQueryable<TEntity>> orderBy = null,
-            Func<IQueryable<TEntity>, IQueryable<TEntity>> include = null)
+            Func<IQueryable<TEntity>, IOrderedQueryable<TEntity>>? orderBy = null,
+            Func<IQueryable<TEntity>, IQueryable<TEntity>>? include = null)
         {
             IQueryable<TEntity> query = _context.Set<TEntity>();
             if (include != null)

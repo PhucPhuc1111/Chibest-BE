@@ -109,7 +109,7 @@ namespace Chibest.Service.Services
             warehouseEntity.Status = string.IsNullOrEmpty(request.Status) ? warehouseEntity.Status : request.Status;
             warehouseEntity.UpdatedAt = DateTime.Now;
 
-            await _unitOfWork.WarehouseRepository.UpdateAsync(warehouseEntity);
+            _unitOfWork.WarehouseRepository.Update(warehouseEntity);
             await _unitOfWork.SaveChangesAsync();
 
             return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_UPDATE_MSG);
@@ -123,7 +123,7 @@ namespace Chibest.Service.Services
                 return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, "Warehouse not found");
             }
 
-            await _unitOfWork.WarehouseRepository.DeleteAsync(warehouse);
+            _unitOfWork.WarehouseRepository.Delete(warehouse);
             await _unitOfWork.SaveChangesAsync();
 
             return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_DELETE_MSG);

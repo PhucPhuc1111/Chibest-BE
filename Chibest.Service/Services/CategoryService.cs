@@ -130,7 +130,7 @@ public class CategoryService : ICategoryService
             }
 
             request.Adapt(category);
-            await _unitOfWork.CategoryRepository.UpdateAsync(category);
+            _unitOfWork.CategoryRepository.Update(category);
             await _unitOfWork.SaveChangesAsync();
 
             return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_UPDATE_MSG);
@@ -160,7 +160,7 @@ public class CategoryService : ICategoryService
             if (hasProducts)
                 return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Cannot delete category that has products");
 
-            await _unitOfWork.CategoryRepository.DeleteAsync(category);
+            _unitOfWork.CategoryRepository.Delete(category);
             await _unitOfWork.SaveChangesAsync();
 
             return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_DELETE_MSG);

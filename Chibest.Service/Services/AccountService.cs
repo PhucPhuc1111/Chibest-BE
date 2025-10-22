@@ -281,7 +281,7 @@ public class AccountService : IAccountService
         newData.Adapt(existingAccount);
         existingAccount.UpdatedAt = DateTime.Now;
 
-        await _unitOfWork.AccountRepository.UpdateAsync(existingAccount);
+        _unitOfWork.AccountRepository.Update(existingAccount);
         await _unitOfWork.SaveChangesAsync();
 
         return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_UPDATE_MSG);
@@ -299,7 +299,7 @@ public class AccountService : IAccountService
         account.Status = status;
         account.UpdatedAt = DateTime.Now;
 
-        await _unitOfWork.AccountRepository.UpdateAsync(account);
+        _unitOfWork.AccountRepository.Update(account);
         await _unitOfWork.SaveChangesAsync();
 
         return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_UPDATE_MSG);
@@ -319,7 +319,7 @@ public class AccountService : IAccountService
         account.Password = StringUtils.HashStringSHA256(newPassword); ;
         account.UpdatedAt = DateTime.Now;
 
-        await _unitOfWork.AccountRepository.UpdateAsync(account);
+        _unitOfWork.AccountRepository.Update(account);
         await _unitOfWork.SaveChangesAsync();
 
         return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_UPDATE_MSG);
@@ -334,7 +334,7 @@ public class AccountService : IAccountService
         if (account == null)
             return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, Const.FAIL_READ_MSG);
 
-        await _unitOfWork.AccountRepository.DeleteAsync(account);
+        _unitOfWork.AccountRepository.Delete(account);
         await _unitOfWork.SaveChangesAsync();
 
         return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_DELETE_MSG);

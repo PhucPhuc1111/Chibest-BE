@@ -6,23 +6,23 @@ namespace Chibest.Repository.Base
     {
         IQueryable<TEntity> GetAll();
 
-        Task<TEntity> GetByIdAsync(object id);
+        Task<TEntity?> GetByIdAsync(object id);
         IQueryable<TEntity> GetByWhere(Expression<Func<TEntity, bool>> predicate);
 
         bool HasChanges(TEntity newEntity, TEntity trackedEntity);
-        Task Attach(TEntity entity);
+        void Attach(TEntity entity);
 
         Task AddAsync(TEntity entity);
 
-        Task UpdateAsync(TEntity entity);
+        void Update(TEntity entity);
 
-        Task DeleteAsync(TEntity entity);       
+        void Delete(TEntity entity);
 
         Task AddRangeAsync(IEnumerable<TEntity> entities);
 
-        Task UpdateRangeAsync(IEnumerable<TEntity> entities);
+        void UpdateRange(IEnumerable<TEntity> entities);
 
-        Task RemoveRange(IEnumerable<TEntity> entities);
+        void RemoveRange(IEnumerable<TEntity> entities);
 
         Task<int> CountAsync();
 
@@ -30,7 +30,7 @@ namespace Chibest.Repository.Base
             int pageNumber,
             int pageSize,
             Expression<Func<TEntity, bool>>? predicate = null,
-            Func<IQueryable<TEntity>, IOrderedQueryable<TEntity>> orderBy = null,
-            Func<IQueryable<TEntity>, IQueryable<TEntity>> include = null);
+            Func<IQueryable<TEntity>, IOrderedQueryable<TEntity>>? orderBy = null,
+            Func<IQueryable<TEntity>, IQueryable<TEntity>>? include = null);
     }
 }

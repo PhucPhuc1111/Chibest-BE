@@ -115,7 +115,7 @@ public class BranchService : IBranchService
         branchEntity.OwnerName = request.OwnerName;
         branchEntity.Status = string.IsNullOrEmpty(request.Status) ? branchEntity.Status : request.Status;
         branchEntity.UpdatedAt = DateTime.Now;
-        await _unitOfWork.BranchRepository.UpdateAsync(branchEntity);
+        _unitOfWork.BranchRepository.Update(branchEntity);
         await _unitOfWork.SaveChangesAsync();
         return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_UPDATE_MSG);
     }
@@ -128,7 +128,7 @@ public class BranchService : IBranchService
             return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, "Branch not found");
         }
 
-        await _unitOfWork.BranchRepository.DeleteAsync(branch);
+        _unitOfWork.BranchRepository.Delete(branch);
         await _unitOfWork.SaveChangesAsync();
 
         return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_DELETE_MSG);

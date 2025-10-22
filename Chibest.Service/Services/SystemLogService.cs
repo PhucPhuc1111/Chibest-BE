@@ -125,7 +125,7 @@ public class SystemLogService : ISystemLogService
             if (log == null)
                 return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, Const.FAIL_READ_MSG);
 
-            await _unitOfWork.SystemLogRepository.DeleteAsync(log);
+            _unitOfWork.SystemLogRepository.Delete(log);
             await _unitOfWork.SaveChangesAsync();
 
             return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_DELETE_MSG);
@@ -146,7 +146,7 @@ public class SystemLogService : ISystemLogService
 
             if (oldLogs.Any())
             {
-                await _unitOfWork.SystemLogRepository.RemoveRange(oldLogs);
+                _unitOfWork.SystemLogRepository.RemoveRange(oldLogs);
                 await _unitOfWork.SaveChangesAsync();
             }
 
