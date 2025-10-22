@@ -12,6 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Chibest.Common\Chibest.Common.csproj" />
     <ProjectReference Include="..\Chibest.Service\Chibest.Service.csproj" />
   </ItemGroup>
 
