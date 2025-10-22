@@ -39,6 +39,8 @@ public static class ServiceRegister
         services.AddScoped<IBranchService, BranchService>();
         services.AddScoped<ISystemLogService, SystemLogService>();
         services.AddScoped<ICategoryService, CategoryService>();
+        services.AddScoped<IProductService, ProductService>();
+        services.AddScoped<IProductDetailService, ProductDetailService>();
     }
 
     public static IServiceCollection AddAuthorizeService(this IServiceCollection services, IConfiguration configuration)
