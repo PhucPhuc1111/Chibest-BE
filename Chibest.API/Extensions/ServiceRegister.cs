@@ -36,11 +36,13 @@ public static class ServiceRegister
         services.AddScoped<ITokenService, TokenService>();
         services.AddScoped<IWarehouseService, WarehouseService>();
         services.AddScoped<IAccountService, AccountService>();
+        services.AddScoped<IRoleService, RoleService>();
         services.AddScoped<IBranchService, BranchService>();
         services.AddScoped<ISystemLogService, SystemLogService>();
         services.AddScoped<ICategoryService, CategoryService>();
         services.AddScoped<IProductService, ProductService>();
         services.AddScoped<IProductDetailService, ProductDetailService>();
+        services.AddScoped<IBranchStockService, BranchStockService>();
     }
 
     public static IServiceCollection AddAuthorizeService(this IServiceCollection services, IConfiguration configuration)
