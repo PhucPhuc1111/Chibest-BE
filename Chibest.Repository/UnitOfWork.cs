@@ -1,6 +1,7 @@
 ﻿using Chibest.Repository.Interface;
 using Chibest.Repository.Models;
 using Chibest.Repository.Repositories;
+using EFCore.BulkExtensions;
 
 namespace Chibest.Repository
 {
@@ -61,6 +62,23 @@ namespace Chibest.Repository
         public async Task SaveChangesAsync()
         {
             await _context.SaveChangesAsync();
+        }
+        public async Task BulkInsertAsync<T>(IList<T> entities) where T : class
+        {
+            if (entities == null || entities.Count == 0) return;
+            await _context.BulkInsertAsync(entities);
+        }
+
+        public async Task BulkUpdateAsync<T>(IList<T> entities) where T : class
+        {
+            if (entities == null || entities.Count == 0) return;
+            await _context.BulkUpdateAsync(entities);
+        }
+
+        public async Task BulkDeleteAsync<T>(IList<T> entities) where T : class
+        {
+            if (entities == null || entities.Count == 0) return;
+            await _context.BulkDeleteAsync(entities);
         }
     }
 }

@@ -9,8 +9,6 @@ namespace Chibest.Service.ModelDTOs.PurchaseOrder
 {
     public class PurchaseOrderCreate
     {
-        public string InvoiceCode { get; set; } = null!; 
-
         public DateTime OrderDate { get; set; }
 
         public string? PayMethod { get; set; }

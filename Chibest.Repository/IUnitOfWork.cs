@@ -8,6 +8,9 @@ public interface IUnitOfWork
     Task CommitTransaction();
     Task RollbackTransaction();
     Task SaveChangesAsync();
+    Task BulkInsertAsync<T>(IList<T> entities) where T : class;
+    Task BulkUpdateAsync<T>(IList<T> entities) where T : class;
+    Task BulkDeleteAsync<T>(IList<T> entities) where T : class;
 
     IWarehouseRepository WarehouseRepository { get; }
     IAccountRepository AccountRepository { get; }

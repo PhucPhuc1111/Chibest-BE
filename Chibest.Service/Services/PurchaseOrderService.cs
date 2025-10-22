@@ -44,29 +44,25 @@ namespace Chibest.Service.Services
                 UpdatedAt = DateTime.Now
             };
 
+            var orderDetails = request.PurchaseOrderDetails.Select(detailReq => new PurchaseOrderDetail
+            {
+                Id = Guid.NewGuid(),
+                PurchaseOrderId = purchaseOrder.Id,
+                ProductId = detailReq.ProductId,
+                Quantity = detailReq.Quantity,
+                UnitPrice = detailReq.UnitPrice,
+                Discount = detailReq.Discount,
+                Note = detailReq.Note,
+                ContainerCode = GenerateContainerCode()
+            }).ToList();
+
             await _unitOfWork.BeginTransaction();
 
             try
             {
-                foreach (var detailReq in request.PurchaseOrderDetails)
-                {
-                    var containerCode = GenerateContainerCode();
-                    var detail = new PurchaseOrderDetail
-                    {
-                        Id = Guid.NewGuid(),
-                        PurchaseOrderId = purchaseOrder.Id,
-                        ProductId = detailReq.ProductId,
-                        Quantity = detailReq.Quantity,
-                        UnitPrice = detailReq.UnitPrice,
-                        Discount = detailReq.Discount,
-                        Note = detailReq.Note,
-                        ContainerCode = containerCode,
-                    };
-
-                    purchaseOrder.PurchaseOrderDetails.Add(detail);
-                }
                 await _unitOfWork.PurchaseOrderRepository.AddAsync(purchaseOrder);
                 await _unitOfWork.SaveChangesAsync();
+                await _unitOfWork.BulkInsertAsync(orderDetails);
                 await _unitOfWork.CommitTransaction();
 
                 return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_CREATE_MSG, new { purchaseOrder.InvoiceCode });
@@ -79,11 +75,11 @@ namespace Chibest.Service.Services
         }
         #endregion
 
+
         #region READ
 
         public async Task<IBusinessResult> GetPurchaseOrderById(Guid id)
         {
-            // 1️⃣ Lấy phiếu nhập hàng + các quan hệ cần thiết
             var po = await _unitOfWork.PurchaseOrderRepository
                 .GetByWhere(x => x.Id == id)
                 .Include(x => x.PurchaseOrderDetails)
@@ -93,11 +89,9 @@ namespace Chibest.Service.Services
                 .Include(x => x.Supplier)
                 .FirstOrDefaultAsync();
 
-            // 2️⃣ Kiểm tra tồn tại
             if (po == null)
                 return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, "Không tìm thấy phiếu nhập hàng");
 
-            // 3️⃣ Map sang DTO Response
             var response = new PurchaseOrderResponse
             {
                 Id = po.Id,
@@ -162,12 +156,16 @@ namespace Chibest.Service.Services
         #region UPDATE
         public async Task<IBusinessResult> UpdateAsync(Guid id, PurchaseOrderUpdate request)
         {
+            // Lấy PO cùng với danh sách detail
             var purchaseOrder = await _unitOfWork.PurchaseOrderRepository
-                .GetByWhere(x => x.Id == id).Include(po => po.PurchaseOrderDetails).FirstOrDefaultAsync();
+                .GetByWhere(x => x.Id == id)
+                .Include(po => po.PurchaseOrderDetails)
+                .FirstOrDefaultAsync();
 
             if (purchaseOrder == null)
                 return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, "Không tìm thấy phiếu nhập hàng");
 
+            // Cập nhật chi tiết
             foreach (var detailReq in request.PurchaseOrderDetails)
             {
                 var detail = purchaseOrder.PurchaseOrderDetails
@@ -178,14 +176,29 @@ namespace Chibest.Service.Services
                     detail.ActualQuantity = detailReq.ActualQuantity ?? detail.ActualQuantity;
                 }
             }
+
             purchaseOrder.Status = request.Status;
             purchaseOrder.UpdatedAt = DateTime.Now;
-            _unitOfWork.PurchaseOrderRepository.Update(purchaseOrder);
-            await _unitOfWork.SaveChangesAsync();
-            return new BusinessResult(Const.SUCCESS, "Cập nhật thành công");
-        }
 
+            await _unitOfWork.BeginTransaction();
+
+            try
+            {
+                _unitOfWork.PurchaseOrderRepository.Update(purchaseOrder);
+                await _unitOfWork.SaveChangesAsync();
+                var detailsToUpdate = purchaseOrder.PurchaseOrderDetails.ToList();
+                await _unitOfWork.BulkUpdateAsync(detailsToUpdate);
+                await _unitOfWork.CommitTransaction();
+                return new BusinessResult(Const.SUCCESS, "Cập nhật thành công");
+            }
+            catch (Exception ex)
+            {
+                await _unitOfWork.RollbackTransaction();
+                return new BusinessResult(Const.ERROR_EXCEPTION, "Lỗi khi cập nhật phiếu nhập hàng", ex.Message);
+            }
+        }
         #endregion
+
 
         #region CODE GENERATION
         private async Task<string> GenerateInvoiceCodeAsync()
@@ -214,7 +227,7 @@ namespace Chibest.Service.Services
         private string GenerateContainerCode()
         {
             string timePart = DateTime.Now.ToString("yyyyMMddHHmmss");
-            string randomPart = new Random().Next(10, 99).ToString(); 
+            string randomPart = new Random().Next(100, 999).ToString(); 
             return $"CTN{timePart}{randomPart}";
         }
         #endregion
