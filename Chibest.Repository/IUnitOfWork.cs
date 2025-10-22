@@ -19,4 +19,7 @@ public interface IUnitOfWork
     IProductDetailRepository ProductDetailRepository { get; }
     ISystemLogRepository SystemLogRepository { get; }
     ICategoryRepository CategoryRepository { get; }
+    IPurchaseOrderRepository PurchaseOrderRepository { get; }
+    ITransferOrderRepository TransferOrderRepository { get; }
+    IPurchaseReturnRepository PurchaseReturnRepository { get; }
 }

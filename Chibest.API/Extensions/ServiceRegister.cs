@@ -43,6 +43,9 @@ public static class ServiceRegister
         services.AddScoped<IProductService, ProductService>();
         services.AddScoped<IProductDetailService, ProductDetailService>();
         services.AddScoped<IBranchStockService, BranchStockService>();
+        services.AddScoped<IPurchaseOrderService, PurchaseOrderService>();
+        services.AddScoped<ITransferOrderService, TransferOrderService>();
+        services.AddScoped<IPurchaseReturnService, PurchaseReturnService>();
     }
 
     public static IServiceCollection AddAuthorizeService(this IServiceCollection services, IConfiguration configuration)
