@@ -144,7 +144,6 @@ CREATE TABLE Category (
     [Type] NVARCHAR(50) NOT NULL,
     [Name] NVARCHAR(150) NOT NULL,
     [Description] NVARCHAR(MAX),
-
     ParentId UNIQUEIDENTIFIER FOREIGN KEY REFERENCES [Category](Id)
 );
 GO
@@ -364,12 +363,13 @@ CREATE NONCLUSTERED INDEX IX_TransactionOrder_OrderDate ON [PurchaseOrder](Order
 GO
 
 -- =====================================================================
--- Chi Tiết Đơn  Nhập
+-- Chi Tiết Đơn Nhập
 CREATE TABLE PurchaseOrderDetail (
     Id UNIQUEIDENTIFIER DEFAULT NEWID() PRIMARY KEY,
     ContainerCode NVARCHAR(100) NOT NULL UNIQUE,                -- Mã lô hàng
     Quantity INT NOT NULL,
     ActualQuantity INT,
+    ReFee money not null,
     UnitPrice MONEY NOT NULL,
     Discount DECIMAL(5,2) NOT NULL DEFAULT 0,
     Note NVARCHAR(MAX),
@@ -420,6 +420,8 @@ CREATE TABLE TransferOrderDetail (
     ContainerCode NVARCHAR(100) NOT NULL UNIQUE,                -- Mã lô hàng
     Quantity INT NOT NULL,
     ActualQuantity INT,
+    ExtraFee money not null,
+    CommissionFee money not null,
     UnitPrice MONEY NOT NULL,
     Discount DECIMAL(5,2) NOT NULL DEFAULT 0,
     Note NVARCHAR(MAX),
@@ -528,58 +530,6 @@ GO
 
 CREATE NONCLUSTERED INDEX IX_StockAdjustmentDetail_AdjustmentId ON StockAdjustmentDetail(StockAdjustmentId);
 CREATE NONCLUSTERED INDEX IX_StockAdjustmentDetail_ProductId ON StockAdjustmentDetail(ProductId);
-GO
-
-CREATE TABLE StockBalancing (
-    Id UNIQUEIDENTIFIER DEFAULT NEWID() PRIMARY KEY,
-    BalancingCode NVARCHAR(100) UNIQUE NOT NULL,
-    StockAdjustmentId UNIQUEIDENTIFIER NOT NULL FOREIGN KEY REFERENCES StockAdjustment(Id),
-    BranchId UNIQUEIDENTIFIER NOT NULL FOREIGN KEY REFERENCES Branch(Id),
-    WarehouseId UNIQUEIDENTIFIER NULL FOREIGN KEY REFERENCES Warehouse(Id),
-    EmployeeId UNIQUEIDENTIFIER NOT NULL FOREIGN KEY REFERENCES Account(Id),
-    
-    StartTime DATETIME NOT NULL, -- Bắt đầu cân bằng (thường sau khi hoàn tất kiểm kho)
-    EndTime DATETIME NULL,       -- Kết thúc cân bằng
-    
-    TotalPositiveAdjust MONEY DEFAULT 0, -- Tổng giá trị tăng
-    TotalNegativeAdjust MONEY DEFAULT 0, -- Tổng giá trị giảm
-    NetValueChange AS (TotalPositiveAdjust - TotalNegativeAdjust) PERSISTED,
-    
-    [Status] NVARCHAR(40) NOT NULL DEFAULT N'Đang Cân Bằng', -- Đang xử lý / Hoàn tất / Hủy
-    Note NVARCHAR(MAX) NULL,
-    
-    CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    UpdatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    ApprovedBy UNIQUEIDENTIFIER NULL FOREIGN KEY REFERENCES Account(Id),
-    ApprovedAt DATETIME NULL
-);
-GO
-
-CREATE NONCLUSTERED INDEX IX_StockBalancing_BranchId ON StockBalancing(BranchId, StartTime DESC);
-CREATE NONCLUSTERED INDEX IX_StockBalancing_Status ON StockBalancing(Status);
-GO
-
-CREATE TABLE StockBalancingDetail (
-    Id UNIQUEIDENTIFIER DEFAULT NEWID() PRIMARY KEY,
-    StockBalancingId UNIQUEIDENTIFIER NOT NULL FOREIGN KEY REFERENCES StockBalancing(Id),
-    ProductId UNIQUEIDENTIFIER NOT NULL FOREIGN KEY REFERENCES Product(Id),
-    
-    SystemQtyAtStart INT NOT NULL,      -- Số lượng hệ thống tại thời điểm bắt đầu kiểm kho
-    SystemQtyAfterSales INT NOT NULL,   -- Số lượng hệ thống sau khi trừ các giao dịch bán hàng trong thời gian kiểm kho
-    ActualQty INT NOT NULL,             -- Số lượng thực tế kiểm kho ghi nhận
-    FinalQty AS (ActualQty) PERSISTED,  -- Số lượng cuối cùng sau cân bằng
-    
-    DifferenceQty AS (ActualQty - SystemQtyAfterSales) PERSISTED,
-    UnitCost MONEY NOT NULL DEFAULT 0,
-    ValueChange AS ((ActualQty - SystemQtyAfterSales) * UnitCost) PERSISTED,
-    
-    IsBalanced BIT NOT NULL DEFAULT 0, -- Đã xử lý đồng bộ với kho chính hay chưa
-    Note NVARCHAR(MAX) NULL
-);
-GO
-
-CREATE NONCLUSTERED INDEX IX_StockBalancingDetail_ProductId ON StockBalancingDetail(ProductId);
-CREATE NONCLUSTERED INDEX IX_StockBalancingDetail_BalancingId ON StockBalancingDetail(StockBalancingId);
 GO
 
 
@@ -784,46 +734,6 @@ CREATE TABLE SupplierDebtHistory (
 GO
 
 CREATE NONCLUSTERED INDEX IX_SupplierDebtHistory_Supplier ON SupplierDebtHistory(SupplierId, TransactionDate DESC);
-GO
-
--- Công nợ khách hàng
-CREATE TABLE CustomerDebt (
-    Id UNIQUEIDENTIFIER DEFAULT NEWID() PRIMARY KEY,
-    CustomerId UNIQUEIDENTIFIER NOT NULL FOREIGN KEY REFERENCES [Customer](Id),
-    
-    TotalDebt MONEY NOT NULL DEFAULT 0,
-    PaidAmount MONEY NOT NULL DEFAULT 0,
-    RemainingDebt AS (TotalDebt - PaidAmount) PERSISTED,
-    
-    LastTransactionDate DATETIME NULL,
-    LastUpdated DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    
-    CONSTRAINT UQ_CustomerDebt_Customer UNIQUE (CustomerId)
-);
-GO
-
-CREATE TABLE CustomerDebtHistory (
-    Id UNIQUEIDENTIFIER DEFAULT NEWID() PRIMARY KEY,
-    CustomerId UNIQUEIDENTIFIER NOT NULL FOREIGN KEY REFERENCES [Customer](Id),
-    
-    TransactionType NVARCHAR(50) NOT NULL,
-    TransactionDate DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    Amount MONEY NOT NULL,
-    
-    ReferenceType NVARCHAR(50) NULL,
-    ReferenceId UNIQUEIDENTIFIER NULL,
-    ReferenceCode NVARCHAR(100) NULL,
-    
-    BalanceBefore MONEY NOT NULL,
-    BalanceAfter MONEY NOT NULL,
-    
-    Note NVARCHAR(MAX),
-    CreatedBy UNIQUEIDENTIFIER NULL FOREIGN KEY REFERENCES [Account](Id),
-    CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-GO
-
-CREATE NONCLUSTERED INDEX IX_CustomerDebtHistory_Customer ON CustomerDebtHistory(CustomerId, TransactionDate DESC);
 GO
 
 -- Công nợ chi nhánh (với trụ sở chính)
