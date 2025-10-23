@@ -3,11 +3,11 @@ using System.Collections.Generic;
 
 namespace Chibest.Repository.Models;
 
-public partial class SupplierDebt
+public partial class CustomerDebt
 {
     public Guid Id { get; set; }
 
-    public Guid SupplierId { get; set; }
+    public Guid CustomerId { get; set; }
 
     public decimal TotalDebt { get; set; }
 
@@ -19,5 +19,5 @@ public partial class SupplierDebt
 
     public DateTime LastUpdated { get; set; }
 
-    public virtual Account Supplier { get; set; } = null!;
+    public virtual Customer Customer { get; set; } = null!;
 }

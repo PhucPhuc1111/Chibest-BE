@@ -7,15 +7,23 @@ public partial class SalesOrder
 {
     public Guid Id { get; set; }
 
-    public string InvoiceCode { get; set; } = null!;
+    public string OrderCode { get; set; } = null!;
 
     public DateTime OrderDate { get; set; }
+
+    public Guid CustomerId { get; set; }
 
     public string CustomerName { get; set; } = null!;
 
     public string? CustomerPhone { get; set; }
 
     public string? CustomerEmail { get; set; }
+
+    public Guid BranchId { get; set; }
+
+    public Guid? WarehouseId { get; set; }
+
+    public Guid EmployeeId { get; set; }
 
     public string DeliveryMethod { get; set; } = null!;
 
@@ -35,6 +43,8 @@ public partial class SalesOrder
 
     public decimal DiscountAmount { get; set; }
 
+    public Guid? VoucherId { get; set; }
+
     public decimal VoucherAmount { get; set; }
 
     public decimal ShippingFee { get; set; }
@@ -43,25 +53,17 @@ public partial class SalesOrder
 
     public decimal? FinalAmount { get; set; }
 
+    public decimal PaidAmount { get; set; }
+
+    public string Status { get; set; } = null!;
+
     public string? Note { get; set; }
 
     public DateTime CreatedAt { get; set; }
 
     public DateTime UpdatedAt { get; set; }
 
-    public string Status { get; set; } = null!;
-
-    public Guid BranchId { get; set; }
-
-    public Guid EmployeeId { get; set; }
-
-    public Guid CustomerId { get; set; }
-
-    public Guid? VoucherId { get; set; }
-
-    public virtual Warehouse Branch { get; set; } = null!;
-
-    public virtual ICollection<Commission> Commissions { get; set; } = new List<Commission>();
+    public virtual Branch Branch { get; set; } = null!;
 
     public virtual Customer Customer { get; set; } = null!;
 
@@ -69,5 +71,9 @@ public partial class SalesOrder
 
     public virtual ICollection<SalesOrderDetail> SalesOrderDetails { get; set; } = new List<SalesOrderDetail>();
 
+    public virtual ICollection<SalesReturn> SalesReturns { get; set; } = new List<SalesReturn>();
+
     public virtual Voucher? Voucher { get; set; }
+
+    public virtual Warehouse? Warehouse { get; set; }
 }

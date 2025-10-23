@@ -7,13 +7,13 @@ public partial class Product
 {
     public Guid Id { get; set; }
 
-    public string? AvartarUrl { get; set; }
-
     public string Sku { get; set; } = null!;
 
     public string Name { get; set; } = null!;
 
     public string? Description { get; set; }
+
+    public string? AvatarUrl { get; set; }
 
     public string? Color { get; set; }
 
@@ -31,6 +31,10 @@ public partial class Product
 
     public string Status { get; set; } = null!;
 
+    public DateTime CreatedAt { get; set; }
+
+    public DateTime UpdatedAt { get; set; }
+
     public Guid CategoryId { get; set; }
 
     public string? ParentSku { get; set; }
@@ -45,13 +49,23 @@ public partial class Product
 
     public virtual ICollection<ProductDetail> ProductDetails { get; set; } = new List<ProductDetail>();
 
+    public virtual ICollection<ProductPriceHistory> ProductPriceHistories { get; set; } = new List<ProductPriceHistory>();
+
     public virtual ICollection<PurchaseOrderDetail> PurchaseOrderDetails { get; set; } = new List<PurchaseOrderDetail>();
+
+    public virtual ICollection<PurchasePriceHistory> PurchasePriceHistories { get; set; } = new List<PurchasePriceHistory>();
 
     public virtual ICollection<PurchaseReturnDetail> PurchaseReturnDetails { get; set; } = new List<PurchaseReturnDetail>();
 
-    public virtual ICollection<SalesOrderDetail> SalesOrderDetailProductSkuNavigations { get; set; } = new List<SalesOrderDetail>();
+    public virtual ICollection<SalesOrderDetail> SalesOrderDetails { get; set; } = new List<SalesOrderDetail>();
 
-    public virtual ICollection<SalesOrderDetail> SalesOrderDetailProducts { get; set; } = new List<SalesOrderDetail>();
+    public virtual ICollection<SalesReturnDetail> SalesReturnDetails { get; set; } = new List<SalesReturnDetail>();
+
+    public virtual ICollection<StockAdjustmentDetail> StockAdjustmentDetails { get; set; } = new List<StockAdjustmentDetail>();
+
+    public virtual ICollection<StockBalancingDetail> StockBalancingDetails { get; set; } = new List<StockBalancingDetail>();
+
+    public virtual ICollection<StockMovement> StockMovements { get; set; } = new List<StockMovement>();
 
     public virtual ICollection<TransferOrderDetail> TransferOrderDetails { get; set; } = new List<TransferOrderDetail>();
 }

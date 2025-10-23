@@ -7,14 +7,6 @@ public partial class Account
 {
     public Guid Id { get; set; }
 
-    public string? FcmToken { get; set; }
-
-    public string? RefreshToken { get; set; }
-
-    public DateTime? RefreshTokenExpiryTime { get; set; }
-
-    public string? AvartarUrl { get; set; }
-
     public string Code { get; set; } = null!;
 
     public string Email { get; set; } = null!;
@@ -33,25 +25,43 @@ public partial class Account
 
     public string? FaxNumber { get; set; }
 
+    public string? AvatarUrl { get; set; }
+
+    public string? FcmToken { get; set; }
+
+    public string? RefreshToken { get; set; }
+
+    public DateTime? RefreshTokenExpiryTime { get; set; }
+
+    public string Status { get; set; } = null!;
+
     public DateTime CreatedAt { get; set; }
 
     public DateTime UpdatedAt { get; set; }
-
-    public string Status { get; set; } = null!;
 
     public virtual ICollection<AccountRole> AccountRoles { get; set; } = new List<AccountRole>();
 
     public virtual ICollection<Attendance> Attendances { get; set; } = new List<Attendance>();
 
+    public virtual ICollection<BranchDebtHistory> BranchDebtHistories { get; set; } = new List<BranchDebtHistory>();
+
     public virtual ICollection<Commission> Commissions { get; set; } = new List<Commission>();
+
+    public virtual ICollection<CustomerDebtHistory> CustomerDebtHistories { get; set; } = new List<CustomerDebtHistory>();
 
     public virtual ICollection<Deduction> Deductions { get; set; } = new List<Deduction>();
 
     public virtual ICollection<Payroll> Payrolls { get; set; } = new List<Payroll>();
 
+    public virtual ICollection<ProductDetail> ProductDetails { get; set; } = new List<ProductDetail>();
+
+    public virtual ICollection<ProductPriceHistory> ProductPriceHistories { get; set; } = new List<ProductPriceHistory>();
+
     public virtual ICollection<PurchaseOrder> PurchaseOrderEmployees { get; set; } = new List<PurchaseOrder>();
 
     public virtual ICollection<PurchaseOrder> PurchaseOrderSuppliers { get; set; } = new List<PurchaseOrder>();
+
+    public virtual ICollection<PurchasePriceHistory> PurchasePriceHistories { get; set; } = new List<PurchasePriceHistory>();
 
     public virtual ICollection<PurchaseReturn> PurchaseReturnEmployees { get; set; } = new List<PurchaseReturn>();
 
@@ -61,9 +71,23 @@ public partial class Account
 
     public virtual ICollection<SalesOrder> SalesOrders { get; set; } = new List<SalesOrder>();
 
+    public virtual ICollection<SalesReturn> SalesReturns { get; set; } = new List<SalesReturn>();
+
+    public virtual ICollection<StockAdjustment> StockAdjustmentApprovedByNavigations { get; set; } = new List<StockAdjustment>();
+
+    public virtual ICollection<StockAdjustment> StockAdjustmentEmployees { get; set; } = new List<StockAdjustment>();
+
+    public virtual ICollection<StockBalancing> StockBalancingApprovedByNavigations { get; set; } = new List<StockBalancing>();
+
+    public virtual ICollection<StockBalancing> StockBalancingEmployees { get; set; } = new List<StockBalancing>();
+
+    public virtual ICollection<StockMovement> StockMovements { get; set; } = new List<StockMovement>();
+
     public virtual SupplierDebt? SupplierDebt { get; set; }
 
-    public virtual ICollection<SupplierDebtHistory> SupplierDebtHistories { get; set; } = new List<SupplierDebtHistory>();
+    public virtual ICollection<SupplierDebtHistory> SupplierDebtHistoryCreatedByNavigations { get; set; } = new List<SupplierDebtHistory>();
+
+    public virtual ICollection<SupplierDebtHistory> SupplierDebtHistorySuppliers { get; set; } = new List<SupplierDebtHistory>();
 
     public virtual ICollection<SystemLog> SystemLogs { get; set; } = new List<SystemLog>();
 

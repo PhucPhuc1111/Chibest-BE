@@ -21,8 +21,6 @@ public partial class PurchaseReturn
 
     public decimal DiscountAmount { get; set; }
 
-    public decimal TaxAmount { get; set; }
-
     public decimal Paid { get; set; }
 
     public string? Note { get; set; }

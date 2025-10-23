@@ -7,6 +7,8 @@ public partial class Warehouse
 {
     public Guid Id { get; set; }
 
+    public string Code { get; set; } = null!;
+
     public string Name { get; set; } = null!;
 
     public string Address { get; set; } = null!;
@@ -14,6 +16,8 @@ public partial class Warehouse
     public string? PhoneNumber { get; set; }
 
     public bool IsMainWarehouse { get; set; }
+
+    public bool IsOnlineWarehouse { get; set; }
 
     public string Status { get; set; } = null!;
 
@@ -23,27 +27,25 @@ public partial class Warehouse
 
     public Guid? BranchId { get; set; }
 
-    public virtual ICollection<Attendance> Attendances { get; set; } = new List<Attendance>();
-
     public virtual Branch? Branch { get; set; }
 
-    public virtual ICollection<BranchStock> BranchStockOnlineWarehouses { get; set; } = new List<BranchStock>();
+    public virtual ICollection<BranchStock> BranchStocks { get; set; } = new List<BranchStock>();
 
-    public virtual ICollection<BranchStock> BranchStockWarehouses { get; set; } = new List<BranchStock>();
-
-    public virtual ICollection<Payroll> Payrolls { get; set; } = new List<Payroll>();
-
-    public virtual ICollection<ProductDetail> ProductDetailOnlineWarehouses { get; set; } = new List<ProductDetail>();
-
-    public virtual ICollection<ProductDetail> ProductDetailWarehouses { get; set; } = new List<ProductDetail>();
+    public virtual ICollection<ProductDetail> ProductDetails { get; set; } = new List<ProductDetail>();
 
     public virtual ICollection<PurchaseOrder> PurchaseOrders { get; set; } = new List<PurchaseOrder>();
 
     public virtual ICollection<PurchaseReturn> PurchaseReturns { get; set; } = new List<PurchaseReturn>();
 
-    public virtual ICollection<SalaryConfig> SalaryConfigs { get; set; } = new List<SalaryConfig>();
-
     public virtual ICollection<SalesOrder> SalesOrders { get; set; } = new List<SalesOrder>();
+
+    public virtual ICollection<StockAdjustment> StockAdjustments { get; set; } = new List<StockAdjustment>();
+
+    public virtual ICollection<StockBalancing> StockBalancings { get; set; } = new List<StockBalancing>();
+
+    public virtual ICollection<StockMovement> StockMovementFromWarehouses { get; set; } = new List<StockMovement>();
+
+    public virtual ICollection<StockMovement> StockMovementToWarehouses { get; set; } = new List<StockMovement>();
 
     public virtual ICollection<TransferOrder> TransferOrderFromWarehouses { get; set; } = new List<TransferOrder>();
 

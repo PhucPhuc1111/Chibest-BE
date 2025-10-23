@@ -25,7 +25,5 @@ public partial class PurchaseOrderDetail
 
     public virtual Product Product { get; set; } = null!;
 
-    public virtual ICollection<ProductDetail> ProductDetails { get; set; } = new List<ProductDetail>();
-
     public virtual PurchaseOrder PurchaseOrder { get; set; } = null!;
 }

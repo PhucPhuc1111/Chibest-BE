@@ -27,11 +27,11 @@ public partial class SystemLog
 
     public string? UserAgent { get; set; }
 
-    public DateTime CreatedAt { get; set; }
-
     public string LogLevel { get; set; } = null!;
 
     public string? Module { get; set; }
+
+    public DateTime CreatedAt { get; set; }
 
     public virtual Account? Account { get; set; }
 }

@@ -5,15 +5,15 @@ namespace Chibest.Repository.Models;
 
 public partial class CustomerVoucher
 {
+    public Guid VoucherId { get; set; }
+
+    public Guid CustomerId { get; set; }
+
     public DateTime CollectedDate { get; set; }
 
     public DateTime? UsedDate { get; set; }
 
     public string Status { get; set; } = null!;
-
-    public Guid VoucherId { get; set; }
-
-    public Guid CustomerId { get; set; }
 
     public virtual Customer Customer { get; set; } = null!;
 

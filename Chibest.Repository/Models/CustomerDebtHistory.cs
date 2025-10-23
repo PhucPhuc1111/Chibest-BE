@@ -3,11 +3,11 @@ using System.Collections.Generic;
 
 namespace Chibest.Repository.Models;
 
-public partial class SupplierDebtHistory
+public partial class CustomerDebtHistory
 {
     public Guid Id { get; set; }
 
-    public Guid SupplierId { get; set; }
+    public Guid CustomerId { get; set; }
 
     public string TransactionType { get; set; } = null!;
 
@@ -33,5 +33,5 @@ public partial class SupplierDebtHistory
 
     public virtual Account? CreatedByNavigation { get; set; }
 
-    public virtual Account Supplier { get; set; } = null!;
+    public virtual Customer Customer { get; set; } = null!;
 }

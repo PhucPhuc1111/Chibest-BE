@@ -63,9 +63,7 @@ public partial class Payroll
 
     public DateTime UpdatedAt { get; set; }
 
-    public virtual Warehouse Branch { get; set; } = null!;
+    public virtual Branch Branch { get; set; } = null!;
 
     public virtual Account Employee { get; set; } = null!;
-
-    public virtual ICollection<PayrollDetail> PayrollDetails { get; set; } = new List<PayrollDetail>();
 }

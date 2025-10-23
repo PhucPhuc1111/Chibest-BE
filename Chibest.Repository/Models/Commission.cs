@@ -9,8 +9,6 @@ public partial class Commission
 
     public Guid EmployeeId { get; set; }
 
-    public Guid? SalesOrderId { get; set; }
-
     public string CommissionType { get; set; } = null!;
 
     public decimal Amount { get; set; }
@@ -18,6 +16,10 @@ public partial class Commission
     public decimal? CalculationBase { get; set; }
 
     public decimal? CommissionRate { get; set; }
+
+    public string? ReferenceType { get; set; }
+
+    public Guid? ReferenceId { get; set; }
 
     public int PeriodMonth { get; set; }
 
@@ -28,6 +30,4 @@ public partial class Commission
     public DateTime CreatedAt { get; set; }
 
     public virtual Account Employee { get; set; } = null!;
-
-    public virtual SalesOrder? SalesOrder { get; set; }
 }

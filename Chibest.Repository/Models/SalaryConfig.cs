@@ -39,7 +39,11 @@ public partial class SalaryConfig
 
     public string Status { get; set; } = null!;
 
-    public virtual Warehouse Branch { get; set; } = null!;
+    public DateTime CreatedAt { get; set; }
+
+    public DateTime UpdatedAt { get; set; }
+
+    public virtual Branch Branch { get; set; } = null!;
 
     public virtual Account Employee { get; set; } = null!;
 }
