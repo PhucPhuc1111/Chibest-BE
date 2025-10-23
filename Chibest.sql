@@ -243,6 +243,7 @@ CREATE TABLE PurchaseOrder (
 );
 GO
 
+CREATE NONCLUSTERED INDEX IX_PurchaseOrder_InvoiceCode ON [PurchaseOrder]([InvoiceCode]);
 CREATE NONCLUSTERED INDEX IX_TransactionOrder_Status ON [PurchaseOrder]([Status]);
 CREATE NONCLUSTERED INDEX IX_TransactionOrder_OrderDate ON [PurchaseOrder](OrderDate DESC);
 GO
@@ -350,9 +351,8 @@ CREATE TABLE PurchaseReturnDetail (
     Id UNIQUEIDENTIFIER DEFAULT NEWID() PRIMARY KEY,
     ContainerCode NVARCHAR(100) NOT NULL UNIQUE,                -- Mã lô hàng
     Quantity INT NOT NULL,
-    ActualQuantity INT,
     UnitPrice MONEY NOT NULL,
-    Discount DECIMAL(5,2) NOT NULL DEFAULT 0,
+    ReturnPrice MONEY NOT NULL,
     Note NVARCHAR(MAX),
     PurchaseReturnId UNIQUEIDENTIFIER NOT NULL FOREIGN KEY REFERENCES [PurchaseReturn](Id),
     ProductId UNIQUEIDENTIFIER NOT NULL FOREIGN KEY REFERENCES [Product](Id)

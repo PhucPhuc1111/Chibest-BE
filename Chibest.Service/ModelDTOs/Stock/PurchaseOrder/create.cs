@@ -5,10 +5,11 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Chibest.Service.ModelDTOs.PurchaseOrder
+namespace Chibest.Service.ModelDTOs.Stock.PurchaseOrder
 {
     public class PurchaseOrderCreate
     {
+        public string? InvoiceCode { get; set; }
         public DateTime OrderDate { get; set; }
 
         public string? PayMethod { get; set; }

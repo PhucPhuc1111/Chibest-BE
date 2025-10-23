@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Chibest.Service.ModelDTOs.PurchaseOrder
+namespace Chibest.Service.ModelDTOs.Stock.PurchaseOrder
 {
     public class PurchaseOrderUpdate
     {

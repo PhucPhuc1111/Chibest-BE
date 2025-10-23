@@ -1,6 +1,6 @@
 ﻿using Azure.Core;
 using Chibest.Service.Interface;
-using Chibest.Service.ModelDTOs.PurchaseOrder;
+using Chibest.Service.ModelDTOs.Stock.PurchaseOrder;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Chibest.API.Controllers
@@ -25,9 +25,9 @@ namespace Chibest.API.Controllers
         public async Task<IActionResult> GetPurchaseOrderList(
             [FromQuery] int pageIndex = 1,
             [FromQuery] int pageSize = 10,
-            [FromQuery] string? search = null)
+            [FromQuery] string? search = null, DateTime? fromDate = null, DateTime? toDate = null, string status = null)
         {
-            var result = await _purchaseOrderService.GetPurchaseOrderList(pageIndex, pageSize, search);
+            var result = await _purchaseOrderService.GetPurchaseOrderList(pageIndex, pageSize, search, fromDate,toDate,status);
             return StatusCode(result.StatusCode, result);
         }
 
@@ -43,6 +43,5 @@ namespace Chibest.API.Controllers
             var result = await _purchaseOrderService.UpdateAsync(id,request);
             return StatusCode(result.StatusCode, result);
         }
-
     }
 }

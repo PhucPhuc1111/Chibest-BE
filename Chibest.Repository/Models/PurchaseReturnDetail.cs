@@ -11,11 +11,9 @@ public partial class PurchaseReturnDetail
 
     public int Quantity { get; set; }
 
-    public int? ActualQuantity { get; set; }
-
     public decimal UnitPrice { get; set; }
 
-    public decimal Discount { get; set; }
+    public decimal ReturnPrice { get; set; }
 
     public string? Note { get; set; }
 
