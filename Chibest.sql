@@ -202,24 +202,6 @@ GO
 CREATE NONCLUSTERED INDEX IX_ProductPriceHistory_Product_Branch ON ProductPriceHistory(ProductId, BranchId, EffectiveDate DESC);
 GO
 
--- Lịch sử giá nhập từ nhà cung cấp
-CREATE TABLE PurchasePriceHistory (
-    Id UNIQUEIDENTIFIER DEFAULT NEWID() PRIMARY KEY,
-    PurchasePrice MONEY NOT NULL,
-    EffectiveDate DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    ExpiryDate DATETIME NULL,
-    MinOrderQty INT NULL,
-    Note NVARCHAR(MAX),
-    CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    ProductId UNIQUEIDENTIFIER NOT NULL FOREIGN KEY REFERENCES [Product](Id),
-    SupplierId UNIQUEIDENTIFIER NULL FOREIGN KEY REFERENCES [Account](Id)
-);
-GO
-
-CREATE NONCLUSTERED INDEX IX_PurchasePriceHistory_Product_Supplier ON PurchasePriceHistory(ProductId, SupplierId, EffectiveDate DESC);
-GO
-
 -- =============================================
 -- MODULE 6: INVENTORY MANAGEMENT
 -- Quản lý tồn kho theo chi nhánh/kho
@@ -777,7 +759,20 @@ CREATE NONCLUSTERED INDEX IX_BranchDebtHistory_Branch ON BranchDebtHistory(Branc
 GO
 
 -- =============================================
--- MODULE 13: EMPLOYEE & PAYROLL
+-- MODULE 13: Fee
+-- Quản lý phí phát sinh mỗi giao dịch
+-- =============================================
+CREATE TABLE Fee (
+    Id UNIQUEIDENTIFIER DEFAULT NEWID() PRIMARY KEY,
+    [Name] NVARCHAR(100) NOT NULL,
+    Cost MONEY NOT NULL,
+
+    CreatedBy UNIQUEIDENTIFIER FOREIGN KEY REFERENCES [Account](Id),
+    PurchaseOrderId UNIQUEIDENTIFIER FOREIGN KEY REFERENCES PurchaseOrder(Id),
+    TransferOrderId UNIQUEIDENTIFIER FOREIGN KEY REFERENCES TransferOrder(Id),
+
+-- =============================================
+-- MODULE 14: EMPLOYEE & PAYROLL
 -- Quản lý nhân viên và lương
 -- =============================================
 
@@ -853,6 +848,7 @@ CREATE NONCLUSTERED INDEX IX_Attendance_EmployeeId ON Attendance(EmployeeId, Wor
 CREATE NONCLUSTERED INDEX IX_Attendance_BranchId ON Attendance(BranchId, WorkDate DESC);
 GO
 
+-- Tien hoa hong
 CREATE TABLE Commission (
     Id UNIQUEIDENTIFIER DEFAULT NEWID() PRIMARY KEY,
     EmployeeId UNIQUEIDENTIFIER NOT NULL FOREIGN KEY REFERENCES [Account](Id),
@@ -954,7 +950,7 @@ CREATE NONCLUSTERED INDEX IX_Payroll_Status ON Payroll(PaymentStatus, PeriodYear
 GO
 
 -- =============================================
--- MODULE 14: SYSTEM AUDIT
+-- MODULE 15: SYSTEM AUDIT
 -- Quản lý log hệ thống
 -- =============================================
 
