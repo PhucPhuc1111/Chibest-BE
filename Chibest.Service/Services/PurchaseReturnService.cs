@@ -5,7 +5,9 @@ using Chibest.Repository;
 using Chibest.Repository.Models;
 using Chibest.Service.Interface;
 using Chibest.Service.Utilities;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using OfficeOpenXml;
 using System.Linq.Expressions;
 using static Chibest.Service.ModelDTOs.Stock.PurchaseReturn.create;
 using static Chibest.Service.ModelDTOs.Stock.PurchaseReturn.id;
@@ -245,6 +247,96 @@ namespace Chibest.Service.Services
             }
             string randomPart = new Random().Next(100, 999).ToString();
             return $"{prefix}{nextNumber:D4}{randomPart}";
+        }
+
+        public async Task<IBusinessResult> ReadPurchaseReturnFromExcel(IFormFile file)
+        {
+            ExcelPackage.License.SetNonCommercialOrganization("Chibest");
+            var result = new List<PurchaseReturnDetailResponse>();
+            var errorRows = new List<string>();
+
+            if (file == null || file.Length == 0)
+                throw new ArgumentException("File không hợp lệ hoặc trống.");
+
+            using (var stream = new MemoryStream())
+            {
+                await file.CopyToAsync(stream);
+                using (var package = new ExcelPackage(stream))
+                {
+                    var sheet = package.Workbook.Worksheets["PurchaseReturnTemplate"];
+                    if (sheet == null)
+                        throw new Exception("Không tìm thấy sheet 'PurchaseReturnTemplate' trong file Excel.");
+
+                    int startRow = 2;
+                    int row = startRow;
+
+                    while (true)
+                    {
+                        var productCode = sheet.Cells[row, 1].Text?.Trim();
+                        if (string.IsNullOrEmpty(productCode))
+                            break;
+
+                        try
+                        {
+                            var quantity = ParseInt(sheet.Cells[row, 3].Text);
+                            var unitPrice = ParseDecimal(sheet.Cells[row, 4].Text);
+                            var returnPrice = ParseDecimal(sheet.Cells[row, 5].Text);
+                            var discount = ParseDecimal(sheet.Cells[row, 6].Text);
+
+                            var product = await _unitOfWork.ProductRepository.GetByWhere(x => x.Sku == productCode).FirstOrDefaultAsync();
+                            if (product == null)
+                            {
+                                errorRows.Add($"Dòng {row}: Không tìm thấy sản phẩm có mã '{productCode}'");
+                                row++;
+                                continue;
+                            }
+
+                            result.Add(new PurchaseReturnDetailResponse
+                            {
+                                Id = Guid.NewGuid(),
+                                Sku = product.Sku,
+                                ProductName = product.Name,
+                                Quantity = quantity,
+                                UnitPrice = unitPrice,
+                                ReturnPrice = returnPrice,
+                                Note = $"Giảm giá trả lại: {discount}"
+                            });
+                        }
+                        catch (Exception ex)
+                        {
+                            errorRows.Add($"Dòng {row}: Lỗi xử lý dữ liệu ({ex.Message})");
+                        }
+
+                        row++;
+                    }
+                }
+            }
+
+            var message = Const.SUCCESS_READ_MSG;
+            if (errorRows.Any())
+            {
+                message += $" (Có {errorRows.Count} dòng bị bỏ qua)";
+                foreach (var err in errorRows)
+                    Console.WriteLine(err);
+            }
+
+            return new BusinessResult(Const.HTTP_STATUS_OK, message, result);
+        }
+
+        private decimal ParseDecimal(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return 0;
+            // Loại bỏ dấu phẩy phân cách hàng nghìn và chuyển đổi
+            value = value.Replace(",", "").Trim();
+            return decimal.TryParse(value, out decimal result) ? result : 0;
+        }
+
+        private int ParseInt(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return 0;
+            // Loại bỏ dấu phẩy phân cách hàng nghìn và chuyển đổi
+            value = value.Replace(",", "").Trim();
+            return int.TryParse(value, out int result) ? result : 0;
         }
 
     }

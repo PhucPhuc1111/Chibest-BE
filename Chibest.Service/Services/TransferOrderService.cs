@@ -5,7 +5,9 @@ using Chibest.Repository;
 using Chibest.Repository.Models;
 using Chibest.Service.Interface;
 using Chibest.Service.Utilities;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using OfficeOpenXml;
 using System.Linq.Expressions;
 using static Chibest.Service.ModelDTOs.Stock.TransferOrder.create;
 using static Chibest.Service.ModelDTOs.Stock.TransferOrder.id;
@@ -279,5 +281,72 @@ namespace Chibest.Service.Services
             string randomPart = new Random().Next(100, 999).ToString();
             return $"{prefix}{nextNumber:D4}{randomPart}";
         }
+
+        public async Task<IBusinessResult> ReadTransferDetailFromExcel(IFormFile file)
+        {
+            ExcelPackage.License.SetNonCommercialOrganization("Chibest");
+            var result = new List<TransferOrderDetailResponse>();
+
+            if (file == null || file.Length == 0)
+                return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "File không hợp lệ hoặc trống.");
+
+            using (var stream = new MemoryStream())
+            {
+                await file.CopyToAsync(stream);
+                using (var package = new ExcelPackage(stream))
+                {
+                    var sheet = package.Workbook.Worksheets["TransferDetailTemplate"];
+                    if (sheet == null)
+                        return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Không tìm thấy sheet 'TransferDetailTemplate' trong file Excel.");
+
+                    int startRow = 2;
+                    int row = startRow;
+
+                    while (true)
+                    {
+                        var productCode = sheet.Cells[row, 1].Text?.Trim();
+                        if (string.IsNullOrEmpty(productCode))
+                            break; 
+
+                        var quantity = ParseInt(sheet.Cells[row, 2].Text);
+                        var transferPrice = ParseDecimal(sheet.Cells[row, 3].Text);
+                        var commissionFee = ParseDecimal(sheet.Cells[row, 4].Text);
+                        var extrafee = ParseDecimal(sheet.Cells[row, 5].Text);
+
+                        var product = await _unitOfWork.ProductRepository.GetByWhere(x => x.Sku == productCode).FirstOrDefaultAsync();
+
+                        if (product == null)
+                        {
+                            Console.WriteLine($"⚠️ Không tìm thấy sản phẩm có mã: {productCode}");
+                            row++;
+                            continue;
+                        }
+
+                        result.Add(new TransferOrderDetailResponse
+                        {
+                            ProductName = product.Name,
+                            Sku = product.Sku,
+                            Quantity = quantity,
+                            UnitPrice = transferPrice,
+                            CommissionFee = commissionFee,
+                            ExtraFee = extrafee
+                        });
+
+                        row++;
+                    }
+                }
+            }
+
+            return new BusinessResult(Const.HTTP_STATUS_OK, "Đọc file thành công.", result);
+        }
+
+        private decimal ParseDecimal(string input)
+            => decimal.TryParse(input, out var value) ? value : 0;
+
+        private int ParseInt(string input)
+            => int.TryParse(input, out var value) ? value : 0;
+
     }
 }
+
+

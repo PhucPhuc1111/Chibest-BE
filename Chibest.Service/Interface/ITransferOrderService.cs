@@ -1,4 +1,5 @@
 ﻿using Chibest.Common.BusinessResult;
+using Microsoft.AspNetCore.Http;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,5 +17,6 @@ namespace Chibest.Service.Interface
     DateTime? fromDate = null, DateTime? toDate = null, string status = null);
         Task<IBusinessResult> GetTransferOrderById(Guid id);
         Task<IBusinessResult> UpdateTransferOrderAsync(Guid id, TransferOrderUpdate request);
+        Task<IBusinessResult> ReadTransferDetailFromExcel(IFormFile file);
     }
 }

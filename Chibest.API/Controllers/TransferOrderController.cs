@@ -1,6 +1,9 @@
-﻿using Chibest.Service.Interface;
+﻿using Chibest.Common;
+using Chibest.Common.BusinessResult;
+using Chibest.Service.Interface;
 using Chibest.Service.ModelDTOs.Stock.PurchaseOrder;
 using Microsoft.AspNetCore.Mvc;
+using OfficeOpenXml;
 using static Chibest.Service.ModelDTOs.Stock.TransferOrder.create;
 using static Chibest.Service.ModelDTOs.Stock.TransferOrder.update;
 
@@ -33,18 +36,23 @@ namespace Chibest.API.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> CreatePurchaseOrder([FromBody] TransferOrderCreate request)
+        public async Task<IActionResult> CreateTransferOrder([FromBody] TransferOrderCreate request)
         {
             var result = await _transferOrderService.AddTransferOrder(request);
             return StatusCode(result.StatusCode, result);
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdatePurchaseOrder(Guid id, [FromBody] TransferOrderUpdate request)
+        public async Task<IActionResult> UpdateTransferOrder(Guid id, [FromBody] TransferOrderUpdate request)
         {
             var result = await _transferOrderService.UpdateTransferOrderAsync(id, request);
             return StatusCode(result.StatusCode, result);
         }
-
+        [HttpPost("file")]
+        public async Task<IActionResult> TransferOrderfile(IFormFile file)
+        {
+            var result = await _transferOrderService.ReadTransferDetailFromExcel(file);
+            return StatusCode(result.StatusCode, result);
+        }
     }
 }

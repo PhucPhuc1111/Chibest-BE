@@ -1,5 +1,6 @@
 ﻿using Chibest.Common.BusinessResult;
 using Chibest.Common.Enums;
+using Microsoft.AspNetCore.Http;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -21,5 +22,6 @@ namespace Chibest.Service.Interface
             DateTime? toDate = null,
             string status = null);
         Task<IBusinessResult> UpdatePurchaseReturnAsync(Guid id, OrderStatus status);
+        Task<IBusinessResult> ReadPurchaseReturnFromExcel(IFormFile file);
     }
 }

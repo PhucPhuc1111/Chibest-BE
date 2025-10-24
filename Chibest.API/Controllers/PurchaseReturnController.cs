@@ -1,4 +1,5 @@
-﻿using Chibest.Common.Enums;
+﻿using Chibest.Common.BusinessResult;
+using Chibest.Common.Enums;
 using Chibest.Repository.Interface;
 using Chibest.Service.Interface;
 using Chibest.Service.ModelDTOs.Stock.PurchaseOrder;
@@ -50,6 +51,12 @@ namespace Chibest.API.Controllers
             var result = await _purchaseReturnService.UpdatePurchaseReturnAsync(id, status);
             return StatusCode(result.StatusCode, result);
         }
+
+        [HttpPost("file")]
+        public async Task<IActionResult> PurchaseReturnfile(IFormFile file)
+        {
+            var result = await _purchaseReturnService.ReadPurchaseReturnFromExcel(file);
+            return StatusCode(result.StatusCode, result);
+        }
     }
 }
-
