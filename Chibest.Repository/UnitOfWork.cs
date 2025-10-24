@@ -16,6 +16,7 @@ namespace Chibest.Repository
         private IBranchStockRepository _branchStockRepository;
         private IProductRepository _productRepository;
         private IProductDetailRepository _productDetailRepository;
+        private IProductPriceHistoryRepository _productPriceHistoryRepository;
         private ISystemLogRepository _systemLogRepository;
         private ICategoryRepository _categoryRepository;
         private IPurchaseOrderRepository _purchaseOrderRepository;
@@ -35,7 +36,10 @@ namespace Chibest.Repository
         public IBranchStockRepository BranchStockRepository => _branchStockRepository ??= new BranchStockRepository(_context);
         public ICategoryRepository CategoryRepository => _categoryRepository ??= new CategoryRepository(_context);
         public IProductRepository ProductRepository => _productRepository ??= new ProductRepository(_context);
-        public IProductDetailRepository ProductDetailRepository => _productDetailRepository ??= new ProductDetailRepository(_context);
+        public IProductDetailRepository ProductDetailRepository 
+            => _productDetailRepository ??= new ProductDetailRepository(_context);
+        public IProductPriceHistoryRepository ProductPriceHistoryRepository 
+            => _productPriceHistoryRepository ??= new ProductPriceHistoryRepository(_context);
         public ISystemLogRepository SystemLogRepository => _systemLogRepository ??= new SystemLogRepository(_context);
 
         public IPurchaseOrderRepository PurchaseOrderRepository => _purchaseOrderRepository ??= new PurchaseOrderRepository(_context);
