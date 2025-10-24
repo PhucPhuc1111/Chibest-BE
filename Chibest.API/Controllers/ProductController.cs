@@ -21,7 +21,7 @@ public class ProductController : ControllerBase
 
     [Authorize]
     [HttpGet]
-    public async Task<IActionResult> GetList([FromBody] ProductQuery query)
+    public async Task<IActionResult> GetList([FromQuery] ProductQuery query)
     {
         var result = await _productService.GetListAsync(query);
         return StatusCode(result.StatusCode, result);
@@ -29,7 +29,7 @@ public class ProductController : ControllerBase
 
     [Authorize]
     [HttpGet("{id}")]
-    public async Task<IActionResult> GetById(Guid id)
+    public async Task<IActionResult> GetById([FromRoute] Guid id)
     {
         var result = await _productService.GetByIdAsync(id);
         return StatusCode(result.StatusCode, result);
@@ -37,7 +37,7 @@ public class ProductController : ControllerBase
 
     [Authorize]
     [HttpGet("sku/{sku}")]
-    public async Task<IActionResult> GetBySKU(string sku)
+    public async Task<IActionResult> GetBySKU([FromRoute] string sku)
     {
         var result = await _productService.GetBySKUAsync(sku);
         return StatusCode(result.StatusCode, result);

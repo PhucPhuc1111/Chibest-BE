@@ -21,7 +21,7 @@ public class ProductDetailController : ControllerBase
 
     [Authorize]
     [HttpGet]
-    public async Task<IActionResult> GetList([FromBody] ProductDetailQuery query)
+    public async Task<IActionResult> GetList([FromQuery] ProductDetailQuery query)
     {
         var result = await _productDetailService.GetListAsync(query);
         return StatusCode(result.StatusCode, result);

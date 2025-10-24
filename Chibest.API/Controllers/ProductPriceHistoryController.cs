@@ -29,7 +29,7 @@ public class ProductPriceHistoryController : ControllerBase
 
     [Authorize]
     [HttpGet("{id}")]
-    public async Task<IActionResult> GetById(Guid id)
+    public async Task<IActionResult> GetById([FromRoute] Guid id)
     {
         var result = await _priceHistoryService.GetByIdAsync(id);
         return StatusCode(result.StatusCode, result);
@@ -45,7 +45,7 @@ public class ProductPriceHistoryController : ControllerBase
 
     [Authorize]
     [HttpGet("product/{productId}")]
-    public async Task<IActionResult> GetByProductId(Guid productId)
+    public async Task<IActionResult> GetByProductId([FromRoute] Guid productId)
     {
         var result = await _priceHistoryService.GetByProductIdAsync(productId);
         return StatusCode(result.StatusCode, result);
@@ -53,7 +53,7 @@ public class ProductPriceHistoryController : ControllerBase
 
     [Authorize]
     [HttpGet("branch/{branchId}")]
-    public async Task<IActionResult> GetByBranchId(Guid branchId)
+    public async Task<IActionResult> GetByBranchId([FromRoute] Guid branchId)
     {
         var result = await _priceHistoryService.GetByBranchIdAsync(branchId);
         return StatusCode(result.StatusCode, result);
