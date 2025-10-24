@@ -7,11 +7,13 @@ public partial class TransferOrderDetail
 {
     public Guid Id { get; set; }
 
-    public string ContainerCode { get; set; } = null!;
-
     public int Quantity { get; set; }
 
     public int? ActualQuantity { get; set; }
+
+    public decimal ExtraFee { get; set; }
+
+    public decimal CommissionFee { get; set; }
 
     public decimal UnitPrice { get; set; }
 

@@ -43,10 +43,6 @@ public partial class Payroll
 
     public decimal UnemploymentInsurance { get; set; }
 
-    public decimal TaxableIncome { get; set; }
-
-    public decimal PersonalTax { get; set; }
-
     public decimal? GrossSalary { get; set; }
 
     public decimal? NetSalary { get; set; }

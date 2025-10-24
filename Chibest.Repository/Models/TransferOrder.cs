@@ -15,15 +15,11 @@ public partial class TransferOrder
 
     public DateTime UpdatedAt { get; set; }
 
-    public DateTime? ActualDeliveryDate { get; set; }
-
     public string? PayMethod { get; set; }
 
     public decimal SubTotal { get; set; }
 
     public decimal DiscountAmount { get; set; }
-
-    public decimal TaxAmount { get; set; }
 
     public decimal Paid { get; set; }
 

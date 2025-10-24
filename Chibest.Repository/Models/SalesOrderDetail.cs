@@ -25,8 +25,6 @@ public partial class SalesOrderDetail
 
     public decimal DiscountAmount { get; set; }
 
-    public decimal TaxPercent { get; set; }
-
     public decimal? TotalPrice { get; set; }
 
     public string? Note { get; set; }
@@ -36,6 +34,4 @@ public partial class SalesOrderDetail
     public virtual ProductDetail? ProductDetail { get; set; }
 
     public virtual SalesOrder SalesOrder { get; set; } = null!;
-
-    public virtual ICollection<SalesReturnDetail> SalesReturnDetails { get; set; } = new List<SalesReturnDetail>();
 }

@@ -65,7 +65,6 @@ CREATE TABLE Account (
     PhoneNumber NVARCHAR(15),
     [Address] NVARCHAR(MAX),
     CCCD NVARCHAR(20),
-    TaxCode NVARCHAR(50),
     FaxNumber NVARCHAR(15),
     AvatarURL NVARCHAR(MAX),
     fcmToken NVARCHAR(255),
@@ -324,12 +323,10 @@ CREATE TABLE PurchaseOrder (
     -- Thời gian giao hàng
     CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	UpdatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    ActualDeliveryDate DATETIME,
     -- Thông tin thanh toán
     PayMethod NVARCHAR(40) DEFAULT N'Tiền Mặt',
     SubTotal MONEY NOT NULL DEFAULT 0,
     DiscountAmount MONEY NOT NULL DEFAULT 0,
-    TaxAmount MONEY NOT NULL DEFAULT 0,
     Paid MONEY NOT NULL DEFAULT 0,
     Note NVARCHAR(MAX),
     [Status] NVARCHAR(40) NOT NULL DEFAULT 'Chờ Xử Lý',
@@ -348,7 +345,6 @@ GO
 -- Chi Tiết Đơn Nhập
 CREATE TABLE PurchaseOrderDetail (
     Id UNIQUEIDENTIFIER DEFAULT NEWID() PRIMARY KEY,
-    ContainerCode NVARCHAR(100) NOT NULL UNIQUE,                -- Mã lô hàng
     Quantity INT NOT NULL,
     ActualQuantity INT,
     ReFee money not null,
@@ -362,7 +358,6 @@ GO
 
 CREATE NONCLUSTERED INDEX IX_TransactionOrderDetail_OrderId ON [PurchaseOrderDetail](PurchaseOrderId);
 CREATE NONCLUSTERED INDEX IX_TransactionOrderDetail_ProductId ON [PurchaseOrderDetail](ProductId);
-CREATE NONCLUSTERED INDEX IX_TransactionOrderDetail_ContainerCode ON [PurchaseOrderDetail](ContainerCode);
 GO
 
 -- =============================================
@@ -376,12 +371,10 @@ CREATE TABLE TransferOrder (
     -- Thời gian giao hàng
     CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	UpdatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    ActualDeliveryDate DATETIME,
     -- Thông tin thanh toán
     PayMethod NVARCHAR(40) DEFAULT N'Tiền Mặt',
     SubTotal MONEY NOT NULL DEFAULT 0,
     DiscountAmount MONEY NOT NULL DEFAULT 0,
-    TaxAmount MONEY NOT NULL DEFAULT 0,
     Paid MONEY NOT NULL DEFAULT 0,
     Note NVARCHAR(MAX),
     [Status] NVARCHAR(40) NOT NULL DEFAULT 'Chờ Xử Lý',
@@ -399,7 +392,6 @@ GO
 -- Chi Tiết Đơn  chuyển
 CREATE TABLE TransferOrderDetail (
     Id UNIQUEIDENTIFIER DEFAULT NEWID() PRIMARY KEY,
-    ContainerCode NVARCHAR(100) NOT NULL UNIQUE,                -- Mã lô hàng
     Quantity INT NOT NULL,
     ActualQuantity INT,
     ExtraFee money not null,
@@ -414,7 +406,6 @@ GO
 
 CREATE NONCLUSTERED INDEX IX_TransferOrderDetail_OrderId ON [TransferOrderDetail](TransferOrderId);
 CREATE NONCLUSTERED INDEX IX_TransferOrderDetail_ProductId ON [TransferOrderDetail](ProductId);
-CREATE NONCLUSTERED INDEX IX_TransferOrderDetail_ContainerCode ON [TransferOrderDetail](ContainerCode);
 GO
 
 -- Phiếu đơn lỗi
@@ -424,10 +415,7 @@ CREATE TABLE PurchaseReturn (
     OrderDate DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UpdatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PayMethod NVARCHAR(40) DEFAULT N'Tiền Mặt',
     SubTotal MONEY NOT NULL DEFAULT 0,
-    DiscountAmount MONEY NOT NULL DEFAULT 0,
-    Paid MONEY NOT NULL DEFAULT 0,
     Note NVARCHAR(MAX),
     [Status] NVARCHAR(40) NOT NULL DEFAULT N'Chờ Xử Lý',
     EmployeeId UNIQUEIDENTIFIER NULL,
@@ -445,7 +433,6 @@ GO
 -- Chi Tiết Đơn lỗi
 CREATE TABLE PurchaseReturnDetail (
     Id UNIQUEIDENTIFIER DEFAULT NEWID() PRIMARY KEY,
-    ContainerCode NVARCHAR(100) NOT NULL UNIQUE,                -- Mã lô hàng
     Quantity INT NOT NULL,
     UnitPrice MONEY NOT NULL,
     ReturnPrice MONEY NOT NULL,
@@ -456,12 +443,11 @@ CREATE TABLE PurchaseReturnDetail (
 GO
 CREATE NONCLUSTERED INDEX IX_PurchaseReturnDetail_OrderId ON [PurchaseReturnDetail](PurchaseReturnId);
 CREATE NONCLUSTERED INDEX IX_PurchaseReturnDetail_ProductId ON [PurchaseReturnDetail](ProductId);
-CREATE NONCLUSTERED INDEX IX_PurchaseReturnDetail_ContainerCode ON [PurchaseReturnDetail](ContainerCode);
 GO
 
 -- =============================================
 -- MODULE 10: STOCK ADJUSTMENT
--- Điều chỉnh và kiểm kê kho và Cân bằng kho
+-- Điều chỉnh và kiểm kê kho 
 -- =============================================
 
 CREATE TABLE StockAdjustment (
@@ -475,7 +461,7 @@ CREATE TABLE StockAdjustment (
     EmployeeId UNIQUEIDENTIFIER NOT NULL FOREIGN KEY REFERENCES [Account](Id),
     
     TotalValueChange MONEY NOT NULL DEFAULT 0,
-    [Status] NVARCHAR(40) NOT NULL DEFAULT N'Chờ Duyệt',
+    [Status] NVARCHAR(40) NOT NULL DEFAULT N'Lưu tạm',
     
     Reason NVARCHAR(MAX),
     Note NVARCHAR(MAX),
@@ -552,7 +538,6 @@ GO
 CREATE TABLE CustomerVoucher (
     VoucherId UNIQUEIDENTIFIER NOT NULL FOREIGN KEY REFERENCES [Voucher](Id),
     CustomerId UNIQUEIDENTIFIER NOT NULL FOREIGN KEY REFERENCES [Customer](Id),
-    
     CollectedDate DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UsedDate DATETIME NULL,
     [Status] NVARCHAR(40) NOT NULL DEFAULT N'Đã Nhận',
@@ -593,8 +578,7 @@ CREATE TABLE SalesOrder (
     VoucherId UNIQUEIDENTIFIER NULL FOREIGN KEY REFERENCES [Voucher](Id),
     VoucherAmount MONEY NOT NULL DEFAULT 0,
     ShippingFee MONEY NOT NULL DEFAULT 0,
-    TaxAmount MONEY NOT NULL DEFAULT 0,
-    FinalAmount AS (SubTotal - DiscountAmount - VoucherAmount + ShippingFee + TaxAmount) PERSISTED,
+    FinalAmount AS (SubTotal - DiscountAmount - VoucherAmount + ShippingFee) PERSISTED,
     PaidAmount MONEY NOT NULL DEFAULT 0,
     
     [Status] NVARCHAR(50) NOT NULL DEFAULT N'Đặt Trước',
@@ -623,8 +607,7 @@ CREATE TABLE SalesOrderDetail (
     UnitPrice MONEY NOT NULL,
     DiscountPercent DECIMAL(5,2) NOT NULL DEFAULT 0,
     DiscountAmount MONEY NOT NULL DEFAULT 0,
-    TaxPercent DECIMAL(5,2) NOT NULL DEFAULT 0,
-    TotalPrice AS (Quantity * UnitPrice - DiscountAmount + (Quantity * UnitPrice * TaxPercent / 100)) PERSISTED,
+    TotalPrice AS (Quantity * UnitPrice - DiscountAmount + (Quantity * UnitPrice / 100)) PERSISTED,
     
     Note NVARCHAR(MAX)
 );
@@ -632,45 +615,6 @@ GO
 
 CREATE NONCLUSTERED INDEX IX_SalesOrderDetail_OrderId ON SalesOrderDetail(SalesOrderId);
 CREATE NONCLUSTERED INDEX IX_SalesOrderDetail_ProductId ON SalesOrderDetail(ProductId);
-GO
-
--- Đơn trả hàng từ khách
-CREATE TABLE SalesReturn (
-    Id UNIQUEIDENTIFIER DEFAULT NEWID() PRIMARY KEY,
-    ReturnCode NVARCHAR(100) UNIQUE NOT NULL,
-    ReturnDate DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    
-    SalesOrderId UNIQUEIDENTIFIER NULL FOREIGN KEY REFERENCES [SalesOrder](Id),
-    CustomerId UNIQUEIDENTIFIER NOT NULL FOREIGN KEY REFERENCES [Customer](Id),
-    BranchId UNIQUEIDENTIFIER NOT NULL FOREIGN KEY REFERENCES [Branch](Id),
-    EmployeeId UNIQUEIDENTIFIER NULL FOREIGN KEY REFERENCES [Account](Id),
-    
-    RefundAmount MONEY NOT NULL DEFAULT 0,
-    RefundMethod NVARCHAR(50) NOT NULL DEFAULT N'Tiền Mặt',
-    
-    [Status] NVARCHAR(40) NOT NULL DEFAULT N'Chờ Xử Lý',
-    Reason NVARCHAR(MAX),
-    Note NVARCHAR(MAX),
-    
-    CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    UpdatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-GO
-
-CREATE TABLE SalesReturnDetail (
-    Id UNIQUEIDENTIFIER DEFAULT NEWID() PRIMARY KEY,
-    SalesReturnId UNIQUEIDENTIFIER NOT NULL FOREIGN KEY REFERENCES [SalesReturn](Id),
-    SalesOrderDetailId UNIQUEIDENTIFIER NULL FOREIGN KEY REFERENCES [SalesOrderDetail](Id),
-    ProductId UNIQUEIDENTIFIER NOT NULL FOREIGN KEY REFERENCES [Product](Id),
-    ProductDetailId UNIQUEIDENTIFIER NULL FOREIGN KEY REFERENCES [ProductDetail](Id),
-    
-    ReturnQty INT NOT NULL,
-    UnitPrice MONEY NOT NULL,
-    RefundAmount MONEY NOT NULL,
-    
-    Condition NVARCHAR(50) NOT NULL, -- Nguyên Vẹn, Hư Hỏng, Lỗi
-    Note NVARCHAR(MAX)
-);
 GO
 
 -- =============================================
@@ -697,20 +641,12 @@ GO
 CREATE TABLE SupplierDebtHistory (
     Id UNIQUEIDENTIFIER DEFAULT NEWID() PRIMARY KEY,
     SupplierId UNIQUEIDENTIFIER NOT NULL FOREIGN KEY REFERENCES [Account](Id),
-    
     TransactionType NVARCHAR(50) NOT NULL, -- Phát Sinh Nợ, Thanh Toán, Điều Chỉnh
     TransactionDate DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    Amount MONEY NOT NULL,
-    
-    ReferenceType NVARCHAR(50) NULL,
-    ReferenceId UNIQUEIDENTIFIER NULL,
-    ReferenceCode NVARCHAR(100) NULL,
-    
+    Amount MONEY NOT NULL,    
     BalanceBefore MONEY NOT NULL,
-    BalanceAfter MONEY NOT NULL,
-    
+    BalanceAfter MONEY NOT NULL, 
     Note NVARCHAR(MAX),
-    CreatedBy UNIQUEIDENTIFIER NULL FOREIGN KEY REFERENCES [Account](Id),
     CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 GO
@@ -737,39 +673,18 @@ GO
 CREATE TABLE BranchDebtHistory (
     Id UNIQUEIDENTIFIER DEFAULT NEWID() PRIMARY KEY,
     BranchId UNIQUEIDENTIFIER NOT NULL FOREIGN KEY REFERENCES [Branch](Id),
-    
     TransactionType NVARCHAR(50) NOT NULL,
     TransactionDate DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     Amount MONEY NOT NULL,
-    
-    ReferenceType NVARCHAR(50) NULL,
-    ReferenceId UNIQUEIDENTIFIER NULL,
-    ReferenceCode NVARCHAR(100) NULL,
-    
     BalanceBefore MONEY NOT NULL,
     BalanceAfter MONEY NOT NULL,
-    
     Note NVARCHAR(MAX),
-    CreatedBy UNIQUEIDENTIFIER NULL FOREIGN KEY REFERENCES [Account](Id),
     CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 GO
 
 CREATE NONCLUSTERED INDEX IX_BranchDebtHistory_Branch ON BranchDebtHistory(BranchId, TransactionDate DESC);
 GO
-
--- =============================================
--- MODULE 13: Fee
--- Quản lý phí phát sinh mỗi giao dịch
--- =============================================
-CREATE TABLE Fee (
-    Id UNIQUEIDENTIFIER DEFAULT NEWID() PRIMARY KEY,
-    [Name] NVARCHAR(100) NOT NULL,
-    Cost MONEY NOT NULL,
-
-    CreatedBy UNIQUEIDENTIFIER FOREIGN KEY REFERENCES [Account](Id),
-    PurchaseOrderId UNIQUEIDENTIFIER FOREIGN KEY REFERENCES PurchaseOrder(Id),
-    TransferOrderId UNIQUEIDENTIFIER FOREIGN KEY REFERENCES TransferOrder(Id),
 
 -- =============================================
 -- MODULE 14: EMPLOYEE & PAYROLL
@@ -924,14 +839,11 @@ CREATE TABLE Payroll (
     HealthInsurance MONEY NOT NULL DEFAULT 0,
     UnemploymentInsurance MONEY NOT NULL DEFAULT 0,
     
-    -- Thuế
-    TaxableIncome MONEY NOT NULL DEFAULT 0,
-    PersonalTax MONEY NOT NULL DEFAULT 0,
     
     -- Tổng
     GrossSalary AS (ActualBaseSalary + TotalAllowance + OvertimeSalary + TotalCommission + TotalBonus) PERSISTED,
     NetSalary AS (ActualBaseSalary + TotalAllowance + OvertimeSalary + TotalCommission + TotalBonus 
-                  - TotalDeduction - SocialInsurance - HealthInsurance - UnemploymentInsurance - PersonalTax) PERSISTED,
+                  - TotalDeduction - SocialInsurance - HealthInsurance - UnemploymentInsurance) PERSISTED,
     
     PaymentDate DATE NULL,
     PaymentMethod NVARCHAR(50) DEFAULT N'Chuyển Khoản',

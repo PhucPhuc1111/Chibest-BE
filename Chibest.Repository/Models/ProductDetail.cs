@@ -37,8 +37,6 @@ public partial class ProductDetail
 
     public virtual ICollection<SalesOrderDetail> SalesOrderDetails { get; set; } = new List<SalesOrderDetail>();
 
-    public virtual ICollection<SalesReturnDetail> SalesReturnDetails { get; set; } = new List<SalesReturnDetail>();
-
     public virtual Account? Supplier { get; set; }
 
     public virtual Warehouse? Warehouse { get; set; }

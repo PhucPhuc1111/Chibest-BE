@@ -15,23 +15,13 @@ public partial class BranchDebtHistory
 
     public decimal Amount { get; set; }
 
-    public string? ReferenceType { get; set; }
-
-    public Guid? ReferenceId { get; set; }
-
-    public string? ReferenceCode { get; set; }
-
     public decimal BalanceBefore { get; set; }
 
     public decimal BalanceAfter { get; set; }
 
     public string? Note { get; set; }
 
-    public Guid? CreatedBy { get; set; }
-
     public DateTime CreatedAt { get; set; }
 
     public virtual Branch Branch { get; set; } = null!;
-
-    public virtual Account? CreatedByNavigation { get; set; }
 }

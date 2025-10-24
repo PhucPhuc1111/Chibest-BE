@@ -53,17 +53,11 @@ public partial class Product
 
     public virtual ICollection<PurchaseOrderDetail> PurchaseOrderDetails { get; set; } = new List<PurchaseOrderDetail>();
 
-    public virtual ICollection<PurchasePriceHistory> PurchasePriceHistories { get; set; } = new List<PurchasePriceHistory>();
-
     public virtual ICollection<PurchaseReturnDetail> PurchaseReturnDetails { get; set; } = new List<PurchaseReturnDetail>();
 
     public virtual ICollection<SalesOrderDetail> SalesOrderDetails { get; set; } = new List<SalesOrderDetail>();
 
-    public virtual ICollection<SalesReturnDetail> SalesReturnDetails { get; set; } = new List<SalesReturnDetail>();
-
     public virtual ICollection<StockAdjustmentDetail> StockAdjustmentDetails { get; set; } = new List<StockAdjustmentDetail>();
-
-    public virtual ICollection<StockBalancingDetail> StockBalancingDetails { get; set; } = new List<StockBalancingDetail>();
 
     public virtual ICollection<StockMovement> StockMovements { get; set; } = new List<StockMovement>();
 

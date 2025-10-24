@@ -7,8 +7,6 @@ public partial class PurchaseReturnDetail
 {
     public Guid Id { get; set; }
 
-    public string ContainerCode { get; set; } = null!;
-
     public int Quantity { get; set; }
 
     public decimal UnitPrice { get; set; }

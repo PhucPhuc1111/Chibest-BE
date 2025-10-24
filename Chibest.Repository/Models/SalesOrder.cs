@@ -49,8 +49,6 @@ public partial class SalesOrder
 
     public decimal ShippingFee { get; set; }
 
-    public decimal TaxAmount { get; set; }
-
     public decimal? FinalAmount { get; set; }
 
     public decimal PaidAmount { get; set; }
@@ -70,8 +68,6 @@ public partial class SalesOrder
     public virtual Account Employee { get; set; } = null!;
 
     public virtual ICollection<SalesOrderDetail> SalesOrderDetails { get; set; } = new List<SalesOrderDetail>();
-
-    public virtual ICollection<SalesReturn> SalesReturns { get; set; } = new List<SalesReturn>();
 
     public virtual Voucher? Voucher { get; set; }
 

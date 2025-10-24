@@ -11,6 +11,7 @@ namespace Chibest.Service.ModelDTOs.Stock.PurchaseReturn
         public class PurchaseReturnCreate
         {
             public string? InvoiceCode { get; set; }
+
             public DateTime OrderDate { get; set; }
 
             public string? PayMethod { get; set; }

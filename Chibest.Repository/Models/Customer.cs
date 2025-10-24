@@ -31,10 +31,6 @@ public partial class Customer
 
     public Guid? GroupId { get; set; }
 
-    public virtual CustomerDebt? CustomerDebt { get; set; }
-
-    public virtual ICollection<CustomerDebtHistory> CustomerDebtHistories { get; set; } = new List<CustomerDebtHistory>();
-
     public virtual ICollection<CustomerVoucher> CustomerVouchers { get; set; } = new List<CustomerVoucher>();
 
     public virtual Customer? Group { get; set; }
@@ -42,6 +38,4 @@ public partial class Customer
     public virtual ICollection<Customer> InverseGroup { get; set; } = new List<Customer>();
 
     public virtual ICollection<SalesOrder> SalesOrders { get; set; } = new List<SalesOrder>();
-
-    public virtual ICollection<SalesReturn> SalesReturns { get; set; } = new List<SalesReturn>();
 }

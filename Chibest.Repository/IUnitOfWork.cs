@@ -25,4 +25,5 @@ public interface IUnitOfWork
     IPurchaseOrderRepository PurchaseOrderRepository { get; }
     ITransferOrderRepository TransferOrderRepository { get; }
     IPurchaseReturnRepository PurchaseReturnRepository { get; }
+    IStockAdjusmentRepository StockAdjusmentRepository { get; }
 }

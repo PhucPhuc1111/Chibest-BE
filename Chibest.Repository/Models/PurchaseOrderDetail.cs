@@ -7,11 +7,11 @@ public partial class PurchaseOrderDetail
 {
     public Guid Id { get; set; }
 
-    public string ContainerCode { get; set; } = null!;
-
     public int Quantity { get; set; }
 
     public int? ActualQuantity { get; set; }
+
+    public decimal ReFee { get; set; }
 
     public decimal UnitPrice { get; set; }
 

@@ -46,6 +46,7 @@ public static class ServiceRegister
         services.AddScoped<IPurchaseOrderService, PurchaseOrderService>();
         services.AddScoped<ITransferOrderService, TransferOrderService>();
         services.AddScoped<IPurchaseReturnService, PurchaseReturnService>();
+        services.AddScoped<IStockAdjusmentService, StockAdjusmentService>();
     }
 
     public static IServiceCollection AddAuthorizeService(this IServiceCollection services, IConfiguration configuration)

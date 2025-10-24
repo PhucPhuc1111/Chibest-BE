@@ -43,7 +43,5 @@ public partial class StockAdjustment
 
     public virtual ICollection<StockAdjustmentDetail> StockAdjustmentDetails { get; set; } = new List<StockAdjustmentDetail>();
 
-    public virtual ICollection<StockBalancing> StockBalancings { get; set; } = new List<StockBalancing>();
-
     public virtual Warehouse? Warehouse { get; set; }
 }

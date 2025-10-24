@@ -173,7 +173,6 @@ namespace Chibest.Service.Services
 
         public async Task<IBusinessResult> UpdateAsync(Guid id, PurchaseOrderUpdate request)
         {
-            // Lấy PO cùng với danh sách detail
             var purchaseOrder = await _unitOfWork.PurchaseOrderRepository
                 .GetByWhere(x => x.Id == id)
                 .Include(po => po.PurchaseOrderDetails)
@@ -182,7 +181,6 @@ namespace Chibest.Service.Services
             if (purchaseOrder == null)
                 return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, "Không tìm thấy phiếu nhập hàng");
 
-            // Cập nhật chi tiết
             foreach (var detailReq in request.PurchaseOrderDetails)
             {
                 var detail = purchaseOrder.PurchaseOrderDetails
@@ -194,7 +192,7 @@ namespace Chibest.Service.Services
                 }
             }
 
-            purchaseOrder.Status = request.Status;
+            purchaseOrder.Status = request.Status.ToString();
             purchaseOrder.UpdatedAt = DateTime.Now;
 
             await _unitOfWork.BeginTransaction();

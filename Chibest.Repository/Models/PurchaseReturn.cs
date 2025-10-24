@@ -15,13 +15,7 @@ public partial class PurchaseReturn
 
     public DateTime UpdatedAt { get; set; }
 
-    public string? PayMethod { get; set; }
-
     public decimal SubTotal { get; set; }
-
-    public decimal DiscountAmount { get; set; }
-
-    public decimal Paid { get; set; }
 
     public string? Note { get; set; }
 
