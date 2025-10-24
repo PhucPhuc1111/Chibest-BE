@@ -1,7 +1,5 @@
-﻿using Azure.Core;
-using Chibest.Common;
+﻿using Chibest.Common;
 using Chibest.Common.BusinessResult;
-using Chibest.Common.Enums;
 using Chibest.Repository;
 using Chibest.Repository.Models;
 using Chibest.Service.Interface;
@@ -10,7 +8,6 @@ using Chibest.Service.ModelDTOs.Response;
 using Chibest.Service.Utilities;
 using Mapster;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Identity.Client;
 using Microsoft.IdentityModel.Tokens;
 using System.Linq.Expressions;
 using System.Security.Claims;
@@ -210,7 +207,7 @@ public class AccountService : IAccountService
             acc.Email.ToLower().Equals(request.Email!.ToLower()))
             .FirstOrDefaultAsync();
         if (existingAccount != null)
-            return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, Const.SUCCESS_CREATE_MSG);
+            return new BusinessResult(Const.HTTP_STATUS_CONFLICT, Const.FAIL_CREATE_MSG);
 
         // Create new account
         var account = request.Adapt<Account>();

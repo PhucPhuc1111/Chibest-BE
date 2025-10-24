@@ -21,7 +21,7 @@ public class ProductController : ControllerBase
 
     [Authorize]
     [HttpGet]
-    public async Task<IActionResult> GetList([FromQuery] ProductQuery query)
+    public async Task<IActionResult> GetList([FromBody] ProductQuery query)
     {
         var result = await _productService.GetListAsync(query);
         return StatusCode(result.StatusCode, result);
@@ -56,8 +56,8 @@ public class ProductController : ControllerBase
     }
 
     [Authorize]
-    [HttpPut("{id}")]
-    public async Task<IActionResult> Update(Guid id, [FromBody] ProductRequest request)
+    [HttpPut]
+    public async Task<IActionResult> Update([FromBody] ProductRequest request)
     {
         var accountId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (accountId == null || accountId == Guid.Empty.ToString())

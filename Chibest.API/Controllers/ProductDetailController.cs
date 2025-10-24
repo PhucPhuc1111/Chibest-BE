@@ -1,7 +1,10 @@
-﻿using Chibest.Service.Interface;
+﻿using Chibest.Common;
+using Chibest.Service.Interface;
 using Chibest.Service.ModelDTOs.Request;
+using Chibest.Service.ModelDTOs.Request.Query;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace Chibest.API.Controllers;
 
@@ -18,10 +21,9 @@ public class ProductDetailController : ControllerBase
 
     [Authorize]
     [HttpGet]
-    public async Task<IActionResult> GetPaged([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10,
-        [FromQuery] Guid? productId = null, [FromQuery] Guid? branchId = null, [FromQuery] string? status = null)
+    public async Task<IActionResult> GetList([FromBody] ProductDetailQuery query)
     {
-        var result = await _productDetailService.GetPagedAsync(pageNumber, pageSize, productId, branchId, status);
+        var result = await _productDetailService.GetListAsync(query);
         return StatusCode(result.StatusCode, result);
     }
 
@@ -34,10 +36,10 @@ public class ProductDetailController : ControllerBase
     }
 
     [Authorize]
-    [HttpGet("product/{productId}/branch/{branchId}")]
-    public async Task<IActionResult> GetByProductAndBranch([FromRoute] Guid productId, [FromRoute] Guid branchId)
+    [HttpGet("chipCode/{chipCode}")]
+    public async Task<IActionResult> GetByProductAndBranch([FromRoute] string chipCode)
     {
-        var result = await _productDetailService.GetByProductAndBranchAsync(productId, branchId);
+        var result = await _productDetailService.GetByChipCodeAsync(chipCode);
         return StatusCode(result.StatusCode, result);
     }
 
@@ -45,15 +47,35 @@ public class ProductDetailController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] ProductDetailRequest request)
     {
-        var result = await _productDetailService.CreateAsync(request);
+        var accountId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (accountId == null || accountId == Guid.Empty.ToString())
+            return StatusCode(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
+
+        var result = await _productDetailService.CreateAsync(request, Guid.Parse(accountId));
         return StatusCode(result.StatusCode, result);
     }
 
     [Authorize]
-    [HttpPut("{id}")]
-    public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] ProductDetailRequest request)
+    [HttpPut]
+    public async Task<IActionResult> Update([FromBody] ProductDetailRequest request)
     {
-        var result = await _productDetailService.UpdateAsync(id, request);
+        var accountId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (accountId == null || accountId == Guid.Empty.ToString())
+            return StatusCode(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
+
+        var result = await _productDetailService.UpdateAsync(request, Guid.Parse(accountId));
+        return StatusCode(result.StatusCode, result);
+    }
+
+    [Authorize]
+    [HttpPatch("{id}/status")]
+    public async Task<IActionResult> UpdateStatus([FromRoute] Guid id, [FromBody] string status)
+    {
+        var accountId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (accountId == null || accountId == Guid.Empty.ToString())
+            return StatusCode(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
+
+        var result = await _productDetailService.UpdateStatusAsync(id, Guid.Parse(accountId), status);
         return StatusCode(result.StatusCode, result);
     }
 
@@ -61,7 +83,11 @@ public class ProductDetailController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete([FromRoute] Guid id)
     {
-        var result = await _productDetailService.DeleteAsync(id);
+        var accountId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (accountId == null || accountId == Guid.Empty.ToString())
+            return StatusCode(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
+
+        var result = await _productDetailService.DeleteAsync(id, Guid.Parse(accountId));
         return StatusCode(result.StatusCode, result);
     }
 }
