@@ -1,7 +1,10 @@
-﻿using Chibest.Service.Interface;
+﻿using Chibest.Common;
+using Chibest.Service.Interface;
 using Chibest.Service.ModelDTOs.Request;
+using Chibest.Service.ModelDTOs.Request.Query;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace Chibest.API.Controllers;
 
@@ -18,18 +21,25 @@ public class ProductController : ControllerBase
 
     [Authorize]
     [HttpGet]
-    public async Task<IActionResult> GetPaged([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10,
-        [FromQuery] string? search = null, [FromQuery] Guid? categoryId = null, [FromQuery] string? status = null)
+    public async Task<IActionResult> GetList([FromQuery] ProductQuery query)
     {
-        var result = await _productService.GetPagedAsync(pageNumber, pageSize, search, categoryId, status);
+        var result = await _productService.GetListAsync(query);
         return StatusCode(result.StatusCode, result);
     }
 
     [Authorize]
     [HttpGet("{id}")]
-    public async Task<IActionResult> GetById([FromRoute] Guid id)
+    public async Task<IActionResult> GetById(Guid id)
     {
         var result = await _productService.GetByIdAsync(id);
+        return StatusCode(result.StatusCode, result);
+    }
+
+    [Authorize]
+    [HttpGet("sku/{sku}")]
+    public async Task<IActionResult> GetBySKU(string sku)
+    {
+        var result = await _productService.GetBySKUAsync(sku);
         return StatusCode(result.StatusCode, result);
     }
 
@@ -37,15 +47,23 @@ public class ProductController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] ProductRequest request)
     {
-        var result = await _productService.CreateAsync(request);
+        var accountId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (accountId == null || accountId == Guid.Empty.ToString())
+            return StatusCode(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
+
+        var result = await _productService.CreateAsync(request, Guid.Parse(accountId));
         return StatusCode(result.StatusCode, result);
     }
 
     [Authorize]
     [HttpPut("{id}")]
-    public async Task<IActionResult> Update([FromRoute]Guid id, [FromBody] ProductRequest request)
+    public async Task<IActionResult> Update(Guid id, [FromBody] ProductRequest request)
     {
-        var result = await _productService.UpdateAsync(id, request);
+        var accountId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (accountId == null || accountId == Guid.Empty.ToString())
+            return StatusCode(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
+
+        var result = await _productService.UpdateAsync(request, Guid.Parse(accountId));
         return StatusCode(result.StatusCode, result);
     }
 
@@ -53,15 +71,23 @@ public class ProductController : ControllerBase
     [HttpPatch("{id}/status")]
     public async Task<IActionResult> UpdateStatus([FromRoute] Guid id, [FromBody] string status)
     {
-        var result = await _productService.UpdateStatusAsync(id, status);
+        var accountId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (accountId == null || accountId == Guid.Empty.ToString())
+            return StatusCode(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
+
+        var result = await _productService.UpdateStatusAsync(id, Guid.Parse(accountId), status);
         return StatusCode(result.StatusCode, result);
     }
 
     [Authorize]
     [HttpDelete("{id}")]
-    public async Task<IActionResult> Delete([FromRoute] Guid id)
+    public async Task<IActionResult> Delete(Guid id)
     {
-        var result = await _productService.DeleteAsync(id);
+        var accountId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (accountId == null || accountId == Guid.Empty.ToString())
+            return StatusCode(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
+
+        var result = await _productService.DeleteAsync(id, Guid.Parse(accountId));
         return StatusCode(result.StatusCode, result);
     }
 }

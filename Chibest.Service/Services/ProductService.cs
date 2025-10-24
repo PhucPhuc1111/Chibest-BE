@@ -4,28 +4,95 @@ using Chibest.Repository;
 using Chibest.Repository.Models;
 using Chibest.Service.Interface;
 using Chibest.Service.ModelDTOs.Request;
+using Chibest.Service.ModelDTOs.Request.Query;
 using Chibest.Service.ModelDTOs.Response;
 using Chibest.Service.Utilities;
 using Mapster;
 using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
+using System.Text.Json;
 
 namespace Chibest.Service.Services;
 
 public class ProductService : IProductService
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ISystemLogService _systemLogService;
 
-    public ProductService(IUnitOfWork unitOfWork)
+    public ProductService(IUnitOfWork unitOfWork, ISystemLogService systemLogService)
     {
         _unitOfWork = unitOfWork;
+        _systemLogService = systemLogService;
+    }
+
+    public async Task<IBusinessResult> GetListAsync(ProductQuery query)
+    {
+        Expression<Func<Product, bool>> predicate = p => true;
+
+        if (!string.IsNullOrEmpty(query.SearchTerm))
+        {
+            predicate = predicate.And(p =>
+                p.Name.Contains(query.SearchTerm) ||
+                p.Sku.Contains(query.SearchTerm) ||
+                p.Description.Contains(query.SearchTerm));
+        }
+
+        if (!string.IsNullOrEmpty(query.Status))
+        {
+            predicate = predicate.And(p => p.Status == query.Status);
+        }
+
+        if (query.CategoryId.HasValue)
+        {
+            predicate = predicate.And(p => p.CategoryId == query.CategoryId.Value);
+        }
+
+        if (query.IsMaster.HasValue)
+        {
+            predicate = predicate.And(p => p.IsMaster == query.IsMaster.Value);
+        }
+
+        if (!string.IsNullOrEmpty(query.Brand))
+        {
+            predicate = predicate.And(p => p.Brand == query.Brand);
+        }
+
+        Func<IQueryable<Product>, IOrderedQueryable<Product>> orderBy = null;
+        if (!string.IsNullOrEmpty(query.SortBy))
+        {
+            orderBy = query.SortBy.ToLower() switch
+            {
+                "name" => q => query.SortDescending ? q.OrderByDescending(p => p.Name) : q.OrderBy(p => p.Name),
+                "sku" => q => query.SortDescending ? q.OrderByDescending(p => p.Sku) : q.OrderBy(p => p.Sku),
+                "createdat" => q => query.SortDescending ? q.OrderByDescending(p => p.CreatedAt) : q.OrderBy(p => p.CreatedAt),
+                _ => q => query.SortDescending ? q.OrderByDescending(p => p.CreatedAt) : q.OrderBy(p => p.CreatedAt)
+            };
+        }
+
+        var products = await _unitOfWork.ProductRepository.GetPagedAsync(
+            query.PageNumber,
+            query.PageSize,
+            predicate,
+            orderBy
+        );
+
+        var totalCount = await _unitOfWork.ProductRepository.GetByWhere(predicate).CountAsync();
+        var response = products.Adapt<List<ProductResponse>>();
+
+        var pagedResult = new PagedResult<ProductResponse>
+        {
+            DataList = response,
+            TotalCount = totalCount,
+            PageIndex = query.PageNumber,
+            PageSize = query.PageSize
+        };
+
+        return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_READ_MSG, pagedResult);
+
     }
 
     public async Task<IBusinessResult> GetByIdAsync(Guid id)
     {
-        if (id == Guid.Empty)
-            return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
-
         var product = await _unitOfWork.ProductRepository.GetByIdAsync(id);
         if (product == null)
             return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, Const.FAIL_READ_MSG);
@@ -34,188 +101,127 @@ public class ProductService : IProductService
         return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_READ_MSG, response);
     }
 
-    public async Task<IBusinessResult> GetPagedAsync(
-        int pageNumber,
-        int pageSize,
-        string? search = null,
-        Guid? categoryId = null,
-        string? status = null)
+    public async Task<IBusinessResult> GetBySKUAsync(string sku)
     {
-        try
-        {
-            if (pageNumber <= 0) pageNumber = 1;
-            if (pageSize <= 0) pageSize = 10;
+        var product = await _unitOfWork.ProductRepository.GetByWhere(p => p.Sku == sku)
+            .FirstOrDefaultAsync();
 
-            Expression<Func<Product, bool>> predicate = x => true;
+        if (product == null)
+            return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, Const.FAIL_READ_MSG);
 
-            if (!string.IsNullOrWhiteSpace(search))
-            {
-                predicate = x => x.Sku.Contains(search) ||
-                                x.Name.Contains(search) ||
-                                x.Description.Contains(search) ||
-                                x.Brand.Contains(search);
-            }
-
-            if (categoryId.HasValue && categoryId != Guid.Empty)
-            {
-                predicate = predicate.And(x => x.CategoryId == categoryId.Value);
-            }
-
-            if (!string.IsNullOrWhiteSpace(status))
-            {
-                predicate = predicate.And(x => x.Status == status);
-            }
-
-            Func<IQueryable<Product>, IOrderedQueryable<Product>> orderBy =
-                q => q.OrderBy(x => x.Name);
-
-            var products = await _unitOfWork.ProductRepository.GetPagedAsync(
-                pageNumber, pageSize, predicate, orderBy,
-                include: q => q.Include(p => p.Category));
-
-            var totalCount = await _unitOfWork.ProductRepository.CountAsync();
-
-            var response = products.Adapt<List<ProductResponse>>();
-            var pagedResult = new PagedResult<ProductResponse>
-            {
-                DataList = response,
-                TotalCount = totalCount,
-                PageIndex = pageNumber,
-                PageSize = pageSize
-            };
-
-            return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_READ_MSG, pagedResult);
-        }
-        catch (Exception ex)
-        {
-            return new BusinessResult(Const.HTTP_STATUS_INTERNAL_ERROR, ex.Message);
-        }
+        var response = product.Adapt<ProductResponse>();
+        return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_READ_MSG, response);
     }
 
-    public async Task<IBusinessResult> CreateAsync(ProductRequest request)
+    public async Task<IBusinessResult> CreateAsync(ProductRequest request, Guid accountId)
     {
-        try
-        {
-            if (request == null)
-                return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
+        if (request == null)
+            return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
 
-            // Check if SKU already exists
-            var existingProduct = await _unitOfWork.ProductRepository
-                .GetByWhere(x => x.Sku == request.Sku)
-                .FirstOrDefaultAsync();
+        // Check if SKU already exists
+        var existingSku = await _unitOfWork.ProductRepository.GetByWhere(p => p.Sku == request.Sku)
+            .FirstOrDefaultAsync();
+        if (existingSku != null)
+            return new BusinessResult(Const.HTTP_STATUS_CONFLICT, "SKU đã tồn tại");
 
-            if (existingProduct != null)
-                return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Product SKU already exists");
+        var product = request.Adapt<Product>();
+        product.Id = Guid.NewGuid();
+        product.CreatedAt = DateTime.UtcNow;
+        product.UpdatedAt = DateTime.UtcNow;
 
-            // Check if category exists
-            var category = await _unitOfWork.CategoryRepository.GetByIdAsync(request.CategoryId);
-            if (category == null)
-                return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Category not found");
+        await _unitOfWork.ProductRepository.AddAsync(product);
+        await _unitOfWork.SaveChangesAsync();
 
-            var product = request.Adapt<Product>();
-            product.Id = Guid.NewGuid();
+        await LogSystemAction("Create", "Product", product.Id, accountId,
+                            null, JsonSerializer.Serialize(product),
+                            $"Tạo mới sản phẩm: {product.Name} (SKU: {product.Sku})");
 
-            await _unitOfWork.ProductRepository.AddAsync(product);
-            await _unitOfWork.SaveChangesAsync();
-
-            return new BusinessResult(Const.HTTP_STATUS_CREATED, Const.SUCCESS_CREATE_MSG);
-        }
-        catch (Exception ex)
-        {
-            return new BusinessResult(Const.HTTP_STATUS_INTERNAL_ERROR, ex.Message);
-        }
+        var response = product.Adapt<ProductResponse>();
+        return new BusinessResult(Const.HTTP_STATUS_CREATED, Const.SUCCESS_CREATE_MSG, response);
     }
 
-    public async Task<IBusinessResult> UpdateAsync(Guid id, ProductRequest request)
+    public async Task<IBusinessResult> UpdateAsync(ProductRequest request, Guid accountId)
     {
-        try
-        {
-            if (id == Guid.Empty || request == null)
-                return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
+        var existing = await _unitOfWork.ProductRepository.GetByIdAsync(request.Id);
+        if (existing == null)
+            return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, Const.FAIL_READ_MSG);
 
-            var product = await _unitOfWork.ProductRepository.GetByIdAsync(id);
-            if (product == null)
-                return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, Const.FAIL_READ_MSG);
+        var oldValue = JsonSerializer.Serialize(existing);
+        var oldName = existing.Name;
 
-            // Check for duplicate SKU
-            if (!string.IsNullOrEmpty(request.Sku) && request.Sku != product.Sku)
-            {
-                var duplicate = await _unitOfWork.ProductRepository
-                    .GetByWhere(x => x.Sku == request.Sku && x.Id != id)
-                    .FirstOrDefaultAsync();
+        request.Adapt(existing);
+        existing.UpdatedAt = DateTime.UtcNow;
 
-                if (duplicate != null)
-                    return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Product SKU already exists");
-            }
+        _unitOfWork.ProductRepository.Update(existing);
+        await _unitOfWork.SaveChangesAsync();
 
-            // Check if category exists if updating
-            var category = await _unitOfWork.CategoryRepository.GetByIdAsync(request.CategoryId);
-            if (category == null)
-                return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Category not found");
+        await LogSystemAction("Update", "Product", request.Id, accountId,
+                            oldValue, JsonSerializer.Serialize(existing),
+                            $"Cập nhật sản phẩm: {oldName} → {existing.Name}");
 
-            request.Adapt(product);
-            _unitOfWork.ProductRepository.Update(product);
-            await _unitOfWork.SaveChangesAsync();
-
-            return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_UPDATE_MSG);
-        }
-        catch (Exception ex)
-        {
-            return new BusinessResult(Const.HTTP_STATUS_INTERNAL_ERROR, ex.Message);
-        }
+        var response = existing.Adapt<ProductResponse>();
+        return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_UPDATE_MSG, response);
     }
 
-    public async Task<IBusinessResult> DeleteAsync(Guid id)
+    public async Task<IBusinessResult> UpdateStatusAsync(Guid id, Guid accountId, string status)
     {
-        try
-        {
-            if (id == Guid.Empty)
-                return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
+        var existing = await _unitOfWork.ProductRepository.GetByIdAsync(id);
+        if (existing == null)
+            return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, Const.FAIL_READ_MSG);
 
-            var product = await _unitOfWork.ProductRepository.GetByIdAsync(id);
-            if (product == null)
-                return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, Const.FAIL_READ_MSG);
+        var oldStatus = existing.Status;
+        existing.Status = status;
+        existing.UpdatedAt = DateTime.UtcNow;
 
-            // Check if product has details
-            var hasDetails = await _unitOfWork.ProductDetailRepository
-                .GetByWhere(x => x.ProductId == id)
-                .AnyAsync();
+        _unitOfWork.ProductRepository.Update(existing);
+        await _unitOfWork.SaveChangesAsync();
 
-            if (hasDetails)
-                return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Cannot delete product that has details");
+        await LogSystemAction("UpdateStatus", "Product", id, accountId,
+                            oldStatus, status,
+                            $"Thay đổi trạng thái sản phẩm: {oldStatus} → {status}");
 
-            _unitOfWork.ProductRepository.Delete(product);
-            await _unitOfWork.SaveChangesAsync();
-
-            return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_DELETE_MSG);
-        }
-        catch (Exception ex)
-        {
-            return new BusinessResult(Const.HTTP_STATUS_INTERNAL_ERROR, ex.Message);
-        }
+        var response = existing.Adapt<ProductResponse>();
+        return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_UPDATE_MSG, response);
     }
 
-    public async Task<IBusinessResult> UpdateStatusAsync(Guid id, string status)
+    public async Task<IBusinessResult> DeleteAsync(Guid id, Guid accountId)
     {
-        try
+        var existing = await _unitOfWork.ProductRepository.GetByIdAsync(id);
+        if (existing == null)
+            return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, Const.FAIL_READ_MSG);
+
+        var oldValue = JsonSerializer.Serialize(existing);
+
+        _unitOfWork.ProductRepository.Delete(existing);
+        await _unitOfWork.SaveChangesAsync();
+
+        await LogSystemAction("Delete", "Product", id, accountId,
+                            oldValue, null,
+                            $"Xóa sản phẩm: {existing.Name} (SKU: {existing.Sku})");
+
+        return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_DELETE_MSG);
+    }
+
+    private async Task LogSystemAction(string action, string entityType, Guid entityId, Guid accountId,
+                                     string oldValue, string newValue, string description)
+    {
+        var account = await _unitOfWork.AccountRepository
+            .GetByWhere(acc => acc.Id == accountId)
+            .AsNoTracking().FirstOrDefaultAsync();
+        var logRequest = new SystemLogRequest
         {
-            if (id == Guid.Empty || string.IsNullOrEmpty(status))
-                return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
+            Action = action,
+            EntityType = entityType,
+            EntityId = entityId,
+            OldValue = oldValue,
+            NewValue = newValue,
+            Description = description,
+            AccountId = accountId,
+            AccountName = account != null ? account.Name : null,
+            Module = "Product",
+            LogLevel = "INFO"
+        };
 
-            var product = await _unitOfWork.ProductRepository.GetByIdAsync(id);
-            if (product == null)
-                return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, Const.FAIL_READ_MSG);
-
-            product.Status = status;
-            _unitOfWork.ProductRepository.Update(product);
-            await _unitOfWork.SaveChangesAsync();
-
-            var response = product.Adapt<ProductResponse>();
-            return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_UPDATE_MSG, response);
-        }
-        catch (Exception ex)
-        {
-            return new BusinessResult(Const.HTTP_STATUS_INTERNAL_ERROR, ex.Message);
-        }
+        await _systemLogService.CreateAsync(logRequest);
     }
 }
