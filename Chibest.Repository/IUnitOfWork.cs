@@ -20,6 +20,7 @@ public interface IUnitOfWork
     IBranchStockRepository BranchStockRepository { get; }
     IProductRepository ProductRepository { get; }
     IProductDetailRepository ProductDetailRepository { get; }
+    IProductPriceHistoryRepository ProductPriceHistoryRepository { get; }
     ISystemLogRepository SystemLogRepository { get; }
     ICategoryRepository CategoryRepository { get; }
     IPurchaseOrderRepository PurchaseOrderRepository { get; }

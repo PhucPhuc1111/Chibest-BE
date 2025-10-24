@@ -5,21 +5,25 @@ public class ProductDetailRequest
 
     public string? ChipCode { get; set; }
 
-    public decimal PurchasePrice { get; set; }
-
-    public DateTime ImportDate { get; set; }
-
-    public DateTime? LastTransactionDate { get; set; }
-
-    public string? Status { get; set; }
-
     public Guid ProductId { get; set; }
 
     public Guid BranchId { get; set; }
 
     public Guid? WarehouseId { get; set; }
 
-    public Guid? OnlineWarehouseId { get; set; }
+    public decimal PurchasePrice { get; set; }
 
-    public string? ContainerCode { get; set; }
+    public DateTime ImportDate { get; set; }
+
+    public Guid? SupplierId { get; set; }
+
+    public string Status { get; set; } = null!;
+
+    public DateTime? LastTransactionDate { get; set; }
+
+    public string? LastTransactionType { get; set; }
+
+    public DateTime CreatedAt { get; set; }
+
+    public DateTime UpdatedAt { get; set; }
 }

@@ -3,13 +3,13 @@ public class ProductRequest
 {
     public Guid Id { get; set; }
 
-    public string? AvartarUrl { get; set; }
-
     public string Sku { get; set; } = null!;
 
     public string Name { get; set; } = null!;
 
     public string? Description { get; set; }
+
+    public string? AvatarUrl { get; set; }
 
     public string? Color { get; set; }
 
@@ -26,6 +26,10 @@ public class ProductRequest
     public bool IsMaster { get; set; }
 
     public string Status { get; set; } = null!;
+
+    public DateTime CreatedAt { get; set; }
+
+    public DateTime UpdatedAt { get; set; }
 
     public Guid CategoryId { get; set; }
 

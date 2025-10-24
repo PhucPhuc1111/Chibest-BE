@@ -4,28 +4,106 @@ using Chibest.Repository;
 using Chibest.Repository.Models;
 using Chibest.Service.Interface;
 using Chibest.Service.ModelDTOs.Request;
+using Chibest.Service.ModelDTOs.Request.Query;
 using Chibest.Service.ModelDTOs.Response;
 using Chibest.Service.Utilities;
 using Mapster;
 using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
+using System.Text.Json;
 
 namespace Chibest.Service.Services;
 
 public class ProductDetailService : IProductDetailService
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ISystemLogService _systemLogService;
 
-    public ProductDetailService(IUnitOfWork unitOfWork)
+    public ProductDetailService(IUnitOfWork unitOfWork, ISystemLogService systemLogService)
     {
         _unitOfWork = unitOfWork;
+        _systemLogService = systemLogService;
+    }
+
+    public async Task<IBusinessResult> GetListAsync(ProductDetailQuery query)
+    {
+        Expression<Func<ProductDetail, bool>> predicate = p => true;
+
+        if (!string.IsNullOrEmpty(query.ChipCode))
+        {
+            predicate = predicate.And(p => p.ChipCode.Contains(query.ChipCode));
+        }
+
+        if (query.ProductId.HasValue)
+        {
+            predicate = predicate.And(p => p.ProductId == query.ProductId.Value);
+        }
+
+        if (query.BranchId.HasValue)
+        {
+            predicate = predicate.And(p => p.BranchId == query.BranchId.Value);
+        }
+
+        if (query.WarehouseId.HasValue)
+        {
+            predicate = predicate.And(p => p.WarehouseId == query.WarehouseId.Value);
+        }
+
+        if (!string.IsNullOrEmpty(query.Status))
+        {
+            predicate = predicate.And(p => p.Status == query.Status);
+        }
+
+        if (query.SupplierId.HasValue)
+        {
+            predicate = predicate.And(p => p.SupplierId == query.SupplierId.Value);
+        }
+
+        if (query.ImportDateFrom.HasValue)
+        {
+            predicate = predicate.And(p => p.ImportDate >= query.ImportDateFrom.Value);
+        }
+
+        if (query.ImportDateTo.HasValue)
+        {
+            predicate = predicate.And(p => p.ImportDate <= query.ImportDateTo.Value);
+        }
+
+        Func<IQueryable<ProductDetail>, IOrderedQueryable<ProductDetail>> orderBy = null;
+        if (!string.IsNullOrEmpty(query.SortBy))
+        {
+            orderBy = query.SortBy.ToLower() switch
+            {
+                "chipcode" => q => query.SortDescending ? q.OrderByDescending(p => p.ChipCode) : q.OrderBy(p => p.ChipCode),
+                "importdate" => q => query.SortDescending ? q.OrderByDescending(p => p.ImportDate) : q.OrderBy(p => p.ImportDate),
+                "createdat" => q => query.SortDescending ? q.OrderByDescending(p => p.CreatedAt) : q.OrderBy(p => p.CreatedAt),
+                _ => q => query.SortDescending ? q.OrderByDescending(p => p.CreatedAt) : q.OrderBy(p => p.CreatedAt)
+            };
+        }
+
+        var productDetails = await _unitOfWork.ProductDetailRepository.GetPagedAsync(
+            query.PageNumber,
+            query.PageSize,
+            predicate,
+            orderBy
+        );
+
+        var totalCount = await _unitOfWork.ProductDetailRepository.GetByWhere(predicate).CountAsync();
+        var response = productDetails.Adapt<List<ProductDetailResponse>>();
+
+        var pagedResult = new PagedResult<ProductDetailResponse>
+        {
+            DataList = response,
+            TotalCount = totalCount,
+            PageIndex = query.PageNumber,
+            PageSize = query.PageSize
+        };
+
+        return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_READ_MSG, pagedResult);
     }
 
     public async Task<IBusinessResult> GetByIdAsync(Guid id)
     {
-        if (id == Guid.Empty)
-            return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
-
         var productDetail = await _unitOfWork.ProductDetailRepository.GetByIdAsync(id);
         if (productDetail == null)
             return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, Const.FAIL_READ_MSG);
@@ -34,172 +112,129 @@ public class ProductDetailService : IProductDetailService
         return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_READ_MSG, response);
     }
 
-    public async Task<IBusinessResult> GetPagedAsync(
-        int pageNumber,
-        int pageSize,
-        Guid? productId = null,
-        Guid? branchId = null,
-        string? status = null)
+    public async Task<IBusinessResult> GetByChipCodeAsync(string chipCode)
     {
-        try
-        {
-            if (pageNumber <= 0) pageNumber = 1;
-            if (pageSize <= 0) pageSize = 10;
+        var productDetail = await _unitOfWork.ProductDetailRepository.GetByWhere(p => p.ChipCode == chipCode)
+            .FirstOrDefaultAsync();
 
-            Expression<Func<ProductDetail, bool>> predicate = x => true;
+        if (productDetail == null)
+            return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, Const.FAIL_READ_MSG);
 
-            if (productId.HasValue && productId != Guid.Empty)
-            {
-                predicate = predicate.And(x => x.ProductId == productId.Value);
-            }
-
-            if (branchId.HasValue && branchId != Guid.Empty)
-            {
-                predicate = predicate.And(x => x.BranchId == branchId.Value);
-            }
-
-            if (!string.IsNullOrWhiteSpace(status))
-            {
-                predicate = predicate.And(x => x.Status == status);
-            }
-
-            Func<IQueryable<ProductDetail>, IOrderedQueryable<ProductDetail>> orderBy =
-                q => q.OrderByDescending(x => x.ImportDate);
-
-            var productDetails = await _unitOfWork.ProductDetailRepository.GetPagedAsync(
-                pageNumber, pageSize, predicate, orderBy,
-                include: q => q.Include(pd => pd.Product));
-
-            var totalCount = await _unitOfWork.ProductDetailRepository.CountAsync();
-
-            var response = productDetails.Adapt<List<ProductDetailResponse>>();
-            var pagedResult = new PagedResult<ProductDetailResponse>
-            {
-                DataList = response,
-                TotalCount = totalCount,
-                PageIndex = pageNumber,
-                PageSize = pageSize
-            };
-
-            return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_READ_MSG, pagedResult);
-        }
-        catch (Exception ex)
-        {
-            return new BusinessResult(Const.HTTP_STATUS_INTERNAL_ERROR, ex.Message);
-        }
+        var response = productDetail.Adapt<ProductDetailResponse>();
+        return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_READ_MSG, response);
     }
 
-    public async Task<IBusinessResult> CreateAsync(ProductDetailRequest request)
+    public async Task<IBusinessResult> CreateAsync(ProductDetailRequest request, Guid accountId)
     {
-        try
+        if (request == null)
+            return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
+
+        // Check if ChipCode already exists
+        if (!string.IsNullOrEmpty(request.ChipCode))
         {
-            if (request == null)
-                return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
-
-            // Check if product exists
-            var product = await _unitOfWork.ProductRepository.GetByIdAsync(request.ProductId);
-            if (product == null)
-                return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Product not found");
-
-            // Check if chip code already exists
-            if (!string.IsNullOrEmpty(request.ChipCode))
-            {
-                var existingDetail = await _unitOfWork.ProductDetailRepository
-                    .GetByWhere(x => x.ChipCode == request.ChipCode)
-                    .FirstOrDefaultAsync();
-
-                if (existingDetail != null)
-                    return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Chip code already exists");
-            }
-
-            var productDetail = request.Adapt<ProductDetail>();
-            productDetail.Id = Guid.NewGuid();
-            productDetail.LastTransactionDate = null;
-
-            await _unitOfWork.ProductDetailRepository.AddAsync(productDetail);
-            await _unitOfWork.SaveChangesAsync();
-
-            var response = productDetail.Adapt<ProductDetailResponse>();
-            return new BusinessResult(Const.HTTP_STATUS_CREATED, Const.SUCCESS_CREATE_MSG, response);
+            var existingChip = await _unitOfWork.ProductDetailRepository.GetByWhere(p => p.ChipCode == request.ChipCode)
+                .FirstOrDefaultAsync();
+            if (existingChip != null)
+                return new BusinessResult(Const.HTTP_STATUS_CONFLICT, "ChipCode đã tồn tại");
         }
-        catch (Exception ex)
-        {
-            return new BusinessResult(Const.HTTP_STATUS_INTERNAL_ERROR, ex.Message);
-        }
+
+        var productDetail = request.Adapt<ProductDetail>();
+        productDetail.Id = Guid.NewGuid();
+        productDetail.CreatedAt = DateTime.UtcNow;
+        productDetail.UpdatedAt = DateTime.UtcNow;
+
+        await _unitOfWork.ProductDetailRepository.AddAsync(productDetail);
+        await _unitOfWork.SaveChangesAsync();
+
+        await LogSystemAction("Create", "ProductDetail", productDetail.Id, accountId,
+                            null, JsonSerializer.Serialize(productDetail),
+                            $"Tạo mới chi tiết sản phẩm: {productDetail.ChipCode}");
+
+        var response = productDetail.Adapt<ProductDetailResponse>();
+        return new BusinessResult(Const.HTTP_STATUS_CREATED, Const.SUCCESS_CREATE_MSG, response);
     }
 
-    public async Task<IBusinessResult> UpdateAsync(Guid id, ProductDetailRequest request)
+    public async Task<IBusinessResult> UpdateAsync(ProductDetailRequest request, Guid accountId)
     {
-        try
-        {
-            if (id == Guid.Empty || request == null)
-                return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
+        var existing = await _unitOfWork.ProductDetailRepository.GetByIdAsync(request.Id);
+        if (existing == null)
+            return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, Const.FAIL_READ_MSG);
 
-            var productDetail = await _unitOfWork.ProductDetailRepository.GetByIdAsync(id);
-            if (productDetail == null)
-                return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, Const.FAIL_READ_MSG);
+        var oldValue = JsonSerializer.Serialize(existing);
 
-            // Check for duplicate chip code
-            if (!string.IsNullOrEmpty(request.ChipCode) && request.ChipCode != productDetail.ChipCode)
-            {
-                var duplicate = await _unitOfWork.ProductDetailRepository
-                    .GetByWhere(x => x.ChipCode == request.ChipCode && x.Id != id)
-                    .FirstOrDefaultAsync();
+        request.Adapt(existing);
+        existing.UpdatedAt = DateTime.Now;
 
-                if (duplicate != null)
-                    return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Chip code already exists");
-            }
+        _unitOfWork.ProductDetailRepository.Update(existing);
+        await _unitOfWork.SaveChangesAsync();
 
-            request.Adapt(productDetail);
-            _unitOfWork.ProductDetailRepository.Update(productDetail);
-            await _unitOfWork.SaveChangesAsync();
+        await LogSystemAction("Update", "ProductDetail", request.Id, accountId,
+                            oldValue, JsonSerializer.Serialize(existing),
+                            $"Cập nhật chi tiết sản phẩm: {existing.ChipCode}");
 
-            var response = productDetail.Adapt<ProductDetailResponse>();
-            return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_UPDATE_MSG, response);
-        }
-        catch (Exception ex)
-        {
-            return new BusinessResult(Const.HTTP_STATUS_INTERNAL_ERROR, ex.Message);
-        }
+        var response = existing.Adapt<ProductDetailResponse>();
+        return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_UPDATE_MSG, response);
     }
 
-    public async Task<IBusinessResult> DeleteAsync(Guid id)
+    public async Task<IBusinessResult> UpdateStatusAsync(Guid id, Guid accountId, string status)
     {
-        try
-        {
-            if (id == Guid.Empty)
-                return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
+        var existing = await _unitOfWork.ProductDetailRepository.GetByIdAsync(id);
+        if (existing == null)
+            return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, Const.FAIL_READ_MSG);
 
-            var productDetail = await _unitOfWork.ProductDetailRepository.GetByIdAsync(id);
-            if (productDetail == null)
-                return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, Const.FAIL_READ_MSG);
+        var oldStatus = existing.Status;
+        existing.Status = status;
+        existing.UpdatedAt = DateTime.Now;
 
-            _unitOfWork.ProductDetailRepository.Delete(productDetail);
-            await _unitOfWork.SaveChangesAsync();
+        _unitOfWork.ProductDetailRepository.Update(existing);
+        await _unitOfWork.SaveChangesAsync();
 
-            return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_DELETE_MSG);
-        }
-        catch (Exception ex)
-        {
-            return new BusinessResult(Const.HTTP_STATUS_INTERNAL_ERROR, ex.Message);
-        }
+        await LogSystemAction("UpdateStatus", "ProductDetail", id, accountId,
+                            oldStatus, status,
+                            $"Thay đổi trạng thái chi tiết sản phẩm: {oldStatus} → {status}");
+
+        var response = existing.Adapt<ProductDetailResponse>();
+        return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_UPDATE_MSG, response);
     }
 
-    public async Task<IBusinessResult> GetByProductAndBranchAsync(Guid productId, Guid branchId)
+    public async Task<IBusinessResult> DeleteAsync(Guid id, Guid accountId)
     {
-        try
-        {
-            var productDetails = await _unitOfWork.ProductDetailRepository
-                .GetByWhere(x => x.ProductId == productId && x.BranchId == branchId)
-                .Include(x => x.Product)
-                .ToListAsync();
+        var existing = await _unitOfWork.ProductDetailRepository.GetByIdAsync(id);
+        if (existing == null)
+            return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, Const.FAIL_READ_MSG);
 
-            var response = productDetails.Adapt<List<ProductDetailResponse>>();
-            return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_READ_MSG, response);
-        }
-        catch (Exception ex)
+        var oldValue = JsonSerializer.Serialize(existing);
+
+        _unitOfWork.ProductDetailRepository.Delete(existing);
+        await _unitOfWork.SaveChangesAsync();
+
+        await LogSystemAction("Delete", "ProductDetail", id, accountId,
+                            oldValue, null,
+                            $"Xóa chi tiết sản phẩm: {existing.ChipCode}");
+
+        return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_DELETE_MSG);
+    }
+
+    private async Task LogSystemAction(string action, string entityType, Guid entityId, Guid accountId,
+                                     string oldValue, string newValue, string description)
+    {
+        var account = await _unitOfWork.AccountRepository
+            .GetByWhere(acc => acc.Id == accountId)
+            .AsNoTracking().FirstOrDefaultAsync();
+        var logRequest = new SystemLogRequest
         {
-            return new BusinessResult(Const.HTTP_STATUS_INTERNAL_ERROR, ex.Message);
-        }
+            Action = action,
+            EntityType = entityType,
+            EntityId = entityId,
+            OldValue = oldValue,
+            NewValue = newValue,
+            Description = description,
+            AccountId = accountId,
+            AccountName = account != null ? account.Name : null,
+            Module = "ProductDetail",
+            LogLevel = "INFO"
+        };
+
+        await _systemLogService.CreateAsync(logRequest);
     }
 }
