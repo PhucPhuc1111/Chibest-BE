@@ -53,6 +53,7 @@ namespace Chibest.Service.Services
             var warehouseEntity = new Warehouse
             {
                 Id = Guid.NewGuid(),
+                Code = request.Code,
                 Name = request.Name,
                 Address = request.Address,
                 BranchId = request.BranchId,
@@ -104,6 +105,7 @@ namespace Chibest.Service.Services
             }
 
             warehouseEntity.Name = request.Name;
+            warehouseEntity.Code = request.Code;
             warehouseEntity.Address = request.Address;
             warehouseEntity.BranchId = request.BranchId;
             warehouseEntity.Status = string.IsNullOrEmpty(request.Status) ? warehouseEntity.Status : request.Status;

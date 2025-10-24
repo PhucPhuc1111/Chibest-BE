@@ -30,7 +30,6 @@ namespace Chibest.API.Controllers
             var result = await _purchaseOrderService.GetPurchaseOrderList(pageIndex, pageSize, search, fromDate,toDate,status);
             return StatusCode(result.StatusCode, result);
         }
-
         [HttpPost]
         public async Task<IActionResult> CreatePurchaseOrder([FromBody] PurchaseOrderCreate request)
         {
@@ -41,6 +40,12 @@ namespace Chibest.API.Controllers
         public async Task<IActionResult> UpdatePurchaseOrder(Guid id,[FromBody] PurchaseOrderUpdate request)
         {
             var result = await _purchaseOrderService.UpdateAsync(id,request);
+            return StatusCode(result.StatusCode, result);
+        }
+        [HttpPost("file")]
+        public async Task<IActionResult> GetPurchaseOrderFile(IFormFile file)
+        {
+            var result = await _purchaseOrderService.ReadPurchaseOrderFromExcel(file);
             return StatusCode(result.StatusCode, result);
         }
     }

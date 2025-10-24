@@ -6,16 +6,10 @@ using Chibest.Repository.Models;
 using Chibest.Service.Interface;
 using Chibest.Service.Utilities;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Linq.Expressions;
-using System.Text;
-using System.Threading.Tasks;
 using static Chibest.Service.ModelDTOs.Stock.PurchaseReturn.create;
 using static Chibest.Service.ModelDTOs.Stock.PurchaseReturn.id;
 using static Chibest.Service.ModelDTOs.Stock.PurchaseReturn.list;
-using static Chibest.Service.ModelDTOs.Stock.PurchaseReturn.update;
 
 namespace Chibest.Service.Services
 {
@@ -40,12 +34,9 @@ namespace Chibest.Service.Services
                 Id = Guid.NewGuid(),
                 InvoiceCode = invoiceCode,
                 OrderDate = request.OrderDate,
-                DiscountAmount = request.DiscountAmount,
                 SupplierId = request.SupplierId,
                 SubTotal = request.SubTotal,
                 Note = request.Note,
-                PayMethod = request.PayMethod,
-                Paid = request.Paid,
                 WarehouseId = request.WarehouseId,
                 EmployeeId = request.EmployeeId,
                 Status = OrderStatus.Draft.ToString(),
@@ -56,7 +47,6 @@ namespace Chibest.Service.Services
             var returnDetails = request.PurchaseReturnDetails.Select(detailReq => new PurchaseReturnDetail
             {
                 Id = Guid.NewGuid(),
-                ContainerCode = GenerateContainerCode(),
                 PurchaseReturnId = purchaseReturn.Id,
                 ProductId = detailReq.ProductId,
                 Quantity = detailReq.Quantity,
@@ -96,8 +86,6 @@ namespace Chibest.Service.Services
                     CreatedAt = x.CreatedAt,
                     UpdatedAt = x.UpdatedAt,
                     SubTotal = x.SubTotal,
-                    DiscountAmount = x.DiscountAmount,
-                    Paid = x.Paid,
                     Note = x.Note,
                     Status = x.Status,
 
@@ -107,7 +95,6 @@ namespace Chibest.Service.Services
                     PurchaseReturnDetails = x.PurchaseReturnDetails.Select(d => new PurchaseReturnDetailResponse
                     {
                         Id = d.Id,
-                        ContainerCode = d.ContainerCode,
                         Quantity = d.Quantity,
                         UnitPrice = d.UnitPrice,
                         ReturnPrice = d.ReturnPrice,
@@ -188,6 +175,7 @@ namespace Chibest.Service.Services
         {
             var purchaseReturn = await _unitOfWork.PurchaseReturnRepository
                 .GetByWhere(x => x.Id == id)
+                .Include(pr => pr.PurchaseReturnDetails)
                 .FirstOrDefaultAsync();
 
             if (purchaseReturn == null)
@@ -202,8 +190,30 @@ namespace Chibest.Service.Services
             {
                 _unitOfWork.PurchaseReturnRepository.Update(purchaseReturn);
                 await _unitOfWork.SaveChangesAsync();
-                await _unitOfWork.CommitTransaction();
 
+                if (status == OrderStatus.Received)
+                {
+                    foreach (var detail in purchaseReturn.PurchaseReturnDetails)
+                    {
+                        if (detail.Quantity > 0)
+                        {
+                            var decreaseResult = await _unitOfWork.BranchStockRepository.UpdateBranchStockAsync(
+                                warehouseId: (Guid)purchaseReturn.WarehouseId,
+                                productId: detail.ProductId,
+                                deltaAvailableQty: -detail.Quantity
+                            );
+
+                            if (decreaseResult.StatusCode != Const.SUCCESS)
+                            {
+                                await _unitOfWork.RollbackTransaction();
+                                return new BusinessResult(Const.ERROR_EXCEPTION,
+                                    $"Lỗi khi giảm tồn kho khả dụng cho sản phẩm {detail.ProductId}: {decreaseResult.Message}");
+                            }
+                        }
+                    }
+                }
+
+                await _unitOfWork.CommitTransaction();
                 return new BusinessResult(Const.SUCCESS, "Cập nhật trạng thái phiếu trả hàng thành công");
             }
             catch (Exception ex)
@@ -233,15 +243,9 @@ namespace Chibest.Service.Services
                     nextNumber = lastNumber + 1;
                 }
             }
-
-            return $"{prefix}{nextNumber:D4}";
-        }
-
-        private string GenerateContainerCode()
-        {
-            string timePart = DateTime.Now.ToString("yyyyMMddHHmmss");
             string randomPart = new Random().Next(100, 999).ToString();
-            return $"CTN{timePart}{randomPart}";
+            return $"{prefix}{nextNumber:D4}{randomPart}";
         }
+
     }
 }

@@ -47,6 +47,10 @@ namespace Chibest.Service.ModelDTOs.Stock.TransferOrder
 
             public int? ActualQuantity { get; set; }
 
+            public decimal CommissionFee { get; set; }
+
+            public decimal ExtraFee { get; set; }
+
             public decimal UnitPrice { get; set; }
 
             public decimal Discount { get; set; }

@@ -4,15 +4,9 @@ using Chibest.Common.Enums;
 using Chibest.Repository;
 using Chibest.Repository.Models;
 using Chibest.Service.Interface;
-using Chibest.Service.ModelDTOs.Stock.PurchaseOrder;
 using Chibest.Service.Utilities;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Linq.Expressions;
-using System.Text;
-using System.Threading.Tasks;
 using static Chibest.Service.ModelDTOs.Stock.TransferOrder.create;
 using static Chibest.Service.ModelDTOs.Stock.TransferOrder.id;
 using static Chibest.Service.ModelDTOs.Stock.TransferOrder.list;
@@ -57,11 +51,12 @@ namespace Chibest.Service.Services
             var transferDetails = request.TransferOrderDetails.Select(detailReq => new TransferOrderDetail
             {
                 Id = Guid.NewGuid(),
-                ContainerCode = GenerateContainerCode(),
                 TransferOrderId = transferOrder.Id,
                 ProductId = detailReq.ProductId,
                 Quantity = detailReq.Quantity,
                 UnitPrice = detailReq.UnitPrice,
+                ExtraFee = detailReq.ExtraFee,
+                CommissionFee = detailReq.CommissionFee,
                 Discount = detailReq.Discount,
                 Note = detailReq.Note
             }).ToList();
@@ -163,9 +158,10 @@ namespace Chibest.Service.Services
                     TransferOrderDetails = x.TransferOrderDetails.Select(d => new TransferOrderDetailResponse
                     {
                         Id = d.Id,
-                        ContainerCode = d.ContainerCode,
                         Quantity = d.Quantity,
                         ActualQuantity = d.ActualQuantity,
+                        CommissionFee = d.CommissionFee,
+                        ExtraFee = d.ExtraFee,
                         UnitPrice = d.UnitPrice,
                         Discount = d.Discount,
                         Note = d.Note,
@@ -202,7 +198,7 @@ namespace Chibest.Service.Services
                 }
             }
 
-            transferOrder.Status = request.Status;
+            transferOrder.Status = request.Status.ToString();
             transferOrder.UpdatedAt = DateTime.Now;
 
             await _unitOfWork.BeginTransaction();
@@ -211,9 +207,44 @@ namespace Chibest.Service.Services
             {
                 _unitOfWork.TransferOrderRepository.Update(transferOrder);
                 await _unitOfWork.SaveChangesAsync();
+                if (request.Status == OrderStatus.Received)
+                {
+                    foreach (var detail in transferOrder.TransferOrderDetails)
+                    {
+                        if (detail.ActualQuantity.HasValue && detail.ActualQuantity.Value > 0)
+                        {
+                            int qty = detail.ActualQuantity.Value;
+
+                            var decreaseResult = await _unitOfWork.BranchStockRepository.UpdateBranchStockAsync(
+                                warehouseId: (Guid)transferOrder.FromWarehouseId,
+                                productId: detail.ProductId,
+                                deltaAvailableQty: -qty
+                            );
+
+                            if (decreaseResult.StatusCode != Const.SUCCESS)
+                            {
+                                await _unitOfWork.RollbackTransaction();
+                                return new BusinessResult(Const.ERROR_EXCEPTION,
+                                    $"Lỗi khi giảm tồn kho tại kho nguồn cho sản phẩm {detail.ProductId}: {decreaseResult.Message}");
+                            }
+                            var increaseResult = await _unitOfWork.BranchStockRepository.UpdateBranchStockAsync(
+                                warehouseId: (Guid)transferOrder.ToWarehouseId,
+                                productId: detail.ProductId,
+                                deltaAvailableQty: qty
+                            );
+
+                            if (increaseResult.StatusCode != Const.SUCCESS)
+                            {
+                                await _unitOfWork.RollbackTransaction();
+                                return new BusinessResult(Const.ERROR_EXCEPTION,
+                                    $"Lỗi khi tăng tồn kho tại kho đích cho sản phẩm {detail.ProductId}: {increaseResult.Message}");
+                            }
+                        }
+                    }
+                }
+
                 var detailsToUpdate = transferOrder.TransferOrderDetails.ToList();
                 await _unitOfWork.BulkUpdateAsync(detailsToUpdate);
-
                 await _unitOfWork.CommitTransaction();
 
                 return new BusinessResult(Const.SUCCESS, "Cập nhật phiếu chuyển kho thành công");
@@ -224,6 +255,7 @@ namespace Chibest.Service.Services
                 return new BusinessResult(Const.ERROR_EXCEPTION, "Lỗi khi cập nhật phiếu chuyển kho", ex.Message);
             }
         }
+
 
         private async Task<string> GenerateInvoiceCodeAsync()
         {
@@ -244,14 +276,8 @@ namespace Chibest.Service.Services
                     nextNumber = lastNumber + 1;
                 }
             }
-
-            return $"{prefix}{nextNumber:D4}";
-        }
-        private string GenerateContainerCode()
-        {
-            string timePart = DateTime.Now.ToString("yyyyMMddHHmmss");
             string randomPart = new Random().Next(100, 999).ToString();
-            return $"CTN{timePart}{randomPart}";
+            return $"{prefix}{nextNumber:D4}{randomPart}";
         }
     }
 }

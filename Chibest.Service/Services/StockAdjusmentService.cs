@@ -44,7 +44,7 @@ namespace Chibest.Service.Services
                 EmployeeId = request.EmployeeId,
                 ApprovedBy = request.ApprovedBy,
                 Note = request.Note,
-                Status = "Chờ Duyệt",
+                Status = request.Status != null ? request.Status : "",
                 CreatedAt = DateTime.Now,
                 UpdatedAt = DateTime.Now
             };

@@ -38,6 +38,10 @@ namespace Chibest.Service.ModelDTOs.Stock.TransferOrder
 
             public decimal UnitPrice { get; set; }
 
+            public decimal ExtraFee { get; set; }
+
+            public decimal CommissionFee { get; set; }
+
             public decimal Discount { get; set; }
 
             public string? Note { get; set; }

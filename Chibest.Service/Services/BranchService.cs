@@ -55,6 +55,7 @@ public class BranchService : IBranchService
         {
             Id = Guid.NewGuid(),
             Name = request.Name,
+            Code = request.Code,
             Address = request.Address,
             PhoneNumber = request.PhoneNumber,
             IsFranchise= request.IsFranchise,
@@ -109,6 +110,7 @@ public class BranchService : IBranchService
             return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, "Branch not found");
         }
         branchEntity.Name = request.Name;
+        branchEntity.Code = request.Code;
         branchEntity.Address = request.Address;
         branchEntity.PhoneNumber = request.PhoneNumber;
         branchEntity.IsFranchise = request.IsFranchise;

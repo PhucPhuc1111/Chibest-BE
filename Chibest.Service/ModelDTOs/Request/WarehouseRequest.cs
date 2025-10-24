@@ -9,6 +9,7 @@ namespace Chibest.Service.ModelDTOs.Request
     public class WarehouseRequest
     {
         public string Name { get; set; } = null!;
+        public string Code { get; set; } = null!;
 
         public string Address { get; set; } = null!;
 

@@ -1,5 +1,6 @@
 ﻿using Chibest.Common.BusinessResult;
 using Chibest.Service.ModelDTOs.Stock.PurchaseOrder;
+using Microsoft.AspNetCore.Http;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,5 +16,6 @@ namespace Chibest.Service.Interface
     DateTime? fromDate = null, DateTime? toDate = null, string status = null);
         Task<IBusinessResult> UpdateAsync(Guid id, PurchaseOrderUpdate request);
         Task<IBusinessResult> GetPurchaseOrderById(Guid id);
+        Task<IBusinessResult> ReadPurchaseOrderFromExcel(IFormFile file);
     }
 }

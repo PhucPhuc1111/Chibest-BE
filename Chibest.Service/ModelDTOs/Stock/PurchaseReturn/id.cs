@@ -22,9 +22,6 @@ namespace Chibest.Service.ModelDTOs.Stock.PurchaseReturn
 
             public decimal SubTotal { get; set; }
 
-            public decimal DiscountAmount { get; set; }
-
-            public decimal Paid { get; set; }
 
             public string? Note { get; set; }
 

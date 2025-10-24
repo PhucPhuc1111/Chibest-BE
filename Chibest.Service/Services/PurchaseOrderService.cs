@@ -6,7 +6,9 @@ using Chibest.Repository.Models;
 using Chibest.Service.Interface;
 using Chibest.Service.ModelDTOs.Stock.PurchaseOrder;
 using Chibest.Service.Utilities;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using OfficeOpenXml;
 using System.Linq.Expressions;
 
 namespace Chibest.Service.Services
@@ -54,8 +56,8 @@ namespace Chibest.Service.Services
                 Quantity = detailReq.Quantity,
                 UnitPrice = detailReq.UnitPrice,
                 Discount = detailReq.Discount,
+                ReFee = detailReq.ReFee,
                 Note = detailReq.Note,
-                ContainerCode = GenerateContainerCode()
             }).ToList();
 
             await _unitOfWork.BeginTransaction();
@@ -100,9 +102,9 @@ namespace Chibest.Service.Services
                     PurchaseOrderDetails = x.PurchaseOrderDetails.Select(d => new PurchaseOrderDetailResponse
                     {
                         Id = d.Id,
-                        ContainerCode = d.ContainerCode,
                         Quantity = d.Quantity,
                         ActualQuantity = d.ActualQuantity,
+                        ReFee = d.ReFee,
                         UnitPrice = d.UnitPrice,
                         Discount = d.Discount,
                         Note = d.Note,
@@ -180,7 +182,6 @@ namespace Chibest.Service.Services
 
             if (purchaseOrder == null)
                 return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, "Không tìm thấy phiếu nhập hàng");
-
             foreach (var detailReq in request.PurchaseOrderDetails)
             {
                 var detail = purchaseOrder.PurchaseOrderDetails
@@ -191,7 +192,6 @@ namespace Chibest.Service.Services
                     detail.ActualQuantity = detailReq.ActualQuantity ?? detail.ActualQuantity;
                 }
             }
-
             purchaseOrder.Status = request.Status.ToString();
             purchaseOrder.UpdatedAt = DateTime.Now;
 
@@ -201,9 +201,35 @@ namespace Chibest.Service.Services
             {
                 _unitOfWork.PurchaseOrderRepository.Update(purchaseOrder);
                 await _unitOfWork.SaveChangesAsync();
+
+                if (request.Status == OrderStatus.Received)
+                {
+                    foreach (var detail in purchaseOrder.PurchaseOrderDetails)
+                    {
+                        if (detail.ActualQuantity.HasValue && detail.ActualQuantity.Value > 0)
+                        {
+                            var result = await _unitOfWork.BranchStockRepository.UpdateBranchStockAsync(
+                                warehouseId: (Guid)purchaseOrder.WarehouseId,
+                                productId: detail.ProductId,
+                                deltaAvailableQty: detail.ActualQuantity.Value
+                            );
+
+                            if (result.StatusCode != Const.SUCCESS)
+                            {
+                                await _unitOfWork.RollbackTransaction();
+                                return new BusinessResult(Const.ERROR_EXCEPTION,
+                                    $"Lỗi cập nhật tồn kho cho sản phẩm {detail.ProductId}: {result.Message}");
+                            }
+                        }
+                    }
+                }
+
+                // 5️⃣ Cập nhật lại details
                 var detailsToUpdate = purchaseOrder.PurchaseOrderDetails.ToList();
                 await _unitOfWork.BulkUpdateAsync(detailsToUpdate);
+
                 await _unitOfWork.CommitTransaction();
+
                 return new BusinessResult(Const.SUCCESS, "Cập nhật thành công");
             }
             catch (Exception ex)
@@ -236,11 +262,85 @@ namespace Chibest.Service.Services
             return $"{prefix}{nextNumber:D4}";
         }
 
-        private string GenerateContainerCode()
+        public async Task<IBusinessResult> ReadPurchaseOrderFromExcel(IFormFile file)
         {
-            string timePart = DateTime.Now.ToString("yyyyMMddHHmmss");
-            string randomPart = new Random().Next(100, 999).ToString(); 
-            return $"CTN{timePart}{randomPart}";
+            ExcelPackage.License.SetNonCommercialOrganization("Chibest");
+            var result = new List<PurchaseOrderDetailResponse>();
+            var errorRows = new List<string>();
+
+            if (file == null || file.Length == 0)
+                throw new ArgumentException("File không hợp lệ hoặc trống.");
+
+            using (var stream = new MemoryStream())
+            {
+                await file.CopyToAsync(stream);
+                using (var package = new ExcelPackage(stream))
+                {
+                    var sheet = package.Workbook.Worksheets["PurchaseOrderTemplate"];
+                    if (sheet == null)
+                        throw new Exception("Không tìm thấy sheet 'PurchaseOrderTemplate' trong file Excel.");
+
+                    int startRow = 2;
+                    int row = startRow;
+
+                    while (true)
+                    {
+                        var productCode = sheet.Cells[row, 1].Text?.Trim();
+                        if (string.IsNullOrEmpty(productCode))
+                            break;
+
+                        try
+                        {
+                            var unitPrice = ParseDecimal(sheet.Cells[row, 2].Text);
+                            var discount = ParseDecimal(sheet.Cells[row, 3].Text);
+                            var reFee = ParseDecimal(sheet.Cells[row, 4].Text);
+                            var quantity = ParseInt(sheet.Cells[row, 5].Text);
+
+                            var product = await  _unitOfWork.ProductRepository.GetByWhere(x => x.Sku == productCode).FirstOrDefaultAsync();
+                            if (product == null)
+                            {
+                                errorRows.Add($"Dòng {row}: Không tìm thấy sản phẩm có mã '{productCode}'");
+                                row++;
+                                continue; 
+                            }
+
+                            result.Add(new PurchaseOrderDetailResponse
+                            {
+                                ProductName = product.Name,
+                                Sku = product.Sku,
+                                UnitPrice = unitPrice,
+                                Discount = discount,
+                                ReFee = reFee,
+                                Quantity = quantity
+                            });
+                        }
+                        catch (Exception ex)
+                        {
+                            errorRows.Add($"Dòng {row}: Lỗi xử lý dữ liệu ({ex.Message})");
+                        }
+
+                        row++;
+                    }
+                }
+            }
+
+            var message = Const.SUCCESS_READ_MSG;
+            if (errorRows.Any())
+            {
+                message += $" (Có {errorRows.Count} dòng bị bỏ qua)";
+                foreach (var err in errorRows)
+                    Console.WriteLine(err);
+            }
+
+            return new BusinessResult(Const.HTTP_STATUS_OK, message, result);
         }
+
+
+        private decimal ParseDecimal(string input)
+            => decimal.TryParse(input, out var value) ? value : 0;
+
+        private int ParseInt(string input)
+            => int.TryParse(input, out var value) ? value : 0;
+
     }
 }

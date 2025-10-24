@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Chibest.Common.Enums;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -10,7 +11,7 @@ namespace Chibest.Service.ModelDTOs.Stock.TransferOrder
     {
         public class TransferOrderUpdate
         {
-            public string Status { get; set; } = null!;
+            public OrderStatus Status { get; set; } 
             public virtual ICollection<TransferOrderDetailUpdate> TransferOrderDetails { get; set; } = new List<TransferOrderDetailUpdate>();
         }
         public class TransferOrderDetailUpdate
