@@ -640,7 +640,7 @@ GO
 
 CREATE TABLE SupplierDebtHistory (
     Id UNIQUEIDENTIFIER DEFAULT NEWID() PRIMARY KEY,
-    SupplierId UNIQUEIDENTIFIER NOT NULL FOREIGN KEY REFERENCES [Account](Id),
+    SupplierDebtId UNIQUEIDENTIFIER NOT NULL FOREIGN KEY REFERENCES [SupplierDebt](Id),
     TransactionType NVARCHAR(50) NOT NULL, -- Phát Sinh Nợ, Thanh Toán, Điều Chỉnh
     TransactionDate DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     Amount MONEY NOT NULL,    
@@ -651,39 +651,47 @@ CREATE TABLE SupplierDebtHistory (
 );
 GO
 
-CREATE NONCLUSTERED INDEX IX_SupplierDebtHistory_Supplier ON SupplierDebtHistory(SupplierId, TransactionDate DESC);
+CREATE NONCLUSTERED INDEX IX_SupplierDebtHistory_Supplier ON SupplierDebtHistory(SupplierDebtId, TransactionDate DESC);
 GO
 
 -- Công nợ chi nhánh (với trụ sở chính)
+-- Bảng tổng nợ của chi nhánh
 CREATE TABLE BranchDebt (
     Id UNIQUEIDENTIFIER DEFAULT NEWID() PRIMARY KEY,
     BranchId UNIQUEIDENTIFIER NOT NULL FOREIGN KEY REFERENCES [Branch](Id),
-    
+
     TotalDebt MONEY NOT NULL DEFAULT 0,
     PaidAmount MONEY NOT NULL DEFAULT 0,
     RemainingDebt AS (TotalDebt - PaidAmount) PERSISTED,
-    
+
     LastTransactionDate DATETIME NULL,
     LastUpdated DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    
+
     CONSTRAINT UQ_BranchDebt_Branch UNIQUE (BranchId)
 );
 GO
 
+
+-- Bảng lịch sử biến động nợ (nhiều record cho 1 BranchDebt)
 CREATE TABLE BranchDebtHistory (
     Id UNIQUEIDENTIFIER DEFAULT NEWID() PRIMARY KEY,
-    BranchId UNIQUEIDENTIFIER NOT NULL FOREIGN KEY REFERENCES [Branch](Id),
+    
+    -- Thay vì tham chiếu trực tiếp BranchId, tham chiếu tới BranchDebt
+    BranchDebtId UNIQUEIDENTIFIER NOT NULL FOREIGN KEY REFERENCES BranchDebt(Id),
+
     TransactionType NVARCHAR(50) NOT NULL,
     TransactionDate DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     Amount MONEY NOT NULL,
     BalanceBefore MONEY NOT NULL,
     BalanceAfter MONEY NOT NULL,
     Note NVARCHAR(MAX),
+
     CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 GO
 
-CREATE NONCLUSTERED INDEX IX_BranchDebtHistory_Branch ON BranchDebtHistory(BranchId, TransactionDate DESC);
+
+CREATE NONCLUSTERED INDEX IX_BranchDebtHistory_Branch ON BranchDebtHistory(BranchDebtId, TransactionDate DESC);
 GO
 
 -- =============================================

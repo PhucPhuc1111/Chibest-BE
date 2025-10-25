@@ -7,7 +7,7 @@ public partial class BranchDebtHistory
 {
     public Guid Id { get; set; }
 
-    public Guid BranchId { get; set; }
+    public Guid BranchDebtId { get; set; }
 
     public string TransactionType { get; set; } = null!;
 
@@ -23,5 +23,5 @@ public partial class BranchDebtHistory
 
     public DateTime CreatedAt { get; set; }
 
-    public virtual Branch Branch { get; set; } = null!;
+    public virtual BranchDebt BranchDebt { get; set; } = null!;
 }

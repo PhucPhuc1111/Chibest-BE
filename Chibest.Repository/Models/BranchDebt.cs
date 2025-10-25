@@ -20,4 +20,6 @@ public partial class BranchDebt
     public DateTime LastUpdated { get; set; }
 
     public virtual Branch Branch { get; set; } = null!;
+
+    public virtual ICollection<BranchDebtHistory> BranchDebtHistories { get; set; } = new List<BranchDebtHistory>();
 }

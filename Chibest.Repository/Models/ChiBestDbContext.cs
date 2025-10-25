@@ -89,7 +89,7 @@ public partial class ChiBestDbContext : DbContext
     {
         modelBuilder.Entity<Account>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Account__3214EC07D164B66C");
+            entity.HasKey(e => e.Id).HasName("PK__Account__3214EC0795722DD4");
 
             entity.ToTable("Account");
 
@@ -97,9 +97,9 @@ public partial class ChiBestDbContext : DbContext
 
             entity.HasIndex(e => e.PhoneNumber, "IX_Account_PhoneNumber");
 
-            entity.HasIndex(e => e.Code, "UQ__Account__A25C5AA7C9329262").IsUnique();
+            entity.HasIndex(e => e.Code, "UQ__Account__A25C5AA70F03E3CA").IsUnique();
 
-            entity.HasIndex(e => e.Email, "UQ__Account__A9D1053471933FDE").IsUnique();
+            entity.HasIndex(e => e.Email, "UQ__Account__A9D105340A276960").IsUnique();
 
             entity.Property(e => e.Id).HasDefaultValueSql("(newid())");
             entity.Property(e => e.AvatarUrl).HasColumnName("AvatarURL");
@@ -128,7 +128,7 @@ public partial class ChiBestDbContext : DbContext
 
         modelBuilder.Entity<AccountRole>(entity =>
         {
-            entity.HasKey(e => new { e.AccountId, e.RoleId, e.StartDate }).HasName("PK__AccountR__7A7C10BBCFB797BE");
+            entity.HasKey(e => new { e.AccountId, e.RoleId, e.StartDate }).HasName("PK__AccountR__7A7C10BB4D6CC9AE");
 
             entity.ToTable("AccountRole");
 
@@ -158,7 +158,7 @@ public partial class ChiBestDbContext : DbContext
 
         modelBuilder.Entity<Attendance>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Attendan__3214EC0715F082C3");
+            entity.HasKey(e => e.Id).HasName("PK__Attendan__3214EC077F088667");
 
             entity.ToTable("Attendance");
 
@@ -203,11 +203,11 @@ public partial class ChiBestDbContext : DbContext
 
         modelBuilder.Entity<Branch>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Branch__3214EC075114DB3F");
+            entity.HasKey(e => e.Id).HasName("PK__Branch__3214EC0719CA3F33");
 
             entity.ToTable("Branch");
 
-            entity.HasIndex(e => e.Code, "UQ__Branch__A25C5AA7A98C6F70").IsUnique();
+            entity.HasIndex(e => e.Code, "UQ__Branch__A25C5AA7C7C55536").IsUnique();
 
             entity.Property(e => e.Id).HasDefaultValueSql("(newid())");
             entity.Property(e => e.Address).HasMaxLength(500);
@@ -228,7 +228,7 @@ public partial class ChiBestDbContext : DbContext
 
         modelBuilder.Entity<BranchDebt>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__BranchDe__3214EC07C8CF5F09");
+            entity.HasKey(e => e.Id).HasName("PK__BranchDe__3214EC0789F6BC95");
 
             entity.ToTable("BranchDebt");
 
@@ -253,11 +253,11 @@ public partial class ChiBestDbContext : DbContext
 
         modelBuilder.Entity<BranchDebtHistory>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__BranchDe__3214EC0727B5E62D");
+            entity.HasKey(e => e.Id).HasName("PK__BranchDe__3214EC0783E33345");
 
             entity.ToTable("BranchDebtHistory");
 
-            entity.HasIndex(e => new { e.BranchId, e.TransactionDate }, "IX_BranchDebtHistory_Branch").IsDescending(false, true);
+            entity.HasIndex(e => new { e.BranchDebtId, e.TransactionDate }, "IX_BranchDebtHistory_Branch").IsDescending(false, true);
 
             entity.Property(e => e.Id).HasDefaultValueSql("(newid())");
             entity.Property(e => e.Amount).HasColumnType("money");
@@ -271,15 +271,15 @@ public partial class ChiBestDbContext : DbContext
                 .HasColumnType("datetime");
             entity.Property(e => e.TransactionType).HasMaxLength(50);
 
-            entity.HasOne(d => d.Branch).WithMany(p => p.BranchDebtHistories)
-                .HasForeignKey(d => d.BranchId)
+            entity.HasOne(d => d.BranchDebt).WithMany(p => p.BranchDebtHistories)
+                .HasForeignKey(d => d.BranchDebtId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK__BranchDeb__Branc__2EA5EC27");
         });
 
         modelBuilder.Entity<BranchStock>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__BranchSt__3214EC07D9664A9A");
+            entity.HasKey(e => e.Id).HasName("PK__BranchSt__3214EC07EF065CCB");
 
             entity.ToTable("BranchStock");
 
@@ -313,7 +313,7 @@ public partial class ChiBestDbContext : DbContext
 
         modelBuilder.Entity<Category>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Category__3214EC07A6761BE5");
+            entity.HasKey(e => e.Id).HasName("PK__Category__3214EC077EC023EF");
 
             entity.ToTable("Category");
 
@@ -332,7 +332,7 @@ public partial class ChiBestDbContext : DbContext
 
         modelBuilder.Entity<Commission>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Commissi__3214EC07B60854E3");
+            entity.HasKey(e => e.Id).HasName("PK__Commissi__3214EC077F2D093D");
 
             entity.ToTable("Commission");
 
@@ -356,7 +356,7 @@ public partial class ChiBestDbContext : DbContext
 
         modelBuilder.Entity<Customer>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Customer__3214EC0716D90B27");
+            entity.HasKey(e => e.Id).HasName("PK__Customer__3214EC07C1DA5CFB");
 
             entity.ToTable("Customer");
 
@@ -366,7 +366,7 @@ public partial class ChiBestDbContext : DbContext
 
             entity.HasIndex(e => e.PhoneNumber, "IX_Customer_PhoneNumber");
 
-            entity.HasIndex(e => e.Code, "UQ__Customer__A25C5AA7B1BC05E7").IsUnique();
+            entity.HasIndex(e => e.Code, "UQ__Customer__A25C5AA7BD2686F8").IsUnique();
 
             entity.Property(e => e.Id).HasDefaultValueSql("(newid())");
             entity.Property(e => e.AvatarUrl).HasColumnName("AvatarURL");
@@ -395,7 +395,7 @@ public partial class ChiBestDbContext : DbContext
 
         modelBuilder.Entity<CustomerVoucher>(entity =>
         {
-            entity.HasKey(e => new { e.VoucherId, e.CustomerId }).HasName("PK__Customer__A0A49F6C66BC1500");
+            entity.HasKey(e => new { e.VoucherId, e.CustomerId }).HasName("PK__Customer__A0A49F6C9AD2321E");
 
             entity.ToTable("CustomerVoucher");
 
@@ -420,7 +420,7 @@ public partial class ChiBestDbContext : DbContext
 
         modelBuilder.Entity<Deduction>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Deductio__3214EC077BC1B9E7");
+            entity.HasKey(e => e.Id).HasName("PK__Deductio__3214EC0748519231");
 
             entity.ToTable("Deduction");
 
@@ -441,7 +441,7 @@ public partial class ChiBestDbContext : DbContext
 
         modelBuilder.Entity<Payroll>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Payroll__3214EC07C0372072");
+            entity.HasKey(e => e.Id).HasName("PK__Payroll__3214EC07A31082AB");
 
             entity.ToTable("Payroll");
 
@@ -497,7 +497,7 @@ public partial class ChiBestDbContext : DbContext
 
         modelBuilder.Entity<Product>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Product__3214EC07879E22E5");
+            entity.HasKey(e => e.Id).HasName("PK__Product__3214EC072DD8F224");
 
             entity.ToTable("Product");
 
@@ -507,7 +507,7 @@ public partial class ChiBestDbContext : DbContext
 
             entity.HasIndex(e => e.ParentSku, "IX_Product_ParentSKU");
 
-            entity.HasIndex(e => e.Sku, "UQ__Product__CA1ECF0D6DBCEC97").IsUnique();
+            entity.HasIndex(e => e.Sku, "UQ__Product__CA1ECF0D78EC1F33").IsUnique();
 
             entity.Property(e => e.Id).HasDefaultValueSql("(newid())");
             entity.Property(e => e.AvatarUrl).HasColumnName("AvatarURL");
@@ -549,7 +549,7 @@ public partial class ChiBestDbContext : DbContext
 
         modelBuilder.Entity<ProductDetail>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__ProductD__3214EC072C91A937");
+            entity.HasKey(e => e.Id).HasName("PK__ProductD__3214EC078B20E586");
 
             entity.ToTable("ProductDetail");
 
@@ -559,7 +559,7 @@ public partial class ChiBestDbContext : DbContext
 
             entity.HasIndex(e => new { e.ProductId, e.Status }, "IX_ProductDetail_ProductId_Status");
 
-            entity.HasIndex(e => e.ChipCode, "UQ__ProductD__D7FC520A1EAD43D8").IsUnique();
+            entity.HasIndex(e => e.ChipCode, "UQ__ProductD__D7FC520A1DD2AFF0").IsUnique();
 
             entity.Property(e => e.Id).HasDefaultValueSql("(newid())");
             entity.Property(e => e.ChipCode)
@@ -602,7 +602,7 @@ public partial class ChiBestDbContext : DbContext
 
         modelBuilder.Entity<ProductPriceHistory>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__ProductP__3214EC075D5620BB");
+            entity.HasKey(e => e.Id).HasName("PK__ProductP__3214EC079FA0ECED");
 
             entity.ToTable("ProductPriceHistory");
 
@@ -634,7 +634,7 @@ public partial class ChiBestDbContext : DbContext
 
         modelBuilder.Entity<PurchaseOrder>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Purchase__3214EC079AAEAD2F");
+            entity.HasKey(e => e.Id).HasName("PK__Purchase__3214EC0714718209");
 
             entity.ToTable("PurchaseOrder");
 
@@ -644,7 +644,7 @@ public partial class ChiBestDbContext : DbContext
 
             entity.HasIndex(e => e.Status, "IX_TransactionOrder_Status");
 
-            entity.HasIndex(e => e.InvoiceCode, "UQ__Purchase__0D9D7FF35CAAE08A").IsUnique();
+            entity.HasIndex(e => e.InvoiceCode, "UQ__Purchase__0D9D7FF38D9BE4D8").IsUnique();
 
             entity.Property(e => e.Id).HasDefaultValueSql("(newid())");
             entity.Property(e => e.CreatedAt)
@@ -682,7 +682,7 @@ public partial class ChiBestDbContext : DbContext
 
         modelBuilder.Entity<PurchaseOrderDetail>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Purchase__3214EC074A5B93BD");
+            entity.HasKey(e => e.Id).HasName("PK__Purchase__3214EC077D2D7F71");
 
             entity.ToTable("PurchaseOrderDetail");
 
@@ -708,7 +708,7 @@ public partial class ChiBestDbContext : DbContext
 
         modelBuilder.Entity<PurchaseReturn>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Purchase__3214EC07DE13A244");
+            entity.HasKey(e => e.Id).HasName("PK__Purchase__3214EC07D90410F6");
 
             entity.ToTable("PurchaseReturn");
 
@@ -716,7 +716,7 @@ public partial class ChiBestDbContext : DbContext
 
             entity.HasIndex(e => e.Status, "IX_PurchaseReturn_Status");
 
-            entity.HasIndex(e => e.InvoiceCode, "UQ__Purchase__0D9D7FF3ECCA0521").IsUnique();
+            entity.HasIndex(e => e.InvoiceCode, "UQ__Purchase__0D9D7FF3EBA38CA7").IsUnique();
 
             entity.Property(e => e.Id).HasDefaultValueSql("(newid())");
             entity.Property(e => e.CreatedAt)
@@ -749,7 +749,7 @@ public partial class ChiBestDbContext : DbContext
 
         modelBuilder.Entity<PurchaseReturnDetail>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Purchase__3214EC07F5AF5AFA");
+            entity.HasKey(e => e.Id).HasName("PK__Purchase__3214EC079C527A5F");
 
             entity.ToTable("PurchaseReturnDetail");
 
@@ -774,7 +774,7 @@ public partial class ChiBestDbContext : DbContext
 
         modelBuilder.Entity<Role>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Role__3214EC0720B1BC11");
+            entity.HasKey(e => e.Id).HasName("PK__Role__3214EC0783421793");
 
             entity.ToTable("Role");
 
@@ -786,7 +786,7 @@ public partial class ChiBestDbContext : DbContext
 
         modelBuilder.Entity<SalaryConfig>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__SalaryCo__3214EC07C4992464");
+            entity.HasKey(e => e.Id).HasName("PK__SalaryCo__3214EC0777CF5724");
 
             entity.ToTable("SalaryConfig");
 
@@ -835,7 +835,7 @@ public partial class ChiBestDbContext : DbContext
 
         modelBuilder.Entity<SalesOrder>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__SalesOrd__3214EC07D21D2BB6");
+            entity.HasKey(e => e.Id).HasName("PK__SalesOrd__3214EC0798C4A6E0");
 
             entity.ToTable("SalesOrder");
 
@@ -847,7 +847,7 @@ public partial class ChiBestDbContext : DbContext
 
             entity.HasIndex(e => new { e.Status, e.OrderDate }, "IX_SalesOrder_Status").IsDescending(false, true);
 
-            entity.HasIndex(e => e.OrderCode, "UQ__SalesOrd__999B52296330B339").IsUnique();
+            entity.HasIndex(e => e.OrderCode, "UQ__SalesOrd__999B5229B6507908").IsUnique();
 
             entity.Property(e => e.Id).HasDefaultValueSql("(newid())");
             entity.Property(e => e.ActualDeliveryDate).HasColumnType("datetime");
@@ -914,7 +914,7 @@ public partial class ChiBestDbContext : DbContext
 
         modelBuilder.Entity<SalesOrderDetail>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__SalesOrd__3214EC0796815A06");
+            entity.HasKey(e => e.Id).HasName("PK__SalesOrd__3214EC07878AF5BB");
 
             entity.ToTable("SalesOrderDetail");
 
@@ -952,7 +952,7 @@ public partial class ChiBestDbContext : DbContext
 
         modelBuilder.Entity<StockAdjustment>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__StockAdj__3214EC07676F8F59");
+            entity.HasKey(e => e.Id).HasName("PK__StockAdj__3214EC07E4CB905F");
 
             entity.ToTable("StockAdjustment");
 
@@ -960,7 +960,7 @@ public partial class ChiBestDbContext : DbContext
 
             entity.HasIndex(e => new { e.AdjustmentType, e.AdjustmentDate }, "IX_StockAdjustment_Type_Date").IsDescending(false, true);
 
-            entity.HasIndex(e => e.AdjustmentCode, "UQ__StockAdj__292CC6CF01110479").IsUnique();
+            entity.HasIndex(e => e.AdjustmentCode, "UQ__StockAdj__292CC6CFC795DDB3").IsUnique();
 
             entity.Property(e => e.Id).HasDefaultValueSql("(newid())");
             entity.Property(e => e.AdjustmentCode).HasMaxLength(100);
@@ -1001,7 +1001,7 @@ public partial class ChiBestDbContext : DbContext
 
         modelBuilder.Entity<StockAdjustmentDetail>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__StockAdj__3214EC0702577BF4");
+            entity.HasKey(e => e.Id).HasName("PK__StockAdj__3214EC07227E4B5F");
 
             entity.ToTable("StockAdjustmentDetail");
 
@@ -1029,7 +1029,7 @@ public partial class ChiBestDbContext : DbContext
 
         modelBuilder.Entity<StockMovement>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__StockMov__3214EC079A349672");
+            entity.HasKey(e => e.Id).HasName("PK__StockMov__3214EC0737BE961E");
 
             entity.ToTable("StockMovement");
 
@@ -1043,7 +1043,7 @@ public partial class ChiBestDbContext : DbContext
 
             entity.HasIndex(e => new { e.MovementType, e.MovementDate }, "IX_StockMovement_Type_Date").IsDescending(false, true);
 
-            entity.HasIndex(e => e.MovementCode, "UQ__StockMov__8B71BE1DA81F7ED4").IsUnique();
+            entity.HasIndex(e => e.MovementCode, "UQ__StockMov__8B71BE1DA17B5FFC").IsUnique();
 
             entity.Property(e => e.Id).HasDefaultValueSql("(newid())");
             entity.Property(e => e.CreatedAt)
@@ -1087,7 +1087,7 @@ public partial class ChiBestDbContext : DbContext
 
         modelBuilder.Entity<SupplierDebt>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Supplier__3214EC07A63F5675");
+            entity.HasKey(e => e.Id).HasName("PK__Supplier__3214EC078E8C5522");
 
             entity.ToTable("SupplierDebt");
 
@@ -1112,11 +1112,11 @@ public partial class ChiBestDbContext : DbContext
 
         modelBuilder.Entity<SupplierDebtHistory>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Supplier__3214EC07DEEDF98F");
+            entity.HasKey(e => e.Id).HasName("PK__Supplier__3214EC079AFAF556");
 
             entity.ToTable("SupplierDebtHistory");
 
-            entity.HasIndex(e => new { e.SupplierId, e.TransactionDate }, "IX_SupplierDebtHistory_Supplier").IsDescending(false, true);
+            entity.HasIndex(e => new { e.SupplierDebtId, e.TransactionDate }, "IX_SupplierDebtHistory_Supplier").IsDescending(false, true);
 
             entity.Property(e => e.Id).HasDefaultValueSql("(newid())");
             entity.Property(e => e.Amount).HasColumnType("money");
@@ -1130,15 +1130,15 @@ public partial class ChiBestDbContext : DbContext
                 .HasColumnType("datetime");
             entity.Property(e => e.TransactionType).HasMaxLength(50);
 
-            entity.HasOne(d => d.Supplier).WithMany(p => p.SupplierDebtHistories)
-                .HasForeignKey(d => d.SupplierId)
+            entity.HasOne(d => d.SupplierDebt).WithMany(p => p.SupplierDebtHistories)
+                .HasForeignKey(d => d.SupplierDebtId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK__SupplierD__Suppl__214BF109");
         });
 
         modelBuilder.Entity<SystemLog>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__SystemLo__3214EC0735A89437");
+            entity.HasKey(e => e.Id).HasName("PK__SystemLo__3214EC07B1BF5C5C");
 
             entity.ToTable("SystemLog");
 
@@ -1171,7 +1171,7 @@ public partial class ChiBestDbContext : DbContext
 
         modelBuilder.Entity<TransferOrder>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Transfer__3214EC0705BDEB59");
+            entity.HasKey(e => e.Id).HasName("PK__Transfer__3214EC07C9DD9EAB");
 
             entity.ToTable("TransferOrder");
 
@@ -1179,7 +1179,7 @@ public partial class ChiBestDbContext : DbContext
 
             entity.HasIndex(e => e.Status, "IX_TransferOrder_Status");
 
-            entity.HasIndex(e => e.InvoiceCode, "UQ__Transfer__0D9D7FF377EC6C77").IsUnique();
+            entity.HasIndex(e => e.InvoiceCode, "UQ__Transfer__0D9D7FF3D7018289").IsUnique();
 
             entity.Property(e => e.Id).HasDefaultValueSql("(newid())");
             entity.Property(e => e.CreatedAt)
@@ -1217,7 +1217,7 @@ public partial class ChiBestDbContext : DbContext
 
         modelBuilder.Entity<TransferOrderDetail>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Transfer__3214EC07B767009A");
+            entity.HasKey(e => e.Id).HasName("PK__Transfer__3214EC07235DFB2E");
 
             entity.ToTable("TransferOrderDetail");
 
@@ -1244,11 +1244,11 @@ public partial class ChiBestDbContext : DbContext
 
         modelBuilder.Entity<Voucher>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Voucher__3214EC07F43EC8EF");
+            entity.HasKey(e => e.Id).HasName("PK__Voucher__3214EC073122E39C");
 
             entity.ToTable("Voucher");
 
-            entity.HasIndex(e => e.Code, "UQ__Voucher__A25C5AA7CA61E63B").IsUnique();
+            entity.HasIndex(e => e.Code, "UQ__Voucher__A25C5AA72FCDABDC").IsUnique();
 
             entity.Property(e => e.Id).HasDefaultValueSql("(newid())");
             entity.Property(e => e.AvailableDate)
@@ -1282,13 +1282,13 @@ public partial class ChiBestDbContext : DbContext
 
         modelBuilder.Entity<Warehouse>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Warehous__3214EC072D3E842E");
+            entity.HasKey(e => e.Id).HasName("PK__Warehous__3214EC073A7E5F52");
 
             entity.ToTable("Warehouse");
 
             entity.HasIndex(e => e.BranchId, "IX_Warehouse_BranchId");
 
-            entity.HasIndex(e => e.Code, "UQ__Warehous__A25C5AA7F045A5CD").IsUnique();
+            entity.HasIndex(e => e.Code, "UQ__Warehous__A25C5AA725A95E52").IsUnique();
 
             entity.Property(e => e.Id).HasDefaultValueSql("(newid())");
             entity.Property(e => e.Address).HasMaxLength(500);
@@ -1312,7 +1312,7 @@ public partial class ChiBestDbContext : DbContext
 
         modelBuilder.Entity<WorkShift>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__WorkShif__3214EC076A2087C9");
+            entity.HasKey(e => e.Id).HasName("PK__WorkShif__3214EC0762071092");
 
             entity.ToTable("WorkShift");
 

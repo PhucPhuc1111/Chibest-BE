@@ -23,6 +23,8 @@ namespace Chibest.Repository
         private ITransferOrderRepository _transferOrderRepository;
         private IPurchaseReturnRepository _purchaseReturnRepository;
         private IStockAdjusmentRepository _stockAdjusmentRepository;
+        private ISupplierDebtRepository _supplierDebtRepository;    
+        private IBranchDebtRepository _branchDebtRepository;
 
         public UnitOfWork(ChiBestDbContext context)
         {
@@ -50,6 +52,8 @@ namespace Chibest.Repository
         public IPurchaseReturnRepository PurchaseReturnRepository => _purchaseReturnRepository ??= new PurchaseReturnRepository(_context);
 
         public IStockAdjusmentRepository StockAdjusmentRepository => _stockAdjusmentRepository ??= new StockAdjusmentRepository(_context);
+        public ISupplierDebtRepository SupplierDebtRepository => _supplierDebtRepository ??= new SupplierDebtRepository(_context);
+        public IBranchDebtRepository BranchDebtRepository => _branchDebtRepository ??=new BranchDebtRepository(_context);
         public async Task BeginTransaction()
         {
             await _context.Database.BeginTransactionAsync();

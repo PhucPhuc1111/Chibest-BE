@@ -23,6 +23,61 @@ namespace Chibest.Service.Services
         {
             _unitOfWork = unitOfWork;
         }
+        public async Task<IBusinessResult> AddMultiTransferOrder(TransferMultiOrderCreate request)
+        {
+            if (request == null || request.Destinations == null || !request.Destinations.Any())
+                return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Invalid request");
+
+            var createdOrders = new List<object>();
+
+            try
+            {
+                foreach (var dest in request.Destinations)
+                {
+                    var singleRequest = new TransferOrderCreate
+                    {
+                        FromWarehouseId = request.FromWarehouseId,
+                        ToWarehouseId = dest.ToWarehouseId,
+                        EmployeeId = request.EmployeeId,
+                        OrderDate = request.OrderDate,
+                        DiscountAmount = request.DiscountAmount,
+                        SubTotal = request.SubTotal,
+                        Paid = request.Paid,
+                        Note = request.Note,
+                        PayMethod = request.PayMethod,
+                        TransferOrderDetails = dest.Products.Select(p => new TransferOrderDetailCreate
+                        {
+                            ProductId = p.ProductId,
+                            Quantity = p.Quantity,
+                            UnitPrice = p.UnitPrice,
+                            ExtraFee = p.ExtraFee,
+                            CommissionFee = p.CommissionFee,
+                            Discount = p.Discount,
+                            Note = p.Note
+                        }).ToList()
+                    };
+
+                    var result = await AddTransferOrder(singleRequest);
+
+                    if (result.StatusCode != Const.HTTP_STATUS_OK)
+                    {
+                        return new BusinessResult(Const.ERROR_EXCEPTION,
+                            $"Error creating order for warehouse {dest.ToWarehouseId}", result.Message);
+                    }
+
+                    createdOrders.Add(result.Data);
+                }
+
+                return new BusinessResult(Const.HTTP_STATUS_OK, "All transfer orders created successfully", createdOrders);
+            }
+            catch (Exception ex)
+            {
+                return new BusinessResult(Const.ERROR_EXCEPTION, "Error creating multi transfer orders", ex.Message);
+            }
+        }
+
+
+
         public async Task<IBusinessResult> AddTransferOrder(TransferOrderCreate request)
         {
             if (request == null)

@@ -71,8 +71,6 @@ public partial class Account
 
     public virtual SupplierDebt? SupplierDebt { get; set; }
 
-    public virtual ICollection<SupplierDebtHistory> SupplierDebtHistories { get; set; } = new List<SupplierDebtHistory>();
-
     public virtual ICollection<SystemLog> SystemLogs { get; set; } = new List<SystemLog>();
 
     public virtual ICollection<TransferOrder> TransferOrders { get; set; } = new List<TransferOrder>();

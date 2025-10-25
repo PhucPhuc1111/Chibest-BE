@@ -31,8 +31,6 @@ public partial class Branch
 
     public virtual BranchDebt? BranchDebt { get; set; }
 
-    public virtual ICollection<BranchDebtHistory> BranchDebtHistories { get; set; } = new List<BranchDebtHistory>();
-
     public virtual ICollection<BranchStock> BranchStocks { get; set; } = new List<BranchStock>();
 
     public virtual ICollection<Payroll> Payrolls { get; set; } = new List<Payroll>();

@@ -7,7 +7,7 @@ public partial class SupplierDebtHistory
 {
     public Guid Id { get; set; }
 
-    public Guid SupplierId { get; set; }
+    public Guid SupplierDebtId { get; set; }
 
     public string TransactionType { get; set; } = null!;
 
@@ -23,5 +23,5 @@ public partial class SupplierDebtHistory
 
     public DateTime CreatedAt { get; set; }
 
-    public virtual Account Supplier { get; set; } = null!;
+    public virtual SupplierDebt SupplierDebt { get; set; } = null!;
 }

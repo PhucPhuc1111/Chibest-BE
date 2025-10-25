@@ -225,7 +225,6 @@ namespace Chibest.Service.Services
             }
         }
 
-
         private async Task<string> GenerateInvoiceCodeAsync()
         {
             string datePart = DateTime.Now.ToString("yyyyMMdd");

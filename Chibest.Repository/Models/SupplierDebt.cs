@@ -20,4 +20,6 @@ public partial class SupplierDebt
     public DateTime LastUpdated { get; set; }
 
     public virtual Account Supplier { get; set; } = null!;
+
+    public virtual ICollection<SupplierDebtHistory> SupplierDebtHistories { get; set; } = new List<SupplierDebtHistory>();
 }
