@@ -18,5 +18,6 @@ namespace Chibest.Service.Interface
         Task<IBusinessResult> GetTransferOrderById(Guid id);
         Task<IBusinessResult> UpdateTransferOrderAsync(Guid id, TransferOrderUpdate request);
         Task<IBusinessResult> ReadTransferDetailFromExcel(IFormFile file);
+        Task<IBusinessResult> AddMultiTransferOrder(TransferMultiOrderCreate request);
     }
 }

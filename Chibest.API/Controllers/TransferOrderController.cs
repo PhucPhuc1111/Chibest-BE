@@ -42,6 +42,13 @@ namespace Chibest.API.Controllers
             return StatusCode(result.StatusCode, result);
         }
 
+        [HttpPost("multiple")]
+        public async Task<IActionResult> CreateMultipleTransferOrder([FromBody] TransferMultiOrderCreate request)
+        {
+            var result = await _transferOrderService.AddMultiTransferOrder(request);
+            return StatusCode(result.StatusCode, result);
+        }
+
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateTransferOrder(Guid id, [FromBody] TransferOrderUpdate request)
         {
