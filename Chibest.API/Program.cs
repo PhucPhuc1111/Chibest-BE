@@ -7,7 +7,11 @@ DotNetEnv.Env.Load("../.env");
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddHttpClient();
 builder.Services.AddSwaggerGen();
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddNewtonsoftJson(options =>
+ {
+     options.SerializerSettings.ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore;
+ });
 builder.Services.AddMemoryCache();
 ServiceRegister.RegisterServices(builder.Services, builder.Configuration);
 builder.Services.AddAuthorization();
