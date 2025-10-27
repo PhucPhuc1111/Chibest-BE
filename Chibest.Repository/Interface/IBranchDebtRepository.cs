@@ -1,4 +1,5 @@
-﻿using Chibest.Repository.Base;
+﻿using Chibest.Common.BusinessResult;
+using Chibest.Repository.Base;
 using Chibest.Repository.Models;
 using System;
 using System.Collections.Generic;
@@ -10,5 +11,10 @@ namespace Chibest.Repository.Interface
 {
     public interface IBranchDebtRepository : IGenericRepository<BranchDebt>
     {
+        Task<IBusinessResult> AddBranchTransactionAsync(
+    Guid branchId,
+    string transactionType,
+    decimal amount,
+    string? note = null);
     }
 }
