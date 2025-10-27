@@ -1,30 +1,95 @@
-﻿using Chibest.Common;
+﻿using Azure.Core;
+using Chibest.Common;
 using Chibest.Common.BusinessResult;
 using Chibest.Repository;
 using Chibest.Repository.Models;
 using Chibest.Service.Interface;
 using Chibest.Service.ModelDTOs.Request;
+using Chibest.Service.ModelDTOs.Request.Query;
 using Chibest.Service.ModelDTOs.Response;
 using Chibest.Service.Utilities;
 using Mapster;
 using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
+using System.Text.Json;
 
 namespace Chibest.Service.Services;
 public class CategoryService : ICategoryService
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ISystemLogService _systemLogService;
 
-    public CategoryService(IUnitOfWork unitOfWork)
+    public CategoryService(IUnitOfWork unitOfWork, ISystemLogService systemLogService)
     {
         _unitOfWork = unitOfWork;
+        _systemLogService = systemLogService;
+    }
+
+    public async Task<IBusinessResult> GetListAsync(CategoryQuery query)
+    {
+        Expression<Func<Category, bool>> predicate = c => true;
+
+        if (!string.IsNullOrEmpty(query.Type))
+        {
+            predicate = predicate.And(c => c.Type.Contains(query.Type));
+        }
+
+        if (!string.IsNullOrEmpty(query.Name))
+        {
+            predicate = predicate.And(c => c.Name.Contains(query.Name));
+        }
+
+        if (query.ParentId.HasValue)
+        {
+            predicate = predicate.And(c => c.ParentId == query.ParentId.Value);
+        }
+        else if (query.OnlyRoot.HasValue && query.OnlyRoot.Value)
+        {
+            predicate = predicate.And(c => c.ParentId == null);
+        }
+
+        Func<IQueryable<Category>, IOrderedQueryable<Category>> orderBy = null;
+        if (!string.IsNullOrEmpty(query.SortBy))
+        {
+            orderBy = query.SortBy.ToLower() switch
+            {
+                "name" => q => query.SortDescending ? q.OrderByDescending(c => c.Name) : q.OrderBy(c => c.Name),
+                "type" => q => query.SortDescending ? q.OrderByDescending(c => c.Type) : q.OrderBy(c => c.Type),
+                _ => q => query.SortDescending ? q.OrderByDescending(c => c.Name) : q.OrderBy(c => c.Name)
+            };
+        }
+
+        var categories = await _unitOfWork.CategoryRepository.GetPagedAsync(
+            query.PageNumber,
+            query.PageSize,
+            predicate,
+            orderBy
+        );
+
+        var totalCount = await _unitOfWork.CategoryRepository.GetByWhere(predicate).CountAsync();
+
+        // Get product counts for each category
+        var categoryResponses = new List<CategoryResponse>();
+        foreach (var category in categories)
+        {
+            var response = category.Adapt<CategoryResponse>();
+            response.ProductCount = await _unitOfWork.ProductRepository.GetByWhere(p => p.CategoryId == category.Id).CountAsync();
+            categoryResponses.Add(response);
+        }
+
+        var pagedResult = new PagedResult<CategoryResponse>
+        {
+            DataList = categoryResponses,
+            TotalCount = totalCount,
+            PageIndex = query.PageNumber,
+            PageSize = query.PageSize
+        };
+
+        return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_READ_MSG, pagedResult);
     }
 
     public async Task<IBusinessResult> GetByIdAsync(Guid id)
     {
-        if (id == Guid.Empty)
-            return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
-
         var category = await _unitOfWork.CategoryRepository.GetByIdAsync(id);
         if (category == null)
             return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, Const.FAIL_READ_MSG);
@@ -33,160 +98,159 @@ public class CategoryService : ICategoryService
         return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_READ_MSG, response);
     }
 
-    public async Task<IBusinessResult> GetPagedAsync(int pageNumber, int pageSize, string? search = null, string? type = null)
+    public async Task<IBusinessResult> GetByTypeAsync(string type)
     {
-        try
+        var categories = await _unitOfWork.CategoryRepository.GetByWhere(c => c.Type == type)
+            .ToListAsync();
+
+        var response = categories.Adapt<IEnumerable<CategoryResponse>>();
+        return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_READ_MSG, response);
+    }
+
+    public async Task<IBusinessResult> GetHierarchyAsync()
+    {
+        var allCategories = await _unitOfWork.CategoryRepository.GetAll().ToListAsync();
+        var rootCategories = allCategories.Where(c => c.ParentId == null).ToList();
+
+        var hierarchy = BuildCategoryHierarchy(rootCategories, allCategories);
+        return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_READ_MSG, hierarchy);
+    }
+
+    public async Task<IBusinessResult> GetChildrenAsync(Guid parentId)
+    {
+        var children = await _unitOfWork.CategoryRepository.GetByWhere(c => c.ParentId == parentId)
+            .ToListAsync();
+
+        var response = children.Adapt<IEnumerable<CategoryResponse>>();
+        return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_READ_MSG, response);
+    }
+
+    public async Task<IBusinessResult> CreateAsync(CategoryRequest request, Guid accountId)
+    {
+        if (request == null)
+            return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
+
+        // Check if category with same name and type already exists
+        var existingCategory = await _unitOfWork.CategoryRepository.GetByWhere(c =>
+            c.Name == request.Name && c.Type == request.Type)
+            .FirstOrDefaultAsync();
+
+        if (existingCategory != null)
+            return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Đã tồn tại danh mục với tên và loại này");
+
+        var category = request.Adapt<Category>();
+        category.Id = Guid.NewGuid();
+
+        await _unitOfWork.CategoryRepository.AddAsync(category);
+        await _unitOfWork.SaveChangesAsync();
+
+        await LogSystemAction("Create", "Category", category.Id, accountId,
+                            null, JsonSerializer.Serialize(category),
+                            $"Tạo mới danh mục: {category.Name} (Type: {category.Type})");
+
+        var response = category.Adapt<CategoryResponse>();
+        return new BusinessResult(Const.HTTP_STATUS_CREATED, Const.SUCCESS_CREATE_MSG, response);
+    }
+
+    public async Task<IBusinessResult> UpdateAsync(CategoryRequest request, Guid accountId)
+    {
+        if (request.Id.HasValue == false || request.Id == Guid.Empty)
+            return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
+
+        var existing = await _unitOfWork.CategoryRepository.GetByIdAsync(request.Id);
+        if (existing == null)
+            return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, Const.FAIL_READ_MSG);
+
+        var oldValue = JsonSerializer.Serialize(existing);
+        var oldName = existing.Name;
+
+        // Check for duplicate name and type (excluding current category)
+        var duplicateCategory = await _unitOfWork.CategoryRepository.GetByWhere(c =>
+            c.Id != request.Id &&
+            c.Name == request.Name &&
+            c.Type == request.Type)
+            .FirstOrDefaultAsync();
+
+        if (duplicateCategory != null)
+            return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Đã tồn tại danh mục với tên và loại này");
+
+        request.Adapt(existing);
+
+        _unitOfWork.CategoryRepository.Update(existing);
+        await _unitOfWork.SaveChangesAsync();
+
+        await LogSystemAction("Update", "Category", request.Id.Value, accountId,
+                            oldValue, JsonSerializer.Serialize(existing),
+                            $"Cập nhật danh mục: {oldName} → {existing.Name}");
+
+        var response = existing.Adapt<CategoryResponse>();
+        return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_UPDATE_MSG, response);
+    }
+
+    public async Task<IBusinessResult> DeleteAsync(Guid id, Guid accountId)
+    {
+        var existing = await _unitOfWork.CategoryRepository.GetByIdAsync(id);
+        if (existing == null)
+            return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, Const.FAIL_READ_MSG);
+
+        // Check if category has children
+        var hasChildren = await _unitOfWork.CategoryRepository.GetByWhere(c => c.ParentId == id)
+            .AnyAsync();
+        if (hasChildren)
+            return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Không thể xóa danh mục có danh mục con");
+
+        var oldValue = JsonSerializer.Serialize(existing);
+
+        _unitOfWork.CategoryRepository.Delete(existing);
+        await _unitOfWork.SaveChangesAsync();
+
+        await LogSystemAction("Delete", "Category", id, accountId,
+                            oldValue, null,
+                            $"Xóa danh mục: {existing.Name}");
+
+        return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_DELETE_MSG);
+    }
+
+    private List<CategoryResponse> BuildCategoryHierarchy(List<Category> parentCategories, List<Category> allCategories)
+    {
+        var result = new List<CategoryResponse>();
+
+        foreach (var parent in parentCategories)
         {
-            if (pageNumber <= 0) pageNumber = 1;
-            if (pageSize <= 0) pageSize = 10;
+            var parentResponse = parent.Adapt<CategoryResponse>();
+            var children = allCategories.Where(c => c.ParentId == parent.Id).ToList();
 
-            Expression<Func<Category, bool>> predicate = x => true;
-
-            if (!string.IsNullOrWhiteSpace(search))
+            if (children.Any())
             {
-                predicate = x => x.Name.Contains(search) ||
-                                x.Description.Contains(search);
+                parentResponse.Children = BuildCategoryHierarchy(children, allCategories);
             }
 
-            if (!string.IsNullOrWhiteSpace(type))
-            {
-                predicate = predicate.And(x => x.Type == type);
-            }
-
-            Func<IQueryable<Category>, IOrderedQueryable<Category>> orderBy =
-                q => q.OrderBy(x => x.Name);
-
-            var categories = await _unitOfWork.CategoryRepository.GetPagedAsync(
-                pageNumber, pageSize, predicate, orderBy);
-
-            var totalCount = await _unitOfWork.CategoryRepository.CountAsync();
-
-            var response = categories.Adapt<List<CategoryResponse>>();
-            var pagedResult = new PagedResult<CategoryResponse>
-            {
-                DataList = response,
-                TotalCount = totalCount,
-                PageIndex = pageNumber,
-                PageSize = pageSize
-            };
-
-            return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_READ_MSG, pagedResult);
+            result.Add(parentResponse);
         }
-        catch (Exception ex)
-        {
-            return new BusinessResult(Const.HTTP_STATUS_INTERNAL_ERROR, ex.Message);
-        }
+
+        return result;
     }
 
-    public async Task<IBusinessResult> CreateAsync(CategoryRequest request)
+    private async Task LogSystemAction(string action, string entityType, Guid entityId, Guid accountId,
+                                     string? oldValue, string? newValue, string description)
     {
-        try
+        var account = await _unitOfWork.AccountRepository
+            .GetByWhere(acc => acc.Id == accountId)
+            .AsNoTracking().FirstOrDefaultAsync();
+        var logRequest = new SystemLogRequest
         {
-            if (request == null)
-                return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
+            Action = action,
+            EntityType = entityType,
+            EntityId = entityId,
+            OldValue = oldValue,
+            NewValue = newValue,
+            Description = description,
+            AccountId = accountId,
+            AccountName = account != null ? account.Name : null,
+            Module = "Category",
+            LogLevel = "INFO"
+        };
 
-            // Check if category name already exists
-            var existingCategory = await _unitOfWork.CategoryRepository
-                .GetByWhere(x => x.Name == request.Name && x.Type == request.Type)
-                .FirstOrDefaultAsync();
-
-            if (existingCategory != null)
-                return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Category name already exists for this type");
-
-            var category = request.Adapt<Category>();
-            category.Id = Guid.NewGuid();
-
-            await _unitOfWork.CategoryRepository.AddAsync(category);
-            await _unitOfWork.SaveChangesAsync();
-
-            return new BusinessResult(Const.HTTP_STATUS_CREATED, Const.SUCCESS_CREATE_MSG);
-        }
-        catch (Exception ex)
-        {
-            return new BusinessResult(Const.HTTP_STATUS_INTERNAL_ERROR, ex.Message);
-        }
-    }
-
-    public async Task<IBusinessResult> UpdateAsync(Guid id, CategoryRequest request)
-    {
-        try
-        {
-            if (id == Guid.Empty || request == null)
-                return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
-
-            var category = await _unitOfWork.CategoryRepository.GetByIdAsync(id);
-            if (category == null)
-                return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, Const.FAIL_READ_MSG);
-
-            // Check for duplicate name
-            if (!string.IsNullOrEmpty(request.Name) && request.Name != category.Name)
-            {
-                var duplicate = await _unitOfWork.CategoryRepository
-                    .GetByWhere(x => x.Name == request.Name && x.Type == (request.Type ?? category.Type) && x.Id != id)
-                    .FirstOrDefaultAsync();
-
-                if (duplicate != null)
-                    return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Category name already exists for this type");
-            }
-
-            request.Adapt(category);
-            _unitOfWork.CategoryRepository.Update(category);
-            await _unitOfWork.SaveChangesAsync();
-
-            return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_UPDATE_MSG);
-        }
-        catch (Exception ex)
-        {
-            return new BusinessResult(Const.HTTP_STATUS_INTERNAL_ERROR, ex.Message);
-        }
-    }
-
-    public async Task<IBusinessResult> DeleteAsync(Guid id)
-    {
-        try
-        {
-            if (id == Guid.Empty)
-                return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
-
-            var category = await _unitOfWork.CategoryRepository.GetByIdAsync(id);
-            if (category == null)
-                return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, Const.FAIL_READ_MSG);
-
-            // Check if category has products
-            var hasProducts = await _unitOfWork.ProductRepository
-                .GetByWhere(x => x.CategoryId == id)
-                .AnyAsync();
-
-            if (hasProducts)
-                return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Cannot delete category that has products");
-
-            _unitOfWork.CategoryRepository.Delete(category);
-            await _unitOfWork.SaveChangesAsync();
-
-            return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_DELETE_MSG);
-        }
-        catch (Exception ex)
-        {
-            return new BusinessResult(Const.HTTP_STATUS_INTERNAL_ERROR, ex.Message);
-        }
-    }
-
-    public async Task<IBusinessResult> GetCategoriesWithProductsAsync()
-    {
-        try
-        {
-            var categories = await _unitOfWork.CategoryRepository
-                .GetAll()
-                .Include(x => x.Products)
-                .OrderBy(x => x.Name)
-                .ToListAsync();
-
-            var response = categories.Adapt<List<CategoryResponse>>();
-            return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_READ_MSG, response);
-        }
-        catch (Exception ex)
-        {
-            return new BusinessResult(Const.HTTP_STATUS_INTERNAL_ERROR, ex.Message);
-        }
+        await _systemLogService.CreateAsync(logRequest);
     }
 }

@@ -1,7 +1,10 @@
-﻿using Chibest.Service.Interface;
+﻿using Chibest.Common;
+using Chibest.Service.Interface;
 using Chibest.Service.ModelDTOs.Request;
+using Chibest.Service.ModelDTOs.Request.Query;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace Chibest.API.Controllers;
 
@@ -18,10 +21,9 @@ public class CategoryController : ControllerBase
 
     [Authorize]
     [HttpGet]
-    public async Task<IActionResult> GetPaged([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10,
-        [FromQuery] string? search = null, [FromQuery] string? type = null)
+    public async Task<IActionResult> GetList([FromQuery] CategoryQuery query)
     {
-        var result = await _categoryService.GetPagedAsync(pageNumber, pageSize, search, type);
+        var result = await _categoryService.GetListAsync(query);
         return StatusCode(result.StatusCode, result);
     }
 
@@ -34,10 +36,26 @@ public class CategoryController : ControllerBase
     }
 
     [Authorize]
-    [HttpGet("with-products")]
-    public async Task<IActionResult> GetWithProducts()
+    [HttpGet("type/{type}")]
+    public async Task<IActionResult> GetByType(string type)
     {
-        var result = await _categoryService.GetCategoriesWithProductsAsync();
+        var result = await _categoryService.GetByTypeAsync(type);
+        return StatusCode(result.StatusCode, result);
+    }
+
+    [Authorize]
+    [HttpGet("hierarchy")]
+    public async Task<IActionResult> GetHierarchy()
+    {
+        var result = await _categoryService.GetHierarchyAsync();
+        return StatusCode(result.StatusCode, result);
+    }
+
+    [Authorize]
+    [HttpGet("parent/{parentId}/children")]
+    public async Task<IActionResult> GetChildren(Guid parentId)
+    {
+        var result = await _categoryService.GetChildrenAsync(parentId);
         return StatusCode(result.StatusCode, result);
     }
 
@@ -45,23 +63,35 @@ public class CategoryController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CategoryRequest request)
     {
-        var result = await _categoryService.CreateAsync(request);
+        var accountId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (accountId == null || accountId == Guid.Empty.ToString())
+            return StatusCode(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
+
+        var result = await _categoryService.CreateAsync(request, Guid.Parse(accountId));
         return StatusCode(result.StatusCode, result);
     }
 
     [Authorize]
-    [HttpPut("{id}")]
-    public async Task<IActionResult> Update(Guid id, [FromBody] CategoryRequest request)
+    [HttpPut]
+    public async Task<IActionResult> Update([FromBody] CategoryRequest request)
     {
-        var result = await _categoryService.UpdateAsync(id, request);
+        var accountId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (accountId == null || accountId == Guid.Empty.ToString())
+            return StatusCode(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
+
+        var result = await _categoryService.UpdateAsync(request, Guid.Parse(accountId));
         return StatusCode(result.StatusCode, result);
     }
 
     [Authorize]
     [HttpDelete("{id}")]
-    public async Task<IActionResult> Delete(Guid id)
+    public async Task<IActionResult> Delete([FromRoute] Guid id)
     {
-        var result = await _categoryService.DeleteAsync(id);
+        var accountId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (accountId == null || accountId == Guid.Empty.ToString())
+            return StatusCode(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
+
+        var result = await _categoryService.DeleteAsync(id, Guid.Parse(accountId));
         return StatusCode(result.StatusCode, result);
     }
 }

@@ -1,7 +1,10 @@
-﻿using Chibest.Service.Interface;
+﻿using Chibest.Common;
+using Chibest.Service.Interface;
 using Chibest.Service.ModelDTOs.Request;
+using Chibest.Service.ModelDTOs.Request.Query;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace Chibest.API.Controllers;
 
@@ -18,10 +21,9 @@ public class BranchStockController : ControllerBase
 
     [Authorize]
     [HttpGet]
-    public async Task<IActionResult> GetPaged([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10,
-        [FromQuery] Guid? productId = null, [FromQuery] Guid? branchId = null)
+    public async Task<IActionResult> GetList([FromQuery] BranchStockQuery query)
     {
-        var result = await _branchStockService.GetPagedAsync(pageNumber, pageSize, productId, branchId);
+        var result = await _branchStockService.GetListAsync(query);
         return StatusCode(result.StatusCode, result);
     }
 
@@ -35,17 +37,26 @@ public class BranchStockController : ControllerBase
 
     [Authorize]
     [HttpGet("product/{productId}/branch/{branchId}")]
-    public async Task<IActionResult> GetByProductAndBranch([FromRoute] Guid productId, [FromRoute] Guid branchId)
+    public async Task<IActionResult> GetByProductAndBranch([FromRoute] Guid productId, [FromRoute] Guid branchId,
+        [FromQuery] Guid? warehouseId = null)
     {
-        var result = await _branchStockService.GetByProductAndBranchAsync(productId, branchId);
+        var result = await _branchStockService.GetByProductAndBranchAsync(productId, branchId, warehouseId);
         return StatusCode(result.StatusCode, result);
     }
 
     [Authorize]
-    [HttpGet("low-stock/{branchId}")]
-    public async Task<IActionResult> GetLowStockItems([FromRoute] Guid branchId)
+    [HttpGet("low-stock")]
+    public async Task<IActionResult> GetLowStockItems([FromQuery] Guid? branchId = null)
     {
         var result = await _branchStockService.GetLowStockItemsAsync(branchId);
+        return StatusCode(result.StatusCode, result);
+    }
+
+    [Authorize]
+    [HttpGet("need-reorder")]
+    public async Task<IActionResult> GetItemsNeedingReorder([FromQuery] Guid? branchId = null)
+    {
+        var result = await _branchStockService.GetItemsNeedingReorderAsync(branchId);
         return StatusCode(result.StatusCode, result);
     }
 
@@ -53,23 +64,23 @@ public class BranchStockController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] BranchStockRequest request)
     {
-        var result = await _branchStockService.CreateAsync(request);
+        var accountId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (accountId == null || accountId == Guid.Empty.ToString())
+            return StatusCode(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
+
+        var result = await _branchStockService.CreateAsync(request, Guid.Parse(accountId));
         return StatusCode(result.StatusCode, result);
     }
 
     [Authorize]
-    [HttpPut("{id}")]
-    public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] BranchStockRequest request)
+    [HttpPut]
+    public async Task<IActionResult> Update([FromBody] BranchStockRequest request)
     {
-        var result = await _branchStockService.UpdateAsync(id, request);
-        return StatusCode(result.StatusCode, result);
-    }
+        var accountId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (accountId == null || accountId == Guid.Empty.ToString())
+            return StatusCode(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
 
-    [Authorize]
-    [HttpPatch("{id}/stock")]
-    public async Task<IActionResult> UpdateStock([FromRoute] Guid id, [FromBody] UpdateStockRequest request)
-    {
-        var result = await _branchStockService.UpdateStockAsync(id, request.AvailableQty, request.ReservedQty);
+        var result = await _branchStockService.UpdateAsync(request, Guid.Parse(accountId));
         return StatusCode(result.StatusCode, result);
     }
 
@@ -77,7 +88,11 @@ public class BranchStockController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete([FromRoute] Guid id)
     {
-        var result = await _branchStockService.DeleteAsync(id);
+        var accountId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (accountId == null || accountId == Guid.Empty.ToString())
+            return StatusCode(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
+
+        var result = await _branchStockService.DeleteAsync(id, Guid.Parse(accountId));
         return StatusCode(result.StatusCode, result);
     }
 }
