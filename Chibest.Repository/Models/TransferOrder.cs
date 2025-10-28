@@ -11,6 +11,8 @@ public partial class TransferOrder
 
     public DateTime OrderDate { get; set; }
 
+    public DateTime? ReceivedDate { get; set; }
+
     public DateTime CreatedAt { get; set; }
 
     public DateTime UpdatedAt { get; set; }

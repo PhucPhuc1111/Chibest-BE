@@ -41,10 +41,6 @@ public partial class Warehouse
 
     public virtual ICollection<StockAdjustment> StockAdjustments { get; set; } = new List<StockAdjustment>();
 
-    public virtual ICollection<StockMovement> StockMovementFromWarehouses { get; set; } = new List<StockMovement>();
-
-    public virtual ICollection<StockMovement> StockMovementToWarehouses { get; set; } = new List<StockMovement>();
-
     public virtual ICollection<TransferOrder> TransferOrderFromWarehouses { get; set; } = new List<TransferOrder>();
 
     public virtual ICollection<TransferOrder> TransferOrderToWarehouses { get; set; } = new List<TransferOrder>();
