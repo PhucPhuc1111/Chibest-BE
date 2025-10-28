@@ -45,9 +45,5 @@ public partial class Branch
 
     public virtual ICollection<StockAdjustment> StockAdjustments { get; set; } = new List<StockAdjustment>();
 
-    public virtual ICollection<StockMovement> StockMovementFromBranches { get; set; } = new List<StockMovement>();
-
-    public virtual ICollection<StockMovement> StockMovementToBranches { get; set; } = new List<StockMovement>();
-
     public virtual ICollection<Warehouse> Warehouses { get; set; } = new List<Warehouse>();
 }

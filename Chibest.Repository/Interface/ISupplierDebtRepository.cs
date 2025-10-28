@@ -1,4 +1,5 @@
-﻿using Chibest.Repository.Base;
+﻿using Chibest.Common.BusinessResult;
+using Chibest.Repository.Base;
 using Chibest.Repository.Models;
 using System;
 using System.Collections.Generic;
@@ -10,5 +11,9 @@ namespace Chibest.Repository.Interface
 {
     public interface ISupplierDebtRepository : IGenericRepository<SupplierDebt>
     {
+        Task<IBusinessResult> AddSupplierTransactionAsync(
+            Guid supplierId,
+            string transactionType,
+            decimal amount, string? note = null);
     }
 }

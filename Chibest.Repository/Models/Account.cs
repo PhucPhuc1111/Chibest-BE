@@ -67,8 +67,6 @@ public partial class Account
 
     public virtual ICollection<StockAdjustment> StockAdjustmentEmployees { get; set; } = new List<StockAdjustment>();
 
-    public virtual ICollection<StockMovement> StockMovements { get; set; } = new List<StockMovement>();
-
     public virtual SupplierDebt? SupplierDebt { get; set; }
 
     public virtual ICollection<SystemLog> SystemLogs { get; set; } = new List<SystemLog>();

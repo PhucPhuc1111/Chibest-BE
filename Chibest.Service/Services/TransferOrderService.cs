@@ -76,7 +76,124 @@ namespace Chibest.Service.Services
             }
         }
 
+        public async Task<IBusinessResult> UpdateTransferOrderAsync(Guid id, TransferOrderUpdate request)
+        {
+            var transferOrderData = await _unitOfWork.TransferOrderRepository
+                .GetByWhere(x => x.Id == id)
+                .Select(x => new
+                {
+                    TransferOrder = x,
+                    FromBranch = new
+                    {
+                        Id = x.FromWarehouse.Branch.Id,
+                        IsFranchise = x.FromWarehouse.Branch.IsFranchise
+                    },
+                    ToBranch = new
+                    {
+                        Id = x.ToWarehouse.Branch.Id,
+                        IsFranchise = x.ToWarehouse.Branch.IsFranchise
+                    },
+                    Details = x.TransferOrderDetails
+                        .Select(d => new { d.Id, d.ProductId, d.ActualQuantity })
+                        .ToList()
+                })
+                .FirstOrDefaultAsync();
 
+            if (transferOrderData == null)
+                return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, "Không tìm thấy phiếu chuyển kho");
+
+            var transferOrder = transferOrderData.TransferOrder;
+            var fromBranch = transferOrderData.FromBranch;
+            var toBranch = transferOrderData.ToBranch;
+            var oldStatus = transferOrder.Status;
+            foreach (var detailReq in request.TransferOrderDetails)
+            {
+                var detail = transferOrder.TransferOrderDetails
+                    .FirstOrDefault(x => x.Id == detailReq.Id);
+
+                if (detail != null)
+                {
+                    detail.ActualQuantity = detailReq.ActualQuantity ?? detail.ActualQuantity;
+                }
+            }
+
+            transferOrder.Status = request.Status.ToString();
+            transferOrder.SubTotal = request.SubTotal;
+            transferOrder.DiscountAmount = request.DiscountAmount;
+            transferOrder.Paid = request.Paid;
+            transferOrder.UpdatedAt = DateTime.Now;
+
+            await _unitOfWork.BeginTransaction();
+            try
+            {
+                _unitOfWork.TransferOrderRepository.Update(transferOrder);
+                await _unitOfWork.SaveChangesAsync();
+
+                if (request.Status == OrderStatus.Received && oldStatus != OrderStatus.Received.ToString())
+                {
+                    var debt = transferOrder.SubTotal - transferOrder.Paid;
+                    var note = $"Công nợ từ phiếu chuyển kho #{transferOrder.InvoiceCode}";
+
+                    if (fromBranch.IsFranchise && !toBranch.IsFranchise)
+                    {
+                        var debtResult = await _unitOfWork.BranchDebtRepository.AddBranchTransactionAsync(
+                            fromBranch.Id, "TransferOut", debt, note
+                        );
+
+                        if (debtResult.StatusCode != Const.HTTP_STATUS_OK)
+                        {
+                            await _unitOfWork.RollbackTransaction();
+                            return new BusinessResult(Const.ERROR_EXCEPTION,
+                                "Lỗi xử lý công nợ chi nhánh nhận hàng");
+                        }
+                    }
+                    if (!fromBranch.IsFranchise && toBranch.IsFranchise)
+                    {
+                        var debtOutResult = await _unitOfWork.BranchDebtRepository.AddBranchTransactionAsync(
+                            toBranch.Id, "TransferIn", debt, note
+                        );
+
+                        if (debtOutResult.StatusCode != Const.HTTP_STATUS_OK)
+                        {
+                            await _unitOfWork.RollbackTransaction();
+                            return new BusinessResult(Const.ERROR_EXCEPTION,
+                                "Lỗi xử lý công nợ chi nhánh chuyển hàng");
+                        }
+                    }
+
+                    foreach (var detail in transferOrder.TransferOrderDetails)
+                    {
+                        if (detail.ActualQuantity.HasValue && detail.ActualQuantity.Value > 0)
+                        {
+                            int qty = detail.ActualQuantity.Value;
+
+                            var increaseResult = await _unitOfWork.BranchStockRepository.UpdateBranchStockAsync(
+                                warehouseId: (Guid)transferOrder.ToWarehouseId,
+                                productId: detail.ProductId,
+                                deltaAvailableQty: qty
+                            );
+
+                            if (increaseResult.StatusCode != Const.SUCCESS)
+                            {
+                                await _unitOfWork.RollbackTransaction();
+                                return new BusinessResult(Const.ERROR_EXCEPTION,
+                                    $"Lỗi khi tăng tồn kho tại kho đích cho sản phẩm {detail.ProductId}: {increaseResult.Message}");
+                            }
+                        }
+                    }
+                }
+
+                await _unitOfWork.BulkUpdateAsync(transferOrder.TransferOrderDetails.ToList());
+
+                await _unitOfWork.CommitTransaction();
+                return new BusinessResult(Const.SUCCESS, "Cập nhật phiếu chuyển kho thành công");
+            }
+            catch (Exception ex)
+            {
+                await _unitOfWork.RollbackTransaction();
+                return new BusinessResult(Const.ERROR_EXCEPTION, "Lỗi khi cập nhật phiếu chuyển kho", ex.Message);
+            }
+        }
 
         public async Task<IBusinessResult> AddTransferOrder(TransferOrderCreate request)
         {
@@ -104,7 +221,7 @@ namespace Chibest.Service.Services
                 CreatedAt = DateTime.Now,
                 UpdatedAt = DateTime.Now
             };
-            
+
             var transferDetails = request.TransferOrderDetails.Select(detailReq => new TransferOrderDetail
             {
                 Id = Guid.NewGuid(),
@@ -126,6 +243,22 @@ namespace Chibest.Service.Services
                 await _unitOfWork.SaveChangesAsync();
                 await _unitOfWork.BulkInsertAsync(transferDetails);
 
+                foreach (var detail in transferDetails)
+                {
+                    var decreaseResult = await _unitOfWork.BranchStockRepository.UpdateBranchStockAsync(
+                        warehouseId: (Guid)transferOrder.FromWarehouseId,
+                        productId: detail.ProductId,
+                        deltaAvailableQty: -detail.Quantity
+                    );
+
+                    if (decreaseResult.StatusCode != Const.SUCCESS)
+                    {
+                        await _unitOfWork.RollbackTransaction();
+                        return new BusinessResult(Const.ERROR_EXCEPTION,
+                            $"Lỗi khi trừ tồn kho tại kho nguồn cho sản phẩm {detail.ProductId}: {decreaseResult.Message}");
+                    }
+                }
+
                 await _unitOfWork.CommitTransaction();
 
                 return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_CREATE_MSG, new { transferOrder.InvoiceCode });
@@ -137,15 +270,23 @@ namespace Chibest.Service.Services
             }
         }
 
-        public async Task<IBusinessResult> GetTransferOrderList(int pageIndex, int pageSize, string search,
-    DateTime? fromDate = null, DateTime? toDate = null, string status = null)
+        public async Task<IBusinessResult> GetTransferOrderList(
+    int pageIndex,
+    int pageSize,
+    string search,
+    DateTime? fromDate = null,
+    DateTime? toDate = null,
+    string status = null)
         {
             Expression<Func<TransferOrder, bool>> filter = x => true;
 
             if (!string.IsNullOrEmpty(search))
             {
                 string searchTerm = search.ToLower();
-                Expression<Func<TransferOrder, bool>> searchFilter = x => x.InvoiceCode.ToLower().Contains(searchTerm);
+                Expression<Func<TransferOrder, bool>> searchFilter =
+                    x => x.InvoiceCode.ToLower().Contains(searchTerm)
+                      || (x.FromWarehouse != null && x.FromWarehouse.Name.ToLower().Contains(searchTerm))
+                      || (x.ToWarehouse != null && x.ToWarehouse.Name.ToLower().Contains(searchTerm));
                 filter = filter.And(searchFilter);
             }
 
@@ -169,28 +310,31 @@ namespace Chibest.Service.Services
                 filter = filter.And(toDateFilter);
             }
 
-            var transferOrders = await _unitOfWork.TransferOrderRepository.GetPagedAsync(
-                pageIndex,
-                pageSize,
-                filter
-            );
+            var transferOrders = await _unitOfWork.TransferOrderRepository
+                .GetByWhere(filter)
+                .Select(to => new TransferOrderList
+                {
+                    Id = to.Id,
+                    InvoiceCode = to.InvoiceCode,
+                    OrderDate = to.OrderDate,
+                    SubTotal = to.SubTotal,
+                    Status = to.Status,
+                    FromWarehouseName = to.FromWarehouse != null ? to.FromWarehouse.Name : null,
+                    ToWarehouseName = to.ToWarehouse != null ? to.ToWarehouse.Name : null
+                })
+                .OrderByDescending(x => x.OrderDate)
+                .Skip((pageIndex - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
 
             if (transferOrders == null || !transferOrders.Any())
             {
                 return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, Const.FAIL_READ_MSG);
             }
 
-            var responseList = transferOrders.Select(to => new TransferOrderList
-            {
-                Id = to.Id,
-                InvoiceCode = to.InvoiceCode,
-                OrderDate = to.OrderDate,
-                SubTotal = to.SubTotal,
-                Status = to.Status,
-            }).ToList();
-
-            return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_READ_MSG, responseList);
+            return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_READ_MSG, transferOrders);
         }
+
 
         public async Task<IBusinessResult> GetTransferOrderById(Guid id)
         {
@@ -208,10 +352,8 @@ namespace Chibest.Service.Services
                     Paid = x.Paid,
                     Note = x.Note,
                     Status = x.Status,
-
                     FromWarehouseName = x.FromWarehouse != null ? x.FromWarehouse.Name : null,
                     ToWarehouseName = x.ToWarehouse != null ? x.ToWarehouse.Name : null,
-
                     TransferOrderDetails = x.TransferOrderDetails.Select(d => new TransferOrderDetailResponse
                     {
                         Id = d.Id,
@@ -233,86 +375,6 @@ namespace Chibest.Service.Services
 
             return new BusinessResult(Const.HTTP_STATUS_OK, "Lấy dữ liệu phiếu chuyển kho thành công", transferOrder);
         }
-
-        public async Task<IBusinessResult> UpdateTransferOrderAsync(Guid id, TransferOrderUpdate request)
-        {
-            var transferOrder = await _unitOfWork.TransferOrderRepository
-                .GetByWhere(x => x.Id == id)
-                .Include(to => to.TransferOrderDetails)
-                .FirstOrDefaultAsync();
-
-            if (transferOrder == null)
-                return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, "Không tìm thấy phiếu chuyển kho");
-
-            foreach (var detailReq in request.TransferOrderDetails)
-            {
-                var detail = transferOrder.TransferOrderDetails
-                    .FirstOrDefault(x => x.Id == detailReq.Id);
-
-                if (detail != null)
-                {
-                    detail.ActualQuantity = detailReq.ActualQuantity ?? detail.ActualQuantity;
-                }
-            }
-
-            transferOrder.Status = request.Status.ToString();
-            transferOrder.UpdatedAt = DateTime.Now;
-
-            await _unitOfWork.BeginTransaction();
-
-            try
-            {
-                _unitOfWork.TransferOrderRepository.Update(transferOrder);
-                await _unitOfWork.SaveChangesAsync();
-                if (request.Status == OrderStatus.Received)
-                {
-                    foreach (var detail in transferOrder.TransferOrderDetails)
-                    {
-                        if (detail.ActualQuantity.HasValue && detail.ActualQuantity.Value > 0)
-                        {
-                            int qty = detail.ActualQuantity.Value;
-
-                            var decreaseResult = await _unitOfWork.BranchStockRepository.UpdateBranchStockAsync(
-                                warehouseId: (Guid)transferOrder.FromWarehouseId,
-                                productId: detail.ProductId,
-                                deltaAvailableQty: -qty
-                            );
-
-                            if (decreaseResult.StatusCode != Const.SUCCESS)
-                            {
-                                await _unitOfWork.RollbackTransaction();
-                                return new BusinessResult(Const.ERROR_EXCEPTION,
-                                    $"Lỗi khi giảm tồn kho tại kho nguồn cho sản phẩm {detail.ProductId}: {decreaseResult.Message}");
-                            }
-                            var increaseResult = await _unitOfWork.BranchStockRepository.UpdateBranchStockAsync(
-                                warehouseId: (Guid)transferOrder.ToWarehouseId,
-                                productId: detail.ProductId,
-                                deltaAvailableQty: qty
-                            );
-
-                            if (increaseResult.StatusCode != Const.SUCCESS)
-                            {
-                                await _unitOfWork.RollbackTransaction();
-                                return new BusinessResult(Const.ERROR_EXCEPTION,
-                                    $"Lỗi khi tăng tồn kho tại kho đích cho sản phẩm {detail.ProductId}: {increaseResult.Message}");
-                            }
-                        }
-                    }
-                }
-
-                var detailsToUpdate = transferOrder.TransferOrderDetails.ToList();
-                await _unitOfWork.BulkUpdateAsync(detailsToUpdate);
-                await _unitOfWork.CommitTransaction();
-
-                return new BusinessResult(Const.SUCCESS, "Cập nhật phiếu chuyển kho thành công");
-            }
-            catch (Exception ex)
-            {
-                await _unitOfWork.RollbackTransaction();
-                return new BusinessResult(Const.ERROR_EXCEPTION, "Lỗi khi cập nhật phiếu chuyển kho", ex.Message);
-            }
-        }
-
 
         private async Task<string> GenerateInvoiceCodeAsync()
         {

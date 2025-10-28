@@ -119,15 +119,22 @@ namespace Chibest.Service.Services
 
             return new BusinessResult(Const.HTTP_STATUS_OK, "Lấy dữ liệu phiếu nhập thành công", po);
         }
-        public async Task<IBusinessResult> GetPurchaseOrderList(int pageIndex, int pageSize, string search,
-    DateTime? fromDate = null, DateTime? toDate = null, string status = null)
+        public async Task<IBusinessResult> GetPurchaseOrderList(
+    int pageIndex,
+    int pageSize,
+    string search,
+    DateTime? fromDate = null,
+    DateTime? toDate = null,
+    string status = null)
         {
             Expression<Func<PurchaseOrder, bool>> filter = x => true;
 
             if (!string.IsNullOrEmpty(search))
             {
                 string searchTerm = search.ToLower();
-                Expression<Func<PurchaseOrder, bool>> searchFilter = x => x.InvoiceCode.ToLower().Contains(searchTerm);
+                Expression<Func<PurchaseOrder, bool>> searchFilter =
+                    x => x.InvoiceCode.ToLower().Contains(searchTerm)
+                      || (x.Supplier != null && x.Supplier.Name.ToLower().Contains(searchTerm));
                 filter = filter.And(searchFilter);
             }
 
@@ -137,6 +144,7 @@ namespace Chibest.Service.Services
                 Expression<Func<PurchaseOrder, bool>> statusFilter = x => x.Status.ToLower().Contains(statusTerm);
                 filter = filter.And(statusFilter);
             }
+
             if (fromDate.HasValue)
             {
                 Expression<Func<PurchaseOrder, bool>> fromDateFilter = x => x.OrderDate >= fromDate.Value;
@@ -150,28 +158,30 @@ namespace Chibest.Service.Services
                 filter = filter.And(toDateFilter);
             }
 
-            var POs = await _unitOfWork.PurchaseOrderRepository.GetPagedAsync(
-                pageIndex,
-                pageSize,
-                filter
-            );
+            var POs = await _unitOfWork.PurchaseOrderRepository
+                .GetByWhere(filter)
+                .Select(pos => new PurchaseOrderList
+                {
+                    Id = pos.Id,
+                    InvoiceCode = pos.InvoiceCode,
+                    OrderDate = pos.OrderDate,
+                    SubTotal = pos.SubTotal,
+                    Status = pos.Status,
+                    SupplierName = pos.Supplier != null ? pos.Supplier.Name : null
+                })
+                .OrderByDescending(x => x.OrderDate)
+                .Skip((pageIndex - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
 
             if (POs == null || !POs.Any())
             {
                 return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, Const.FAIL_READ_MSG);
             }
 
-            var responseList = POs.Select(pos => new PurchaseOrderList
-            {
-                Id = pos.Id,
-                InvoiceCode = pos.InvoiceCode,
-                OrderDate = pos.OrderDate,
-                SubTotal = pos.SubTotal,
-                Status = pos.Status,
-            }).ToList();
-
-            return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_READ_MSG, responseList);
+            return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_READ_MSG, POs);
         }
+
 
         public async Task<IBusinessResult> UpdateAsync(Guid id, PurchaseOrderUpdate request)
         {
@@ -182,6 +192,7 @@ namespace Chibest.Service.Services
 
             if (purchaseOrder == null)
                 return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, "Không tìm thấy phiếu nhập hàng");
+
             foreach (var detailReq in request.PurchaseOrderDetails)
             {
                 var detail = purchaseOrder.PurchaseOrderDetails
@@ -192,6 +203,10 @@ namespace Chibest.Service.Services
                     detail.ActualQuantity = detailReq.ActualQuantity ?? detail.ActualQuantity;
                 }
             }
+            purchaseOrder.SubTotal = request.SubTotal;
+            purchaseOrder.PayMethod = request.PayMethod;
+            purchaseOrder.DiscountAmount = request.DiscountAmount;
+            purchaseOrder.Paid = request.Paid;
             purchaseOrder.Status = request.Status.ToString();
             purchaseOrder.UpdatedAt = DateTime.Now;
 
@@ -222,15 +237,32 @@ namespace Chibest.Service.Services
                             }
                         }
                     }
-                }
+                    decimal subtotal = purchaseOrder.SubTotal;
+                    decimal paid = purchaseOrder.Paid;
+                    decimal debtAmount = subtotal - paid;
+                    if (debtAmount != 0 && purchaseOrder.SupplierId != null)
+                    {
+                        var debtResult = await _unitOfWork.SupplierDebtRepository.AddSupplierTransactionAsync(
+                            supplierId: (Guid)purchaseOrder.SupplierId,
+                            transactionType: "Purchase",
+                            amount: debtAmount,
+                            note: $"Công nợ từ phiếu nhập #{purchaseOrder.InvoiceCode}"
+                        );
 
-                // 5️⃣ Cập nhật lại details
+                        if (debtResult.StatusCode != Const.HTTP_STATUS_OK)
+                        {
+                            await _unitOfWork.RollbackTransaction();
+                            return new BusinessResult(Const.ERROR_EXCEPTION,
+                                "Lỗi xử lý công nợ nhà cung cấp");
+                        }
+                    }
+                }
                 var detailsToUpdate = purchaseOrder.PurchaseOrderDetails.ToList();
                 await _unitOfWork.BulkUpdateAsync(detailsToUpdate);
 
                 await _unitOfWork.CommitTransaction();
 
-                return new BusinessResult(Const.SUCCESS, "Cập nhật thành công");
+                return new BusinessResult(Const.SUCCESS, "Cập nhật phiếu nhập hàng và công nợ thành công");
             }
             catch (Exception ex)
             {
@@ -238,6 +270,7 @@ namespace Chibest.Service.Services
                 return new BusinessResult(Const.ERROR_EXCEPTION, "Lỗi khi cập nhật phiếu nhập hàng", ex.Message);
             }
         }
+
 
         private async Task<string> GenerateInvoiceCodeAsync()
         {
