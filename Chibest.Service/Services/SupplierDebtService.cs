@@ -46,8 +46,8 @@ namespace Chibest.Service.Services
                         SupplierId = supplierId,
                         TotalDebt = 0,
                         PaidAmount = 0,
-                        LastTransactionDate = DateTime.UtcNow,
-                        LastUpdated = DateTime.UtcNow
+                        LastTransactionDate = DateTime.Now,
+                        LastUpdated = DateTime.Now
                     };
 
                     await _unitOfWork.SupplierDebtRepository.AddAsync(supplierDebt);
@@ -103,13 +103,13 @@ namespace Chibest.Service.Services
                         BalanceBefore = balanceBefore,
                         BalanceAfter = balanceAfter,
                         Note = t.Note,
-                        CreatedAt = DateTime.UtcNow
+                        CreatedAt = DateTime.Now
                     });
                 }
 
                 // 3️⃣ Cập nhật SupplierDebt tổng
-                supplierDebt.LastTransactionDate = DateTime.UtcNow;
-                supplierDebt.LastUpdated = DateTime.UtcNow;
+                supplierDebt.LastTransactionDate = DateTime.Now;
+                supplierDebt.LastUpdated = DateTime.Now;
                 _unitOfWork.SupplierDebtRepository.Update(supplierDebt);
                 await _unitOfWork.SaveChangesAsync();
 

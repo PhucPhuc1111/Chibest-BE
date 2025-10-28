@@ -1,7 +1,7 @@
 ﻿namespace Chibest.Service.ModelDTOs.Request;
 public class ProductRequest
 {
-    public Guid Id { get; set; }
+    public Guid? Id { get; set; }
 
     public string Sku { get; set; } = null!;
 

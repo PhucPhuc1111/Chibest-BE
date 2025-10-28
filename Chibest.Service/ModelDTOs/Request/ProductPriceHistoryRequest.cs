@@ -3,7 +3,7 @@
 namespace Chibest.Service.ModelDTOs.Request;
 public class ProductPriceHistoryRequest
 {
-    public Guid Id { get; set; }
+    public Guid? Id { get; set; }
 
     public decimal SellingPrice { get; set; }
 

@@ -1,7 +1,7 @@
 ﻿namespace Chibest.Service.ModelDTOs.Request;
 public class SystemLogRequest
 {
-    public Guid Id { get; set; }
+    public Guid? Id { get; set; }
 
     public string Action { get; set; } = null!;
 

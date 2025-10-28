@@ -100,7 +100,7 @@ public class SystemLogService : ISystemLogService
 
             var log = request.Adapt<SystemLog>();
             log.Id = Guid.NewGuid();
-            log.CreatedAt = DateTime.UtcNow;
+            log.CreatedAt = DateTime.Now;
 
             await _unitOfWork.SystemLogRepository.AddAsync(log);
             await _unitOfWork.SaveChangesAsync();

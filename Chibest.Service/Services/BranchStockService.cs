@@ -194,7 +194,7 @@ public class BranchStockService : IBranchStockService
 
         var branchStock = request.Adapt<BranchStock>();
         branchStock.Id = Guid.NewGuid();
-        branchStock.LastUpdated = DateTime.UtcNow;
+        branchStock.LastUpdated = DateTime.Now;
 
         await _unitOfWork.BranchStockRepository.AddAsync(branchStock);
         await _unitOfWork.SaveChangesAsync();

@@ -68,7 +68,7 @@ public class ProductPriceHistoryService : IProductPriceHistoryService
 
         if (query.IsActive.HasValue)
         {
-            var now = DateTime.UtcNow;
+            var now = DateTime.Now;
             if (query.IsActive.Value)
             {
                 predicate = predicate.And(p => p.EffectiveDate <= now &&
@@ -86,7 +86,7 @@ public class ProductPriceHistoryService : IProductPriceHistoryService
             predicate = predicate.And(p => p.Note.Contains(query.Note));
         }
 
-        Func<IQueryable<ProductPriceHistory>, IOrderedQueryable<ProductPriceHistory>> orderBy = null;
+        Func<IQueryable<ProductPriceHistory>, IOrderedQueryable<ProductPriceHistory>>? orderBy = null;
         if (!string.IsNullOrEmpty(query.SortBy))
         {
             orderBy = query.SortBy.ToLower() switch
@@ -135,7 +135,7 @@ public class ProductPriceHistoryService : IProductPriceHistoryService
 
     public async Task<IBusinessResult> GetCurrentPricesAsync(Guid? branchId = null)
     {
-        var now = DateTime.UtcNow;
+        var now = DateTime.Now;
 
         Expression<Func<ProductPriceHistory, bool>> predicate = p =>
             p.EffectiveDate <= now &&
@@ -189,7 +189,7 @@ public class ProductPriceHistoryService : IProductPriceHistoryService
             return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
 
         // Validate effective date
-        if (request.EffectiveDate < DateTime.UtcNow.AddDays(-1))
+        if (request.EffectiveDate < DateTime.Now.AddDays(-1))
             return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Ngày hiệu lực không thể trong quá khứ");
 
         // Check for overlapping price periods for the same product and branch
@@ -206,7 +206,7 @@ public class ProductPriceHistoryService : IProductPriceHistoryService
         var priceHistory = request.Adapt<ProductPriceHistory>();
         priceHistory.Id = Guid.NewGuid();
         priceHistory.CreatedBy = accountId;
-        priceHistory.CreatedAt = DateTime.UtcNow;
+        priceHistory.CreatedAt = DateTime.Now;
 
         await _unitOfWork.ProductPriceHistoryRepository.AddAsync(priceHistory);
         await _unitOfWork.SaveChangesAsync();
@@ -220,6 +220,9 @@ public class ProductPriceHistoryService : IProductPriceHistoryService
 
     public async Task<IBusinessResult> UpdateAsync(ProductPriceHistoryRequest request, Guid accountId)
     {
+        if (request.Id.HasValue == false || request.Id == Guid.Empty)
+            return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
+
         var existing = await _unitOfWork.ProductPriceHistoryRepository.GetByIdAsync(request.Id);
         if (existing == null)
             return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, Const.FAIL_READ_MSG);
@@ -248,7 +251,7 @@ public class ProductPriceHistoryService : IProductPriceHistoryService
         var changes = $"Cập nhật giá từ {oldPrice} → {existing.SellingPrice}, " +
                      $"Ngày hiệu lực từ {oldEffectiveDate:dd/MM/yyyy} → {existing.EffectiveDate:dd/MM/yyyy}";
 
-        await LogSystemAction("Update", "ProductPriceHistory", request.Id, accountId,
+        await LogSystemAction("Update", "ProductPriceHistory", request.Id.Value, accountId,
                             oldValue, JsonSerializer.Serialize(existing),
                             changes);
 
@@ -274,7 +277,7 @@ public class ProductPriceHistoryService : IProductPriceHistoryService
     }
 
     private async Task LogSystemAction(string action, string entityType, Guid entityId, Guid accountId,
-                                     string oldValue, string? newValue, string description)
+                                     string? oldValue, string? newValue, string description)
     {
         var account = await _unitOfWork.AccountRepository
             .GetByWhere(acc => acc.Id == accountId)

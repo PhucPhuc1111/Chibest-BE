@@ -48,7 +48,7 @@ public class CategoryService : ICategoryService
             predicate = predicate.And(c => c.ParentId == null);
         }
 
-        Func<IQueryable<Category>, IOrderedQueryable<Category>> orderBy = null;
+        Func<IQueryable<Category>, IOrderedQueryable<Category>>? orderBy = null;
         if (!string.IsNullOrEmpty(query.SortBy))
         {
             orderBy = query.SortBy.ToLower() switch

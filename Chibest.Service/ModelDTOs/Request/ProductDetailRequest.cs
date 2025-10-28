@@ -1,7 +1,7 @@
 ﻿namespace Chibest.Service.ModelDTOs.Request;
 public class ProductDetailRequest
 {
-    public Guid Id { get; set; }
+    public Guid? Id { get; set; }
 
     public string? ChipCode { get; set; }
 

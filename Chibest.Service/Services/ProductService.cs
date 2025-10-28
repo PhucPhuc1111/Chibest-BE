@@ -57,7 +57,7 @@ public class ProductService : IProductService
             predicate = predicate.And(p => p.Brand == query.Brand);
         }
 
-        Func<IQueryable<Product>, IOrderedQueryable<Product>> orderBy = null;
+        Func<IQueryable<Product>, IOrderedQueryable<Product>>? orderBy = null;
         if (!string.IsNullOrEmpty(query.SortBy))
         {
             orderBy = query.SortBy.ToLower() switch
@@ -126,8 +126,8 @@ public class ProductService : IProductService
 
         var product = request.Adapt<Product>();
         product.Id = Guid.NewGuid();
-        product.CreatedAt = DateTime.UtcNow;
-        product.UpdatedAt = DateTime.UtcNow;
+        product.CreatedAt = DateTime.Now;
+        product.UpdatedAt = DateTime.Now;
 
         await _unitOfWork.ProductRepository.AddAsync(product);
         await _unitOfWork.SaveChangesAsync();
@@ -142,6 +142,9 @@ public class ProductService : IProductService
 
     public async Task<IBusinessResult> UpdateAsync(ProductRequest request, Guid accountId)
     {
+        if (request.Id.HasValue == false || request.Id == Guid.Empty)
+            return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
+
         var existing = await _unitOfWork.ProductRepository.GetByIdAsync(request.Id);
         if (existing == null)
             return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, Const.FAIL_READ_MSG);
@@ -150,12 +153,12 @@ public class ProductService : IProductService
         var oldName = existing.Name;
 
         request.Adapt(existing);
-        existing.UpdatedAt = DateTime.UtcNow;
+        existing.UpdatedAt = DateTime.Now;
 
         _unitOfWork.ProductRepository.Update(existing);
         await _unitOfWork.SaveChangesAsync();
 
-        await LogSystemAction("Update", "Product", request.Id, accountId,
+        await LogSystemAction("Update", "Product", request.Id.Value, accountId,
                             oldValue, JsonSerializer.Serialize(existing),
                             $"Cập nhật sản phẩm: {oldName} → {existing.Name}");
 
@@ -171,7 +174,7 @@ public class ProductService : IProductService
 
         var oldStatus = existing.Status;
         existing.Status = status;
-        existing.UpdatedAt = DateTime.UtcNow;
+        existing.UpdatedAt = DateTime.Now;
 
         _unitOfWork.ProductRepository.Update(existing);
         await _unitOfWork.SaveChangesAsync();
@@ -203,7 +206,7 @@ public class ProductService : IProductService
     }
 
     private async Task LogSystemAction(string action, string entityType, Guid entityId, Guid accountId,
-                                     string oldValue, string newValue, string description)
+                                     string? oldValue, string? newValue, string description)
     {
         var account = await _unitOfWork.AccountRepository
             .GetByWhere(acc => acc.Id == accountId)

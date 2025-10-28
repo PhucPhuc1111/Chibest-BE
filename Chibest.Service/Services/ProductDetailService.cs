@@ -69,7 +69,7 @@ public class ProductDetailService : IProductDetailService
             predicate = predicate.And(p => p.ImportDate <= query.ImportDateTo.Value);
         }
 
-        Func<IQueryable<ProductDetail>, IOrderedQueryable<ProductDetail>> orderBy = null;
+        Func<IQueryable<ProductDetail>, IOrderedQueryable<ProductDetail>>? orderBy = null;
         if (!string.IsNullOrEmpty(query.SortBy))
         {
             orderBy = query.SortBy.ToLower() switch
@@ -140,8 +140,8 @@ public class ProductDetailService : IProductDetailService
 
         var productDetail = request.Adapt<ProductDetail>();
         productDetail.Id = Guid.NewGuid();
-        productDetail.CreatedAt = DateTime.UtcNow;
-        productDetail.UpdatedAt = DateTime.UtcNow;
+        productDetail.CreatedAt = DateTime.Now;
+        productDetail.UpdatedAt = DateTime.Now;
 
         await _unitOfWork.ProductDetailRepository.AddAsync(productDetail);
         await _unitOfWork.SaveChangesAsync();
@@ -156,6 +156,9 @@ public class ProductDetailService : IProductDetailService
 
     public async Task<IBusinessResult> UpdateAsync(ProductDetailRequest request, Guid accountId)
     {
+        if (request.Id.HasValue == false || request.Id == Guid.Empty)
+            return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
+
         var existing = await _unitOfWork.ProductDetailRepository.GetByIdAsync(request.Id);
         if (existing == null)
             return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, Const.FAIL_READ_MSG);
@@ -168,7 +171,7 @@ public class ProductDetailService : IProductDetailService
         _unitOfWork.ProductDetailRepository.Update(existing);
         await _unitOfWork.SaveChangesAsync();
 
-        await LogSystemAction("Update", "ProductDetail", request.Id, accountId,
+        await LogSystemAction("Update", "ProductDetail", request.Id.Value, accountId,
                             oldValue, JsonSerializer.Serialize(existing),
                             $"Cập nhật chi tiết sản phẩm: {existing.ChipCode}");
 
@@ -216,7 +219,7 @@ public class ProductDetailService : IProductDetailService
     }
 
     private async Task LogSystemAction(string action, string entityType, Guid entityId, Guid accountId,
-                                     string oldValue, string newValue, string description)
+                                     string? oldValue, string? newValue, string description)
     {
         var account = await _unitOfWork.AccountRepository
             .GetByWhere(acc => acc.Id == accountId)

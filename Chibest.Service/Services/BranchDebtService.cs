@@ -40,8 +40,8 @@ namespace YourProjectNamespace.Services
                         BranchId = branchId,
                         TotalDebt = 0,
                         PaidAmount = 0,
-                        LastTransactionDate = DateTime.UtcNow,
-                        LastUpdated = DateTime.UtcNow
+                        LastTransactionDate = DateTime.Now,
+                        LastUpdated = DateTime.Now
                     };
 
                     await _unitOfWork.BranchDebtRepository.AddAsync(branchDebt);
@@ -97,12 +97,12 @@ namespace YourProjectNamespace.Services
                         BalanceBefore = balanceBefore,
                         BalanceAfter = balanceAfter,
                         Note = t.Note,
-                        CreatedAt = DateTime.UtcNow
+                        CreatedAt = DateTime.Now
                     });
                 }
 
-                branchDebt.LastTransactionDate = DateTime.UtcNow;
-                branchDebt.LastUpdated = DateTime.UtcNow;
+                branchDebt.LastTransactionDate = DateTime.Now;
+                branchDebt.LastUpdated = DateTime.Now;
                 _unitOfWork.BranchDebtRepository.Update(branchDebt);
                 await _unitOfWork.SaveChangesAsync();
 
