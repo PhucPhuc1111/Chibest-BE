@@ -7,10 +7,12 @@ public interface IRoleService
 {
     Task<IBusinessResult> GetByIdAsync(Guid id);
     Task<IBusinessResult> GetPagedAsync(int pageNumber, int pageSize, string? search = null);
-    Task<IBusinessResult> CreateAsync(RoleRequest request);
-    Task<IBusinessResult> UpdateAsync(RoleRequest request);
-    Task<IBusinessResult> ChangeRoleAccountAsync(Guid accountId, Guid roleId);
-    Task<IBusinessResult> DeleteAsync(Guid id);
     Task<IBusinessResult> GetRoleWithAccountsAsync(Guid id);
     Task<IBusinessResult> GetAllRolesAsync();
+    Task<IBusinessResult> CreateAsync(RoleRequest request, Guid accountId);
+    Task<IBusinessResult> CreateAccountRoleAsync(AccountRoleRequest request, Guid makerId);
+    Task<IBusinessResult> UpdateAsync(RoleRequest request, Guid accountId);
+    Task<IBusinessResult> ChangeRoleAccountAsync(AccountRoleRequest request, Guid whoMakeId);
+    Task<IBusinessResult> DeleteAsync(Guid id, Guid accountId);
+    Task<IBusinessResult> DeleteAccountRoleAsync(Guid accountId, Guid roleId, Guid makerId);
 }

@@ -3,6 +3,7 @@ using Chibest.Service.Interface;
 using Chibest.Service.ModelDTOs.Request;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace Chibest.API.Controllers;
 
@@ -54,7 +55,23 @@ public class RoleController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] RoleRequest request)
     {
-        var result = await _roleService.CreateAsync(request);
+        var accountId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (accountId == null || accountId == Guid.Empty.ToString())
+            return StatusCode(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
+
+        var result = await _roleService.CreateAsync(request, Guid.Parse(accountId));
+        return StatusCode(result.StatusCode, result);
+    }
+
+    [Authorize(Roles = Const.Roles.Admin)]
+    [HttpPost("account-role")]
+    public async Task<IActionResult> CreateAccountRole([FromBody] AccountRoleRequest request)
+    {
+        var accountId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (accountId == null || accountId == Guid.Empty.ToString())
+            return StatusCode(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
+
+        var result = await _roleService.CreateAccountRoleAsync(request, Guid.Parse(accountId));
         return StatusCode(result.StatusCode, result);
     }
 
@@ -62,15 +79,23 @@ public class RoleController : ControllerBase
     [HttpPut]
     public async Task<IActionResult> Update([FromBody] RoleRequest request)
     {
-        var result = await _roleService.UpdateAsync(request);
+        var accountId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (accountId == null || accountId == Guid.Empty.ToString())
+            return StatusCode(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
+
+        var result = await _roleService.UpdateAsync(request, Guid.Parse(accountId));
         return StatusCode(result.StatusCode, result);
     }
 
     [Authorize(Roles = Const.Roles.Admin)]
-    [HttpPatch("{roleId}/{accountId}")]
-    public async Task<IActionResult> ChangeAccountRole([FromRoute] Guid accountId, [FromRoute] Guid roleId)
+    [HttpPatch("account-role")]
+    public async Task<IActionResult> ChangeAccountRole([FromBody] AccountRoleRequest request)
     {
-        var result = await _roleService.ChangeRoleAccountAsync(accountId, roleId);
+        var whoMakeId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (whoMakeId == null || whoMakeId == Guid.Empty.ToString())
+            return StatusCode(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
+
+        var result = await _roleService.ChangeRoleAccountAsync(request, Guid.Parse(whoMakeId));
         return StatusCode(result.StatusCode, result);
     }
 
@@ -78,7 +103,23 @@ public class RoleController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete([FromRoute] Guid id)
     {
-        var result = await _roleService.DeleteAsync(id);
+        var accountId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (accountId == null || accountId == Guid.Empty.ToString())
+            return StatusCode(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
+
+        var result = await _roleService.DeleteAsync(id, Guid.Parse(accountId));
+        return StatusCode(result.StatusCode, result);
+    }
+
+    [Authorize(Roles = Const.Roles.Admin)]
+    [HttpDelete("account-role")]
+    public async Task<IActionResult> DeleteAccountRole([FromQuery] Guid accountId, [FromQuery] Guid roleId)
+    {
+        var makerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (makerId == null || makerId == Guid.Empty.ToString())
+            return StatusCode(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
+
+        var result = await _roleService.DeleteAccountRoleAsync(accountId, roleId, Guid.Parse(makerId));
         return StatusCode(result.StatusCode, result);
     }
 }
