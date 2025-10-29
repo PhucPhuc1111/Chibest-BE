@@ -88,11 +88,11 @@ public class AccountService : IAccountService
         var accountId = principal.FindFirstValue(ClaimTypes.NameIdentifier);
 
         // Get accountId from token
-        if (accountId == null || accountId == Guid.Empty.ToString())
+        if (accountId == null || accountId.Equals(Guid.Empty.ToString()))
             return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
 
         // Get account from accountId
-        var existAccount = await _unitOfWork.AccountRepository.GetByIdAsync(accountId);
+        var existAccount = await _unitOfWork.AccountRepository.GetByIdAsync(Guid.Parse(accountId));
         if (existAccount == null ||
             existAccount.RefreshToken != request.RefreshToken ||
             existAccount.RefreshTokenExpiryTime <= DateTime.Now)
