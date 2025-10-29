@@ -1,5 +1,6 @@
 ﻿using Chibest.Service.Interface;
 using Chibest.Service.ModelDTOs.Request;
+using Chibest.Service.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Chibest.API.Controllers
@@ -34,6 +35,12 @@ namespace Chibest.API.Controllers
             [FromQuery] string? search = null)
         {
             var result = await _branchDebtService.GetBranchDebtList(pageIndex, pageSize, search);
+            return StatusCode(result.StatusCode, result);
+        }
+        [HttpDelete]
+        public async Task<IActionResult> DeleteBranchDebt(Guid branchdebtId, Guid historyId)
+        {
+            var result = await _branchDebtService.DeleteBranchDebtHistoryAsync(branchdebtId, historyId);
             return StatusCode(result.StatusCode, result);
         }
 

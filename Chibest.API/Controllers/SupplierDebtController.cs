@@ -36,6 +36,12 @@ namespace Chibest.API.Controllers
             var result = await _supplierDebtService.GetSupplierDebtList(pageIndex,pageSize,search);
             return StatusCode(result.StatusCode, result);
         }
+        [HttpDelete]
+        public async Task<IActionResult> DeleteSupplierDebt(Guid supplierdebtId, Guid historyId)
+        {
+            var result = await _supplierDebtService.DeleteSupplierDebtHistoryAsync(supplierdebtId,historyId);
+            return StatusCode(result.StatusCode, result);
+        }
 
     }
 }

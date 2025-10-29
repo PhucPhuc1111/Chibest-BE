@@ -254,7 +254,7 @@ namespace Chibest.Service.Services
                 AdjustmentCode = adj.AdjustmentCode,
                 AdjustmentDate = adj.AdjustmentDate,
                 AdjustmentType = adj.AdjustmentType,
-                TotalValueChange = (decimal)adj.TotalValueChange,
+                TotalValueChange = adj.TotalValueChange,
                 Status = adj.Status
             }).ToList();
 

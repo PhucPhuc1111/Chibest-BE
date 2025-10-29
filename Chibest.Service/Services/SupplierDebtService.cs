@@ -6,12 +6,6 @@ using Chibest.Service.Interface;
 using Chibest.Service.ModelDTOs.Request;
 using Chibest.Service.ModelDTOs.Response;
 using Microsoft.EntityFrameworkCore;
-using NetTopologySuite.Triangulate.Tri;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Chibest.Service.Services
 {
@@ -33,7 +27,6 @@ namespace Chibest.Service.Services
 
             try
             {
-                // 1️⃣ Tìm công nợ của NCC
                 var supplierDebt = await _unitOfWork.SupplierDebtRepository
                     .GetByWhere(x => x.SupplierId == supplierId)
                     .FirstOrDefaultAsync();
@@ -54,7 +47,6 @@ namespace Chibest.Service.Services
                     await _unitOfWork.SaveChangesAsync();
                 }
 
-                // 2️⃣ Chuẩn bị danh sách lịch sử giao dịch
                 decimal currentBalance = supplierDebt.RemainingDebt ?? 0;
                 var historyEntities = new List<SupplierDebtHistory>();
 
@@ -107,16 +99,13 @@ namespace Chibest.Service.Services
                     });
                 }
 
-                // 3️⃣ Cập nhật SupplierDebt tổng
                 supplierDebt.LastTransactionDate = DateTime.Now;
                 supplierDebt.LastUpdated = DateTime.Now;
                 _unitOfWork.SupplierDebtRepository.Update(supplierDebt);
                 await _unitOfWork.SaveChangesAsync();
 
-                // 4️⃣ Bulk insert tất cả lịch sử
                 await _unitOfWork.BulkInsertAsync(historyEntities);
 
-                // 5️⃣ Commit transaction
                 await _unitOfWork.CommitTransaction();
 
                 return new BusinessResult(Const.HTTP_STATUS_OK, "Supplier transactions created successfully", new
@@ -143,6 +132,7 @@ namespace Chibest.Service.Services
                     .GetByWhere(x => x.Id == id)
                     .Include(x => x.Supplier)
                     .Include(x => x.SupplierDebtHistories)
+                    .OrderByDescending(x => x.TotalDebt)
                     .FirstOrDefaultAsync();
 
                 if (supplierDebt == null)
@@ -194,7 +184,7 @@ namespace Chibest.Service.Services
                     || x.Supplier.Name.ToLower().Contains(searchTerm)
                     || x.Supplier.PhoneNumber.ToLower().Contains(searchTerm)
                     || x.Supplier.Email.ToLower().Contains(searchTerm),
-                include: q => q.Include(x => x.Supplier)
+                include: q => q.Include(x => x.Supplier).OrderByDescending(x=> x.TotalDebt)
             );
 
             if (supplierDebts == null || !supplierDebts.Any())
@@ -216,7 +206,81 @@ namespace Chibest.Service.Services
             return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_READ_MSG, responseList);
         }
 
+        #region  Delete Supplier Debt History
+        public async Task<IBusinessResult> DeleteSupplierDebtHistoryAsync(Guid supplierDebtId, Guid historyId)
+        {
+            await _unitOfWork.BeginTransaction();
 
+            try
+            {
+                var supplierDebt = await _unitOfWork.SupplierDebtRepository.GetByWhere(x => x.Id == supplierDebtId).Include(x => x.SupplierDebtHistories).FirstOrDefaultAsync();
+
+                if (supplierDebt == null)
+                    return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, "Không tìm thấy công nợ nhà cung cấp");
+
+                var history = supplierDebt.SupplierDebtHistories?
+                    .FirstOrDefault(x => x.Id == historyId);
+
+                if (history == null)
+                    return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, "Không tìm thấy lịch sử công nợ cần xoá");
+
+                decimal remaining = supplierDebt.RemainingDebt ?? 0;
+
+                switch (history.TransactionType)
+                {
+                    case "Purchase":
+                        supplierDebt.TotalDebt -= history.Amount;
+                        remaining -= history.Amount;
+                        break;
+
+                    case "Payment":
+                        supplierDebt.PaidAmount -= history.Amount;
+                        remaining += history.Amount;
+                        break;
+
+                    case "Return":
+                        remaining += history.Amount;
+                        break;
+
+                    case "Custom":
+                        supplierDebt.TotalDebt = 0;
+                        supplierDebt.PaidAmount = 0;
+                        remaining = 0;
+                        break;
+
+                    default:
+                        throw new Exception($"Invalid TransactionType: {history.TransactionType}");
+                }
+
+                if (remaining < 0)
+                    remaining = 0;
+
+                supplierDebt.RemainingDebt = remaining;
+                supplierDebt.LastUpdated = DateTime.Now;
+
+                supplierDebt.SupplierDebtHistories.Remove(history);
+                _unitOfWork.SupplierDebtRepository.Update(supplierDebt);
+
+                await _unitOfWork.SaveChangesAsync();
+                await _unitOfWork.CommitTransaction();
+
+                return new BusinessResult(Const.HTTP_STATUS_OK,
+                    "Đã xoá lịch sử công nợ và cập nhật lại công nợ nhà cung cấp",
+                    new
+                    {
+                        supplierDebt.Id,
+                        supplierDebt.TotalDebt,
+                        supplierDebt.PaidAmount,
+                        supplierDebt.RemainingDebt
+                    });
+            }
+            catch (Exception ex)
+            {
+                await _unitOfWork.RollbackTransaction();
+                return new BusinessResult(Const.ERROR_EXCEPTION,
+                    "Lỗi khi xoá lịch sử công nợ nhà cung cấp", ex.Message);
+            }
+        }
+        #endregion
     }
-
 }

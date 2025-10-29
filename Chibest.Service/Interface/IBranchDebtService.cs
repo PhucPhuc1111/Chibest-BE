@@ -13,5 +13,6 @@ namespace Chibest.Service.Interface
         Task<IBusinessResult> AddBranchTransactionAsync(Guid branchId, List<BranchDebtHistoryRequest> transactions);
         Task<IBusinessResult> GetBranchDebtAsync(Guid id);
         Task<IBusinessResult> GetBranchDebtList(int pageIndex, int pageSize, string search);
+        Task<IBusinessResult> DeleteBranchDebtHistoryAsync(Guid branchDebtId, Guid historyId);
     }
 }

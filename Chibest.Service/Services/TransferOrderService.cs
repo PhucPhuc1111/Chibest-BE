@@ -276,7 +276,9 @@ namespace Chibest.Service.Services
     string search,
     DateTime? fromDate = null,
     DateTime? toDate = null,
-    string status = null)
+    string status = null,
+    Guid? fromWarehouseId = null,    
+    Guid? toWarehouseId = null)     
         {
             Expression<Func<TransferOrder, bool>> filter = x => true;
 
@@ -308,6 +310,20 @@ namespace Chibest.Service.Services
                 DateTime endDate = toDate.Value.AddDays(1).AddSeconds(-1);
                 Expression<Func<TransferOrder, bool>> toDateFilter = x => x.OrderDate <= endDate;
                 filter = filter.And(toDateFilter);
+            }
+
+            if (fromWarehouseId.HasValue && fromWarehouseId.Value != Guid.Empty)
+            {
+                Expression<Func<TransferOrder, bool>> fromWarehouseFilter =
+                    x => x.FromWarehouse != null && x.FromWarehouse.Id == fromWarehouseId.Value;
+                filter = filter.And(fromWarehouseFilter);
+            }
+
+            if (toWarehouseId.HasValue && toWarehouseId.Value != Guid.Empty)
+            {
+                Expression<Func<TransferOrder, bool>> toWarehouseFilter =
+                    x => x.ToWarehouse != null && x.ToWarehouse.Id == toWarehouseId.Value;
+                filter = filter.And(toWarehouseFilter);
             }
 
             var transferOrders = await _unitOfWork.TransferOrderRepository
