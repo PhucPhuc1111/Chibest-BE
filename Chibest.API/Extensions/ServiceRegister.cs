@@ -11,6 +11,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Newtonsoft.Json.Serialization;
+using System.Configuration;
 using System.Text;
 using System.Text.Json.Serialization;
 using YourProjectNamespace.Services;
@@ -21,13 +22,16 @@ public static class ServiceRegister
 {
     public static void RegisterServices(IServiceCollection services, IConfiguration configuration)
     {
-        var connectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING");
+        //var connectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING");
 
-        services.AddDbContext<ChiBestDbContext>(options =>
-        {
-            options.UseSqlServer(connectionString);
-            options.EnableSensitiveDataLogging();
-        });
+        //services.AddDbContext<ChiBestDbContext>(options =>
+        //{
+        //    options.UseSqlServer(connectionString);
+        //    options.EnableSensitiveDataLogging();
+        //});
+        var connectionString = Environment.GetEnvironmentVariable("DB_PG_CONNECTION_STRING");
+        services.AddDbContext<ChiBestDbContext>(options => options.UseNpgsql(connectionString));
+
 
         services.AddAuthorizeService(configuration);
         AddCorsToThisWeb(services);

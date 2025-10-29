@@ -9,12 +9,7 @@ namespace Chibest.Repository.Repositories
 {
     public class SupplierDebtRepository : GenericRepository<SupplierDebt>, ISupplierDebtRepository
     {
-        private readonly ChiBestDbContext _context;
-
-        public SupplierDebtRepository(ChiBestDbContext context) : base(context)
-        {
-            _context = context;
-        }
+        public SupplierDebtRepository(ChiBestDbContext context) : base(context){}
 
         public async Task<IBusinessResult> AddSupplierTransactionAsync(
             Guid supplierId,

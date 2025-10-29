@@ -9,12 +9,7 @@ namespace Chibest.Repository.Repositories
 {
     public class BranchDebtRepository : GenericRepository<BranchDebt>, IBranchDebtRepository
     {
-        private readonly ChiBestDbContext _context;
-
-        public BranchDebtRepository(ChiBestDbContext context) : base(context)
-        {
-            _context = context;
-        }
+        public BranchDebtRepository(ChiBestDbContext context) : base(context){ }
         public async Task<IBusinessResult> AddBranchTransactionAsync(
     Guid branchId,
     string transactionType,
