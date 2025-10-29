@@ -5,15 +5,11 @@ using Chibest.Repository.Models;
 using Chibest.Service.Interface;
 using Chibest.Service.Utilities;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Linq.Expressions;
-using System.Text;
-using System.Threading.Tasks;
 using static Chibest.Service.ModelDTOs.Stock.StockAdjustment.create;
 using static Chibest.Service.ModelDTOs.Stock.StockAdjustment.id;
 using static Chibest.Service.ModelDTOs.Stock.StockAdjustment.list;
+using static Chibest.Service.ModelDTOs.Stock.StockAdjustment.update;
 
 namespace Chibest.Service.Services
 {
@@ -42,9 +38,8 @@ namespace Chibest.Service.Services
                 BranchId = request.BranchId,
                 WarehouseId = request.WarehouseId,
                 EmployeeId = request.EmployeeId,
-                ApprovedBy = request.ApprovedBy,
                 Note = request.Note,
-                Status = request.Status != null ? request.Status : "",
+                Status = request.Status != null ? request.Status : "Lưu Tạm",
                 CreatedAt = DateTime.Now,
                 UpdatedAt = DateTime.Now
             };
@@ -92,6 +87,102 @@ namespace Chibest.Service.Services
             {
                 await _unitOfWork.RollbackTransaction();
                 return new BusinessResult(Const.ERROR_EXCEPTION, "Error creating Stock Adjustment", ex.Message);
+            }
+        }
+
+        public async Task<IBusinessResult> UpdateStockAdjustment(Guid id, StockAdjustmentUpdate request)
+        {
+            if (request == null)
+                return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Invalid request");
+
+            var stockAdjustment = await _unitOfWork.StockAdjusmentRepository
+                .GetByWhere(x => x.Id == id)
+                .Include(x => x.StockAdjustmentDetails)
+                .FirstOrDefaultAsync();
+
+            if (stockAdjustment == null)
+                return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, "Không tìm thấy phiếu điều chỉnh tồn kho");
+
+            if (stockAdjustment.Status != "Lưu Tạm")
+                return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Chỉ có thể cập nhật phiếu điều chỉnh ở trạng thái Lưu Tạm");
+
+            stockAdjustment.AdjustmentType = request.AdjustmentType?.ToString() ?? stockAdjustment.AdjustmentType;
+            stockAdjustment.Note = request.Note ?? stockAdjustment.Note;
+            stockAdjustment.Status = request.Status ?? stockAdjustment.Status;
+            stockAdjustment.UpdatedAt = DateTime.Now;
+
+            decimal totalValueChange = 0;
+            foreach (var detailReq in request.StockAdjustmentDetails)
+            {
+                var detail = stockAdjustment.StockAdjustmentDetails
+                    .FirstOrDefault(x => x.Id == detailReq.Id);
+
+                if (detail != null)
+                {
+                    detail.ProductId = detailReq.ProductId;
+                    detail.SystemQty = detailReq.SystemQty;
+                    detail.ActualQty = detailReq.ActualQty;
+                    detail.UnitCost = detailReq.UnitCost;
+                    detail.Reason = detailReq.Reason ?? detail.Reason;
+                    detail.Note = detailReq.Note ?? detail.Note;
+
+                    int diffQty = detail.ActualQty - detail.SystemQty;
+                    decimal valueChange = diffQty * detail.UnitCost;
+
+                    detail.DifferenceQty = diffQty;
+                    detail.TotalValueChange = valueChange;
+                    totalValueChange += valueChange;
+                }
+            }
+
+            stockAdjustment.TotalValueChange = totalValueChange;
+
+            await _unitOfWork.BeginTransaction();
+
+            try
+            {
+                _unitOfWork.StockAdjusmentRepository.Update(stockAdjustment);
+                
+                var detailsToUpdate = stockAdjustment.StockAdjustmentDetails.ToList();
+                await _unitOfWork.BulkUpdateAsync(detailsToUpdate);
+
+                if (request.Status == "Hoàn Thành" || request.Status == "Đã Duyệt")
+                {
+                    foreach (var detail in stockAdjustment.StockAdjustmentDetails)
+                    {
+                        if (detail.DifferenceQty != 0)
+                        {
+                            var result = await _unitOfWork.BranchStockRepository.UpdateBranchStockAsync(
+                                warehouseId: (Guid)stockAdjustment.WarehouseId,
+                                productId: detail.ProductId,
+                                deltaAvailableQty: detail.DifferenceQty ?? 0
+                            );
+
+                            if (result.StatusCode != Const.SUCCESS)
+                            {
+                                await _unitOfWork.RollbackTransaction();
+                                return new BusinessResult(Const.ERROR_EXCEPTION,
+                                    $"Lỗi cập nhật tồn kho cho sản phẩm {detail.ProductId}: {result.Message}");
+                            }
+                        }
+                    }
+                    stockAdjustment.ApprovedBy = request.ApprovebyId;
+                    stockAdjustment.ApprovedAt = DateTime.Now;
+                    await _unitOfWork.SaveChangesAsync();
+                }
+                await _unitOfWork.CommitTransaction();
+
+                return new BusinessResult(Const.HTTP_STATUS_OK, "Cập nhật phiếu điều chỉnh tồn kho thành công", new
+                {
+                    stockAdjustment.AdjustmentCode,
+                    TotalValueChange = stockAdjustment.TotalValueChange
+                });
+
+            }
+            catch (Exception ex)
+            {
+                await _unitOfWork.RollbackTransaction();
+                return new BusinessResult(Const.ERROR_EXCEPTION, "Lỗi khi cập nhật phiếu nhập hàng", ex.Message);
             }
         }
 
@@ -163,7 +254,7 @@ namespace Chibest.Service.Services
                 AdjustmentCode = adj.AdjustmentCode,
                 AdjustmentDate = adj.AdjustmentDate,
                 AdjustmentType = adj.AdjustmentType,
-                TotalValueChange = (decimal)adj.TotalValueChange,
+                TotalValueChange = adj.TotalValueChange,
                 Status = adj.Status
             }).ToList();
 

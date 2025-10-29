@@ -182,7 +182,6 @@ namespace Chibest.Service.Services
             return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_READ_MSG, POs);
         }
 
-
         public async Task<IBusinessResult> UpdateAsync(Guid id, PurchaseOrderUpdate request)
         {
             var purchaseOrder = await _unitOfWork.PurchaseOrderRepository
@@ -271,7 +270,6 @@ namespace Chibest.Service.Services
             }
         }
 
-
         private async Task<string> GenerateInvoiceCodeAsync()
         {
             string datePart = DateTime.Now.ToString("yyyyMMdd");
@@ -291,7 +289,6 @@ namespace Chibest.Service.Services
                     nextNumber = lastNumber + 1;
                 }
             }
-
             return $"{prefix}{nextNumber:D4}";
         }
 

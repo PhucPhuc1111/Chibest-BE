@@ -173,6 +173,7 @@ namespace Chibest.Service.Services
             return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_READ_MSG, responseList);
         }
 
+
         public async Task<IBusinessResult> UpdatePurchaseReturnAsync(Guid id, OrderStatus status)
         {
             var purchaseReturn = await _unitOfWork.PurchaseReturnRepository
@@ -183,6 +184,7 @@ namespace Chibest.Service.Services
             if (purchaseReturn == null)
                 return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, "Không tìm thấy phiếu trả hàng");
 
+            var oldStatus = purchaseReturn.Status;
             purchaseReturn.Status = status.ToString();
             purchaseReturn.UpdatedAt = DateTime.Now;
 
@@ -193,7 +195,7 @@ namespace Chibest.Service.Services
                 _unitOfWork.PurchaseReturnRepository.Update(purchaseReturn);
                 await _unitOfWork.SaveChangesAsync();
 
-                if (status == OrderStatus.Received)
+                if (status == OrderStatus.Received && oldStatus != OrderStatus.Received.ToString())
                 {
                     foreach (var detail in purchaseReturn.PurchaseReturnDetails)
                     {
@@ -209,14 +211,65 @@ namespace Chibest.Service.Services
                             {
                                 await _unitOfWork.RollbackTransaction();
                                 return new BusinessResult(Const.ERROR_EXCEPTION,
-                                    $"Lỗi khi giảm tồn kho khả dụng cho sản phẩm {detail.ProductId}: {decreaseResult.Message}");
+                                    $"Lỗi khi giảm tồn kho cho sản phẩm {detail.ProductId}: {decreaseResult.Message}");
+                            }
+                        }
+                    }
+                    if (purchaseReturn.SupplierId != null)
+                    {
+                        decimal subtotal = purchaseReturn.SubTotal;
+
+                        if (subtotal != 0)
+                        {
+                            var debtResult = await _unitOfWork.SupplierDebtRepository.AddSupplierTransactionAsync(
+                                supplierId: (Guid)purchaseReturn.SupplierId,
+                                transactionType: "Return",
+                                amount: subtotal,
+                                note: $"Công nợ từ phiếu trả hàng #{purchaseReturn.InvoiceCode}"
+                            );
+
+                            if (debtResult.StatusCode != Const.HTTP_STATUS_OK)
+                            {
+                                await _unitOfWork.RollbackTransaction();
+                                return new BusinessResult(Const.ERROR_EXCEPTION,
+                                    "Lỗi xử lý công nợ nhà cung cấp khi trả hàng");
+                            }
+                        }
+                    }
+
+                    if (purchaseReturn.WarehouseId != null)
+                    {
+                        var warehouse = await _unitOfWork.WarehouseRepository.GetByIdAsync((Guid)purchaseReturn.WarehouseId);
+                        if (warehouse?.BranchId != null)
+                        {
+                            var branch = await _unitOfWork.BranchRepository.GetByIdAsync((Guid)warehouse.BranchId);
+                            if (branch != null && branch.IsFranchise == false)
+                            {
+                                decimal subtotal = purchaseReturn.SubTotal;
+
+                                if (subtotal != 0)
+                                {
+                                    var branchDebtResult = await _unitOfWork.BranchDebtRepository.AddBranchTransactionAsync(
+                                        branchId: (Guid)warehouse.BranchId,
+                                        transactionType: "Return",
+                                        amount: subtotal,
+                                        note: $"Công nợ chi nhánh từ phiếu trả hàng #{purchaseReturn.InvoiceCode}"
+                                    );
+
+                                    if (branchDebtResult.StatusCode != Const.HTTP_STATUS_OK)
+                                    {
+                                        await _unitOfWork.RollbackTransaction();
+                                        return new BusinessResult(Const.ERROR_EXCEPTION,
+                                            "Lỗi xử lý công nợ chi nhánh khi trả hàng");
+                                    }
+                                }
                             }
                         }
                     }
                 }
 
                 await _unitOfWork.CommitTransaction();
-                return new BusinessResult(Const.SUCCESS, "Cập nhật trạng thái phiếu trả hàng thành công");
+                return new BusinessResult(Const.SUCCESS, "Cập nhật phiếu trả hàng và công nợ thành công");
             }
             catch (Exception ex)
             {
@@ -224,6 +277,8 @@ namespace Chibest.Service.Services
                 return new BusinessResult(Const.ERROR_EXCEPTION, "Lỗi khi cập nhật phiếu trả hàng", ex.Message);
             }
         }
+
+
 
         private async Task<string> GenerateInvoiceCodeAsync()
         {
@@ -325,7 +380,6 @@ namespace Chibest.Service.Services
         private decimal ParseDecimal(string value)
         {
             if (string.IsNullOrWhiteSpace(value)) return 0;
-            // Loại bỏ dấu phẩy phân cách hàng nghìn và chuyển đổi
             value = value.Replace(",", "").Trim();
             return decimal.TryParse(value, out decimal result) ? result : 0;
         }
@@ -333,9 +387,8 @@ namespace Chibest.Service.Services
         private int ParseInt(string value)
         {
             if (string.IsNullOrWhiteSpace(value)) return 0;
-            // Loại bỏ dấu phẩy phân cách hàng nghìn và chuyển đổi
             value = value.Replace(",", "").Trim();
-            return int.TryParse(value, out int result) ? result : 0;
+            return int.TryParse(value, out int result) ? result : 0; 
         }
 
     }

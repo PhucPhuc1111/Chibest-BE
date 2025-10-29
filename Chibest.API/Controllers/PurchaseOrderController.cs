@@ -42,7 +42,7 @@ namespace Chibest.API.Controllers
             var result = await _purchaseOrderService.UpdateAsync(id,request);
             return StatusCode(result.StatusCode, result);
         }
-        [HttpPost("file")]
+        [HttpPost("import")]
         public async Task<IActionResult> GetPurchaseOrderFile(IFormFile file)
         {
             var result = await _purchaseOrderService.ReadPurchaseOrderFromExcel(file);

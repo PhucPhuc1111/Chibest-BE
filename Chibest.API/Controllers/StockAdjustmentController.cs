@@ -2,6 +2,7 @@
 using Chibest.Service.ModelDTOs.Stock.PurchaseOrder;
 using Microsoft.AspNetCore.Mvc;
 using static Chibest.Service.ModelDTOs.Stock.StockAdjustment.create;
+using static Chibest.Service.ModelDTOs.Stock.StockAdjustment.update;
 
 namespace Chibest.API.Controllers
 {
@@ -22,7 +23,7 @@ namespace Chibest.API.Controllers
             return StatusCode(result.StatusCode, result);
         }
         [HttpGet]
-        public async Task<IActionResult> GetPurchaseOrderList(
+        public async Task<IActionResult> GetStockAdjustmentList(
             [FromQuery] int pageIndex = 1,
             [FromQuery] int pageSize = 10,
             [FromQuery] string? search = null, DateTime? fromDate = null, DateTime? toDate = null, string status = null)
@@ -32,9 +33,15 @@ namespace Chibest.API.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> CreatePurchaseOrder([FromBody] StockAdjustmentCreate request)
+        public async Task<IActionResult> CreateStockAdjustment([FromBody] StockAdjustmentCreate request)
         {
             var result = await _stockAdjusmentService.AddStockAdjustment(request);
+            return StatusCode(result.StatusCode, result);
+        }
+        [HttpPut("{id}")]
+        public async Task<IActionResult> UpdateStockAdjustment(Guid id,[FromBody] StockAdjustmentUpdate request)
+        {
+            var result = await _stockAdjusmentService.UpdateStockAdjustment(id,request);
             return StatusCode(result.StatusCode, result);
         }
     }

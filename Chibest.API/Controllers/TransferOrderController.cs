@@ -55,7 +55,7 @@ namespace Chibest.API.Controllers
             var result = await _transferOrderService.UpdateTransferOrderAsync(id, request);
             return StatusCode(result.StatusCode, result);
         }
-        [HttpPost("file")]
+        [HttpPost("import")]
         public async Task<IActionResult> TransferOrderfile(IFormFile file)
         {
             var result = await _transferOrderService.ReadTransferDetailFromExcel(file);

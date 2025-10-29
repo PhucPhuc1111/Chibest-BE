@@ -18,7 +18,7 @@ namespace YourProjectNamespace.Services
             _unitOfWork = unitOfWork;
         }
 
-        #region ➕ Add Branch Transactions
+        #region Add Branch Transactions
         public async Task<IBusinessResult> AddBranchTransactionAsync(Guid branchId, List<BranchDebtHistoryRequest> transactions)
         {
             if (transactions == null || !transactions.Any())
@@ -205,6 +205,75 @@ namespace YourProjectNamespace.Services
             return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_READ_MSG, responseList);
         }
         #endregion
+
+        #region  Delete Single Branch Debt History
+        public async Task<IBusinessResult> DeleteBranchDebtHistoryAsync(Guid branchDebtId, Guid historyId)
+        {
+            await _unitOfWork.BeginTransaction();
+
+            try
+            {
+                var branchDebt = await _unitOfWork.BranchDebtRepository.GetByWhere(x => x.Id == branchDebtId).Include(x => x.BranchDebtHistories).FirstOrDefaultAsync();
+
+                if (branchDebt == null)
+                    return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, "Không tìm thấy công nợ chi nhánh");
+
+                var history = branchDebt.BranchDebtHistories
+                    ?.FirstOrDefault(x => x.Id == historyId);
+
+                if (history == null)
+                    return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, "Không tìm thấy lịch sử công nợ cần xoá");
+
+                decimal remaining = branchDebt.RemainingDebt ?? 0;
+
+                switch (history.TransactionType)
+                {
+                    case "TransferIn":
+                        branchDebt.TotalDebt -= history.Amount;
+                        remaining -= history.Amount;
+                        break;
+
+                    case "TransferOut":
+                        branchDebt.PaidAmount -= history.Amount;
+                        remaining += history.Amount;
+                        break;
+
+                    case "Return":
+                        remaining += history.Amount;
+                        break;
+
+                    case "Custom":
+                        branchDebt.TotalDebt = 0;
+                        branchDebt.PaidAmount = 0;
+                        remaining = 0;
+                        break;
+                }
+
+                if (remaining < 0)
+                    remaining = 0;
+
+                branchDebt.RemainingDebt = remaining;
+                branchDebt.LastUpdated = DateTime.Now;
+
+                // 4️⃣ Xoá bản ghi lịch sử công nợ
+                branchDebt.BranchDebtHistories.Remove(history);
+                _unitOfWork.BranchDebtRepository.Update(branchDebt);
+
+                await _unitOfWork.SaveChangesAsync();
+                await _unitOfWork.CommitTransaction();
+
+                return new BusinessResult(Const.HTTP_STATUS_OK,
+                    "Đã xoá lịch sử công nợ và cập nhật lại công nợ chi nhánh");
+            }
+            catch (Exception ex)
+            {
+                await _unitOfWork.RollbackTransaction();
+                return new BusinessResult(Const.ERROR_EXCEPTION,
+                    "Lỗi khi xoá lịch sử công nợ chi nhánh", ex.Message);
+            }
+        }
+        #endregion
+
     }
 }
 

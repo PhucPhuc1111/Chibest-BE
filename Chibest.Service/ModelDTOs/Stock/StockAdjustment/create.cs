@@ -17,7 +17,6 @@ namespace Chibest.Service.ModelDTOs.Stock.StockAdjustment
             public Guid BranchId { get; set; }
             public Guid? WarehouseId { get; set; }
             public Guid EmployeeId { get; set; }
-            public Guid? ApprovedBy { get; set; }
             public string? Status { get; set; }
             public string? Note { get; set; }
             public virtual ICollection<StockAdjustmentDetailCreate> StockAdjustmentDetails { get; set; } = new List<StockAdjustmentDetailCreate>();

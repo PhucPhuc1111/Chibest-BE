@@ -17,6 +17,7 @@ namespace Chibest.Service.Interface
     List<SupplierDebtHistoryRequest> transactions);
         Task<IBusinessResult> GetSupplierDebtList(int pageIndex, int pageSize, string search);
         Task<IBusinessResult> GetSupplierDebtAsync(Guid id);
+        Task<IBusinessResult> DeleteSupplierDebtHistoryAsync(Guid supplierDebtId, Guid historyId);
 
     }
 }

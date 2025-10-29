@@ -52,7 +52,7 @@ namespace Chibest.API.Controllers
             return StatusCode(result.StatusCode, result);
         }
 
-        [HttpPost("file")]
+        [HttpPost("import")]
         public async Task<IActionResult> PurchaseReturnfile(IFormFile file)
         {
             var result = await _purchaseReturnService.ReadPurchaseReturnFromExcel(file);

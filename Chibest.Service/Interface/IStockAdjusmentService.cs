@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using static Chibest.Service.ModelDTOs.Stock.StockAdjustment.create;
+using static Chibest.Service.ModelDTOs.Stock.StockAdjustment.update;
 
 namespace Chibest.Service.Interface
 {
@@ -20,5 +21,6 @@ namespace Chibest.Service.Interface
     string? status = null,
     string? adjustmentType = null);
         Task<IBusinessResult> AddStockAdjustment(StockAdjustmentCreate request);
+        Task<IBusinessResult> UpdateStockAdjustment(Guid id, StockAdjustmentUpdate request);
     }
 }
