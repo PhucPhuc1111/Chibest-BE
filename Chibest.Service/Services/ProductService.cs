@@ -69,15 +69,45 @@ public class ProductService : IProductService
             };
         }
 
+        // Include ProductPriceHistories để lấy thông tin giá
         var products = await _unitOfWork.ProductRepository.GetPagedAsync(
             query.PageNumber,
             query.PageSize,
             predicate,
-            orderBy
+            orderBy,
+            include: q => q.Include(p => p.ProductPriceHistories)
         );
 
         var totalCount = await _unitOfWork.ProductRepository.GetByWhere(predicate).CountAsync();
-        var response = products.Adapt<List<ProductResponse>>();
+
+        // Map sang ProductResponse với giá mới nhất
+        var response = products.Select(product =>
+        {
+            var latestPrice = product.ProductPriceHistories?
+                .OrderByDescending(h => h.CreatedAt)
+                .FirstOrDefault();
+
+            return new ProductResponse
+            {
+                Id = product.Id,
+                AvartarUrl = product.AvatarUrl,
+                Sku = product.Sku,
+                Name = product.Name,
+                Description = product.Description,
+                Color = product.Color,
+                Size = product.Size,
+                Style = product.Style,
+                Brand = product.Brand,
+                Material = product.Material,
+                Weight = product.Weight,
+                IsMaster = product.IsMaster,
+                Status = product.Status,
+                CategoryId = product.CategoryId,
+                ParentSku = product.ParentSku,
+                CostPrice = latestPrice?.CostPrice,
+                SellingPrice = latestPrice?.SellingPrice
+            };
+        }).ToList();
 
         var pagedResult = new PagedResult<ProductResponse>
         {
@@ -88,28 +118,83 @@ public class ProductService : IProductService
         };
 
         return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_READ_MSG, pagedResult);
-
     }
 
     public async Task<IBusinessResult> GetByIdAsync(Guid id)
     {
-        var product = await _unitOfWork.ProductRepository.GetByIdAsync(id);
-        if (product == null)
-            return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, Const.FAIL_READ_MSG);
-
-        var response = product.Adapt<ProductResponse>();
-        return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_READ_MSG, response);
-    }
-
-    public async Task<IBusinessResult> GetBySKUAsync(string sku)
-    {
-        var product = await _unitOfWork.ProductRepository.GetByWhere(p => p.Sku == sku)
+        var product = await _unitOfWork.ProductRepository
+            .GetByWhere(p => p.Id == id)
+            .Include(p => p.ProductPriceHistories)
+            .AsNoTracking()
             .FirstOrDefaultAsync();
 
         if (product == null)
             return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, Const.FAIL_READ_MSG);
 
-        var response = product.Adapt<ProductResponse>();
+        var latestPrice = product.ProductPriceHistories
+            .OrderByDescending(h => h.CreatedAt)
+            .FirstOrDefault();
+
+        var response = new ProductResponse
+        {
+            Id = product.Id,
+            AvartarUrl = product.AvatarUrl,
+            Sku = product.Sku,
+            Name = product.Name,
+            Description = product.Description,
+            Color = product.Color,
+            Size = product.Size,
+            Style = product.Style,
+            Brand = product.Brand,
+            Material = product.Material,
+            Weight = product.Weight,
+            IsMaster = product.IsMaster,
+            Status = product.Status,
+            CategoryId = product.CategoryId,
+            ParentSku = product.ParentSku,
+            CostPrice = latestPrice?.CostPrice,
+            SellingPrice = latestPrice?.SellingPrice
+        };
+
+        return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_READ_MSG, response);
+    }
+
+
+    public async Task<IBusinessResult> GetBySKUAsync(string sku)
+    {
+        var product = await _unitOfWork.ProductRepository.GetByWhere(p => p.Sku == sku)
+            .Include(p => p.ProductPriceHistories)
+            .AsNoTracking()
+            .FirstOrDefaultAsync();
+
+        if (product == null)
+            return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, Const.FAIL_READ_MSG);
+
+        var latestPrice = product.ProductPriceHistories?
+            .OrderByDescending(h => h.CreatedAt)
+            .FirstOrDefault();
+
+        var response = new ProductResponse
+        {
+            Id = product.Id,
+            AvartarUrl = product.AvatarUrl,
+            Sku = product.Sku,
+            Name = product.Name,
+            Description = product.Description,
+            Color = product.Color,
+            Size = product.Size,
+            Style = product.Style,
+            Brand = product.Brand,
+            Material = product.Material,
+            Weight = product.Weight,
+            IsMaster = product.IsMaster,
+            Status = product.Status,
+            CategoryId = product.CategoryId,
+            ParentSku = product.ParentSku,
+            CostPrice = latestPrice?.CostPrice,
+            SellingPrice = latestPrice?.SellingPrice
+        };
+
         return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_READ_MSG, response);
     }
 
@@ -118,27 +203,64 @@ public class ProductService : IProductService
         if (request == null)
             return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
 
-        // Check if SKU already exists
-        var existingSku = await _unitOfWork.ProductRepository.GetByWhere(p => p.Sku == request.Sku)
+        // Check SKU trùng
+        var existingSku = await _unitOfWork.ProductRepository
+            .GetByWhere(p => p.Sku == request.Sku)
             .FirstOrDefaultAsync();
+
         if (existingSku != null)
             return new BusinessResult(Const.HTTP_STATUS_CONFLICT, "SKU đã tồn tại");
 
-        var product = request.Adapt<Product>();
-        product.Id = Guid.NewGuid();
-        product.CreatedAt = DateTime.Now;
-        product.UpdatedAt = DateTime.Now;
+        await _unitOfWork.BeginTransaction();
 
-        await _unitOfWork.ProductRepository.AddAsync(product);
-        await _unitOfWork.SaveChangesAsync();
+        try
+        {
+            var product = request.Adapt<Product>();
+            product.Id = Guid.NewGuid();
+            product.CreatedAt = DateTime.Now;
+            product.UpdatedAt = DateTime.Now;
 
-        await LogSystemAction("Create", "Product", product.Id, accountId,
-                            null, JsonSerializer.Serialize(product),
-                            $"Tạo mới sản phẩm: {product.Name} (SKU: {product.Sku})");
+            await _unitOfWork.ProductRepository.AddAsync(product);
+            await _unitOfWork.SaveChangesAsync();
 
-        var response = product.Adapt<ProductResponse>();
-        return new BusinessResult(Const.HTTP_STATUS_CREATED, Const.SUCCESS_CREATE_MSG, response);
+            if (request.SellingPrice.HasValue && request.CostPrice.HasValue)
+            {
+                var priceHistory = new ProductPriceHistory
+                {
+                    Id = Guid.NewGuid(),
+                    ProductId = product.Id,
+                    BranchId = request.BranchId,
+                    SellingPrice = request.SellingPrice.Value,
+                    CostPrice = request.CostPrice.Value,
+                    EffectiveDate = request.EffectiveDate ?? DateTime.Now,
+                    ExpiryDate = request.ExpiryDate,
+                    CreatedAt = DateTime.Now,
+                    CreatedBy = accountId,
+                    Note = "Giá khởi tạo sản phẩm"
+                };
+
+                await _unitOfWork.ProductPriceHistoryRepository.AddAsync(priceHistory);
+                await _unitOfWork.SaveChangesAsync();
+            }
+
+            var productLog = product.Adapt<ProductRequest>(); // hoặc ProductResponse
+            await LogSystemAction("Create", "Product", product.Id, accountId,
+                null, JsonSerializer.Serialize(productLog),
+                $"Tạo mới sản phẩm: {product.Name} (SKU: {product.Sku})");
+
+
+            await _unitOfWork.CommitTransaction();
+
+            var response = product.Adapt<ProductResponse>();
+            return new BusinessResult(Const.HTTP_STATUS_CREATED, Const.SUCCESS_CREATE_MSG, response);
+        }
+        catch (Exception ex)
+        {
+            await _unitOfWork.RollbackTransaction();
+            return new BusinessResult(Const.HTTP_STATUS_INTERNAL_ERROR, ex.Message);
+        }
     }
+
 
     public async Task<IBusinessResult> UpdateAsync(ProductRequest request, Guid accountId)
     {
