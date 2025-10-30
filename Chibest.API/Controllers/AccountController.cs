@@ -132,4 +132,11 @@ public class AccountController : ControllerBase
         var result = await _accountService.DeleteAccountAsync(Guid.Parse(accountId));
         return StatusCode(result.StatusCode, result);
     }
+
+    [HttpGet("supplier")]
+    public async Task<IActionResult> ViewSupplier()
+    {
+        var result = await _accountService.GetSupplierAccountsAsync();
+        return StatusCode(result.StatusCode, result);
+    }
 }
