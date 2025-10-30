@@ -11,6 +11,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Linq.Expressions;
 using System.Security.Claims;
+using static Chibest.Common.Const;
 
 
 namespace Chibest.Service.Services;
@@ -335,5 +336,47 @@ public class AccountService : IAccountService
         await _unitOfWork.SaveChangesAsync();
 
         return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_DELETE_MSG);
+    }
+
+    public async Task<IBusinessResult> GetSupplierAccountsAsync()
+    {
+        var supplierRole = await _unitOfWork.RoleRepository
+            .GetByWhere(r => r.Name == "Supplier")
+            .FirstOrDefaultAsync();
+
+        if (supplierRole == null)
+        {
+            return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, "Không tìm thấy role Nhà Cung Cấp");
+        }
+
+        var supplierAccounts = await _unitOfWork.AccountRepository
+            .GetByWhere(a => a.AccountRoles.Any(ar =>
+                ar.RoleId == supplierRole.Id &&
+                ar.EndDate == null))
+            .Include(a => a.AccountRoles)
+                .ThenInclude(ar => ar.Role)
+            .OrderByDescending(a => a.CreatedAt)
+            .ToListAsync();
+
+        var response = supplierAccounts.Select(account => new AccountResponse
+        {
+            Id = account.Id,
+            FcmToken = account.FcmToken,
+            RefreshToken = account.RefreshToken,
+            RefreshTokenExpiryTime = account.RefreshTokenExpiryTime,
+            AvartarUrl = account.AvatarUrl,
+            Code = account.Code,
+            Email = account.Email,
+            Name = account.Name,
+            PhoneNumber = account.PhoneNumber,
+            Address = account.Address,
+            Cccd = account.Cccd,
+            FaxNumber = account.FaxNumber,
+            CreatedAt = account.CreatedAt,
+            UpdatedAt = account.UpdatedAt,
+            Status = account.Status
+        }).ToList();
+
+        return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_READ_MSG, response);
     }
 }

@@ -19,10 +19,10 @@ builder.Services.AddAuthorization();
 builder.Services.AddEndpointsApiExplorer();
 
 // Config public hosting
-builder.WebHost.ConfigureKestrel(options =>
-{
-    options.ListenAnyIP(5000);
-});
+//builder.WebHost.ConfigureKestrel(options =>
+//{
+//    options.ListenAnyIP(5000);
+//});
 Console.WriteLine("For develop environtment, make sure put file .env in this folder same as file program.cs. Then restart app to reload on start.");
 Console.WriteLine("Make sure put file .env in this path ("+Directory.GetCurrentDirectory()+"). Then restart app to reload on start.");
 

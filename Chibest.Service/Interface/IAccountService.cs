@@ -16,4 +16,5 @@ public interface IAccountService
     Task<IBusinessResult> ChangeAccountStatusAsync(Guid accountId, string status);
     Task<IBusinessResult> ChangeAccountPasswordAsync(Guid accountId, string newPassword);
     Task<IBusinessResult> DeleteAccountAsync(Guid id);
+    Task<IBusinessResult> GetSupplierAccountsAsync();
 }
