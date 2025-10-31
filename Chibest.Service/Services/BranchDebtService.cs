@@ -7,7 +7,7 @@ using Chibest.Service.ModelDTOs.Request;
 using Chibest.Service.ModelDTOs.Response;
 using Microsoft.EntityFrameworkCore;
 
-namespace YourProjectNamespace.Services
+namespace Chibest.Service.Services
 {
     public class BranchDebtService : IBranchDebtService
     {
@@ -185,7 +185,7 @@ namespace YourProjectNamespace.Services
                 x => string.IsNullOrEmpty(searchTerm)
                     || x.Branch.Name.ToLower().Contains(searchTerm)
                     || x.Branch.PhoneNumber.ToLower().Contains(searchTerm)
-                    || (x.Branch.PhoneNumber != null && x.Branch.PhoneNumber.ToLower().Contains(searchTerm)),
+                    || x.Branch.PhoneNumber != null && x.Branch.PhoneNumber.ToLower().Contains(searchTerm),
                 include: q => q.Include(x => x.Branch)
             );
 

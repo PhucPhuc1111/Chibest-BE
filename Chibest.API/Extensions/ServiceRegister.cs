@@ -13,7 +13,6 @@ using Microsoft.OpenApi.Models;
 using Newtonsoft.Json.Serialization;
 using System.Text;
 using System.Text.Json.Serialization;
-using YourProjectNamespace.Services;
 
 namespace Chibest.API.Extensions;
 
@@ -144,13 +143,18 @@ public static class ServiceRegister
     {
         services.AddCors(options =>
         {
-            options.AddPolicy("AllowAll",
-                builder =>
-                {
-                    builder.AllowAnyOrigin()
-                        .AllowAnyMethod()
-                        .AllowAnyHeader();
-                });
+            options.AddPolicy("AllowAll", builder =>
+            {
+                builder.WithOrigins(
+                    "http://45.125.238.52:5000",
+                    "http://localhost:3000",
+                    "https://chibest-fe.vercel.app/",
+                    "https://srpm.id.vn",
+                    "http://srpm.id.vn"
+                )
+                .AllowAnyHeader()
+                .AllowAnyMethod();
+            });
         });
     }
 
