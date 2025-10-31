@@ -1,0 +1,28 @@
+{
+  "ExcelMappings": {
+    "Account": {
+      "Id": "Mã tài khoản",
+      "Username": "Tên đăng nhập",
+      "Email": "Thư điện tử",
+      "AvatarUrl": "Đường dẫn Avatar"
+    },
+    "Product": {
+      "ProductCode": "Loại Hàng",
+      "ProductCode": "Nhóm hàng(3 Cấp)",
+      "ProductName": "Mã hàng",
+      "ProductName": "Tên hàng",
+      "ProductName": "Thương hiệu",
+      "Price": "Giá bán",
+      "Price": "Giá vốn",
+      "Price": "Tồn kho",
+      "Price": "KH đặt",
+      "Price": "Dự kiến hết hàng",
+      "Price": "Tồn nhỏ nhất",
+      "Price": "Tồn lớn nhất",
+      "Price": "Thuộc tính",
+      "Price": "Hình ảnh,,
+      "Price": "Đang kinh doanh,
+      "Price": "Được bán trực tiếp
+    }
+  }
+}

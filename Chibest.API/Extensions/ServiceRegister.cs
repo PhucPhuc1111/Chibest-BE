@@ -7,6 +7,7 @@ using Chibest.Service.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc.ApplicationModels;
+using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -34,16 +35,20 @@ public static class ServiceRegister
         ConfigKebabCase(services);
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<ITokenService, TokenService>();
+        services.AddScoped<IFileService, FileService>();
+        services.AddSingleton<IContentTypeProvider, FileExtensionContentTypeProvider>();
         services.AddScoped<IWarehouseService, WarehouseService>();
         services.AddScoped<IAccountService, AccountService>();
         services.AddScoped<IRoleService, RoleService>();
         services.AddScoped<IBranchService, BranchService>();
+
         services.AddScoped<ISystemLogService, SystemLogService>();
         services.AddScoped<ICategoryService, CategoryService>();
         services.AddScoped<IProductService, ProductService>();
         services.AddScoped<IProductDetailService, ProductDetailService>();
         services.AddScoped<IProductPriceHistoryService, ProductPriceHistoryService>();
         services.AddScoped<IBranchStockService, BranchStockService>();
+
         services.AddScoped<IPurchaseOrderService, PurchaseOrderService>();
         services.AddScoped<ITransferOrderService, TransferOrderService>();
         services.AddScoped<IPurchaseReturnService, PurchaseReturnService>();
