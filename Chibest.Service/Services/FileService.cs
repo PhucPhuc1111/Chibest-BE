@@ -48,14 +48,14 @@ public class FileService : IFileService
     }
 
     //====================================================================================
-    public async Task<IBusinessResult> SaveImageAsync(IFormFile imageFile, string fileName, string category)
+    public async Task<string> SaveImageAsync(IFormFile imageFile, string fileName, string category)
     {
         // --- Validate input ---
         if (imageFile == null || imageFile.Length == 0)
-            return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG + " Image null");
+            throw new Exception("Image null");
 
         if (string.IsNullOrEmpty(fileName) || string.IsNullOrEmpty(category))
-            return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG + " Name or Category null");
+            throw new Exception("Name or Category null");
         // ----------------------
 
         var relativePath = Path.Combine("images", category.ToLower() + "s");
@@ -63,11 +63,11 @@ public class FileService : IFileService
 
         // --- Validate file type ---
         if (_allowedImageExtensions.Length == 0 || _allowedImageExtensions.Any(arr => string.IsNullOrWhiteSpace(arr)))
-            return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG + " Image types allow is null");
+            throw new Exception("Image types allow is null");
 
         var fileExtension = Path.GetExtension(imageFile.FileName).ToLowerInvariant();
         if (string.IsNullOrEmpty(fileExtension) || !_allowedImageExtensions.Contains(fileExtension))
-            return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG + " Image type not allow");
+            throw new Exception("Image type not allow");
         // --------------------------
 
         // Handle physic location
@@ -77,7 +77,7 @@ public class FileService : IFileService
         fileName = Path.GetFileNameWithoutExtension(fileName);
         var safeFileName = Path.GetFileName(fileName);
         if (string.IsNullOrEmpty(safeFileName) || safeFileName != fileName)
-            return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
+            throw new Exception("File name contain invalid character");
 
         string finalFileName;
         string physicalFilePath;
@@ -121,7 +121,7 @@ public class FileService : IFileService
             }
         }
         // if return path error: $"{relativePath}/{finalFileName}";
-        return new BusinessResult(Const.HTTP_STATUS_CREATED, Const.SUCCESS_CREATE_MSG, Path.Combine(relativePath, finalFileName));
+        return Path.Combine(relativePath, finalFileName);
     }
 
     public (Stream FileStream, string ContentType) GetImageFileAsync(string relativePath)

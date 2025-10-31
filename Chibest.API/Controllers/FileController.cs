@@ -28,9 +28,9 @@ public class FileController : ControllerBase
     {
         try
         {
-            var response = await _fileService.SaveImageAsync(request.FileData,request.Name,request.Category);
+            var relativePath = await _fileService.SaveImageAsync(request.FileData,request.Name,request.Category);
 
-            return StatusCode(response.StatusCode, response);
+            return Ok(relativePath);
         }
         catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
         catch (Exception ex) { return StatusCode(500, "Lỗi hệ thống."); }
