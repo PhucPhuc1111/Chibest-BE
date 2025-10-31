@@ -48,5 +48,11 @@ namespace Chibest.API.Controllers
             var result = await _purchaseOrderService.ReadPurchaseOrderFromExcel(file);
             return StatusCode(result.StatusCode, result);
         }
+        [HttpDelete("id")]
+        public async Task<IActionResult> DeletePurchaseOrder(Guid id)
+        {
+            var result = await _purchaseOrderService.DeletePurchaseOrder(id);
+            return StatusCode(result.StatusCode, result);
+        }
     }
 }

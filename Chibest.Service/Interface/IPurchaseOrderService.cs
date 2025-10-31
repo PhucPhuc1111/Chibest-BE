@@ -17,5 +17,6 @@ namespace Chibest.Service.Interface
         Task<IBusinessResult> UpdateAsync(Guid id, PurchaseOrderUpdate request);
         Task<IBusinessResult> GetPurchaseOrderById(Guid id);
         Task<IBusinessResult> ReadPurchaseOrderFromExcel(IFormFile file);
+        Task<IBusinessResult> DeletePurchaseOrder(Guid id);
     }
 }

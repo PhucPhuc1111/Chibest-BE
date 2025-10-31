@@ -23,5 +23,6 @@ namespace Chibest.Service.Interface
             string status = null);
         Task<IBusinessResult> UpdatePurchaseReturnAsync(Guid id, OrderStatus status);
         Task<IBusinessResult> ReadPurchaseReturnFromExcel(IFormFile file);
+        Task<IBusinessResult> DeletePurchaseReturn(Guid id);
     }
 }

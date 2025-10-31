@@ -391,5 +391,30 @@ namespace Chibest.Service.Services
             return int.TryParse(value, out int result) ? result : 0; 
         }
 
+        public async Task<IBusinessResult> DeletePurchaseReturn(Guid id)
+        {
+            var purchaseReturn = await _unitOfWork.PurchaseReturnRepository
+                .GetByWhere(x => x.Id == id)
+                .FirstOrDefaultAsync();
+
+            if (purchaseReturn == null)
+                return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, "Không tìm thấy phiếu trả hàng");
+
+            if (purchaseReturn.Status == OrderStatus.Received.ToString())
+                return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Không thể xóa phiếu trả hàng đã nhận");
+
+            try
+            {
+                // Cascade delete will remove PurchaseReturnDetail records
+                _unitOfWork.PurchaseReturnRepository.Delete(purchaseReturn);
+                await _unitOfWork.SaveChangesAsync();
+
+                return new BusinessResult(Const.HTTP_STATUS_OK, "Xóa phiếu trả hàng thành công");
+            }
+            catch (Exception ex)
+            {
+                return new BusinessResult(Const.ERROR_EXCEPTION, "Lỗi khi xóa phiếu trả hàng", ex.Message);
+            }
+        }
     }
 }

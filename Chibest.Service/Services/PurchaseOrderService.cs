@@ -270,6 +270,31 @@ namespace Chibest.Service.Services
             }
         }
 
+        public async Task<IBusinessResult> DeletePurchaseOrder(Guid id)
+        {
+            var purchaseOrder = await _unitOfWork.PurchaseOrderRepository
+                .GetByWhere(x => x.Id == id)
+                .FirstOrDefaultAsync();
+
+            if (purchaseOrder == null)
+                return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, "Không tìm thấy phiếu nhập hàng");
+
+            if (purchaseOrder.Status == OrderStatus.Received.ToString())
+                return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Không thể xóa phiếu nhập hàng đã nhận");
+
+            try
+            {
+                _unitOfWork.PurchaseOrderRepository.Delete(purchaseOrder);
+                await _unitOfWork.SaveChangesAsync();
+
+                return new BusinessResult(Const.HTTP_STATUS_OK, "Xóa phiếu nhập hàng thành công");
+            }
+            catch (Exception ex)
+            {
+                return new BusinessResult(Const.ERROR_EXCEPTION, "Lỗi khi xóa phiếu nhập hàng", ex.Message);
+            }
+        }
+
         private async Task<string> GenerateInvoiceCodeAsync()
         {
             string datePart = DateTime.Now.ToString("yyyyMMdd");

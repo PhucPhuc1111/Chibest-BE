@@ -479,6 +479,53 @@ namespace Chibest.Service.Services
         private int ParseInt(string input)
             => int.TryParse(input, out var value) ? value : 0;
 
+        public async Task<IBusinessResult> DeleteTransferOrder(Guid id)
+        {
+            var transferOrder = await _unitOfWork.TransferOrderRepository
+                .GetByWhere(x => x.Id == id)
+                .Include(x => x.TransferOrderDetails)
+                .FirstOrDefaultAsync();
+
+            if (transferOrder == null)
+                return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, "Không tìm thấy phiếu chuyển kho");
+
+            if (transferOrder.Status == OrderStatus.Received.ToString())
+                return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Không thể xóa phiếu chuyển kho đã nhận");
+
+            await _unitOfWork.BeginTransaction();
+
+            try
+            {
+                // Restore stock quantities in source warehouse
+                foreach (var detail in transferOrder.TransferOrderDetails)
+                {
+                    var restoreResult = await _unitOfWork.BranchStockRepository.UpdateBranchStockAsync(
+                        warehouseId: (Guid)transferOrder.FromWarehouseId,
+                        productId: detail.ProductId,
+                        deltaAvailableQty: detail.Quantity
+                    );
+
+                    if (restoreResult.StatusCode != Const.SUCCESS)
+                    {
+                        await _unitOfWork.RollbackTransaction();
+                        return new BusinessResult(Const.ERROR_EXCEPTION,
+                            $"Lỗi khi khôi phục tồn kho tại kho nguồn cho sản phẩm {detail.ProductId}");
+                    }
+                }
+
+                // Delete the transfer order - related details will be deleted automatically due to cascade delete
+                _unitOfWork.TransferOrderRepository.Delete(transferOrder);
+                await _unitOfWork.SaveChangesAsync();
+                await _unitOfWork.CommitTransaction();
+
+                return new BusinessResult(Const.HTTP_STATUS_OK, "Xóa phiếu chuyển kho thành công");
+            }
+            catch (Exception ex)
+            {
+                await _unitOfWork.RollbackTransaction();
+                return new BusinessResult(Const.ERROR_EXCEPTION, "Lỗi khi xóa phiếu chuyển kho", ex.Message);
+            }
+        }
     }
 }
 
