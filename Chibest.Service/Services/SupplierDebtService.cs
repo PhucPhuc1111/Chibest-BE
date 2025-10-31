@@ -23,10 +23,6 @@ namespace Chibest.Service.Services
             if (transactions == null || !transactions.Any())
                 return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "No transaction data provided");
 
-            await _unitOfWork.BeginTransaction();
-
-            try
-            {
                 var supplierDebt = await _unitOfWork.SupplierDebtRepository
                     .GetByWhere(x => x.SupplierId == supplierId)
                     .FirstOrDefaultAsync();
@@ -106,7 +102,6 @@ namespace Chibest.Service.Services
 
                 await _unitOfWork.BulkInsertAsync(historyEntities);
 
-                await _unitOfWork.CommitTransaction();
 
                 return new BusinessResult(Const.HTTP_STATUS_OK, "Supplier transactions created successfully", new
                 {
@@ -115,12 +110,7 @@ namespace Chibest.Service.Services
                     supplierDebt.PaidAmount,
                     supplierDebt.RemainingDebt,
                 });
-            }
-            catch (Exception ex)
-            {
-                await _unitOfWork.RollbackTransaction();
-                return new BusinessResult(Const.ERROR_EXCEPTION, "Error creating supplier transactions", ex.Message);
-            }
+            
         }
 
 
@@ -209,10 +199,6 @@ namespace Chibest.Service.Services
         #region  Delete Supplier Debt History
         public async Task<IBusinessResult> DeleteSupplierDebtHistoryAsync(Guid supplierDebtId, Guid historyId)
         {
-            await _unitOfWork.BeginTransaction();
-
-            try
-            {
                 var supplierDebt = await _unitOfWork.SupplierDebtRepository.GetByWhere(x => x.Id == supplierDebtId).Include(x => x.SupplierDebtHistories).FirstOrDefaultAsync();
 
                 if (supplierDebt == null)
@@ -262,7 +248,6 @@ namespace Chibest.Service.Services
                 _unitOfWork.SupplierDebtRepository.Update(supplierDebt);
 
                 await _unitOfWork.SaveChangesAsync();
-                await _unitOfWork.CommitTransaction();
 
                 return new BusinessResult(Const.HTTP_STATUS_OK,
                     "Đã xoá lịch sử công nợ và cập nhật lại công nợ nhà cung cấp",
@@ -273,13 +258,7 @@ namespace Chibest.Service.Services
                         supplierDebt.PaidAmount,
                         supplierDebt.RemainingDebt
                     });
-            }
-            catch (Exception ex)
-            {
-                await _unitOfWork.RollbackTransaction();
-                return new BusinessResult(Const.ERROR_EXCEPTION,
-                    "Lỗi khi xoá lịch sử công nợ nhà cung cấp", ex.Message);
-            }
+            
         }
         #endregion
     }

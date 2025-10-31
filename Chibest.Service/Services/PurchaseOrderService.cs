@@ -60,22 +60,12 @@ namespace Chibest.Service.Services
                 Note = detailReq.Note,
             }).ToList();
 
-            await _unitOfWork.BeginTransaction();
+            await _unitOfWork.PurchaseOrderRepository.AddAsync(purchaseOrder);
+            await _unitOfWork.SaveChangesAsync();
+            await _unitOfWork.BulkInsertAsync(orderDetails);
 
-            try
-            {
-                await _unitOfWork.PurchaseOrderRepository.AddAsync(purchaseOrder);
-                await _unitOfWork.SaveChangesAsync();
-                await _unitOfWork.BulkInsertAsync(orderDetails);
-                await _unitOfWork.CommitTransaction();
-
-                return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_CREATE_MSG, new { purchaseOrder.InvoiceCode });
-            }
-            catch (Exception ex)
-            {
-                await _unitOfWork.RollbackTransaction();
-                return new BusinessResult(Const.ERROR_EXCEPTION, "Error creating Purchase Order", ex.Message);
-            }
+            return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_CREATE_MSG, new { purchaseOrder.InvoiceCode });
+            
         }
 
         public async Task<IBusinessResult> GetPurchaseOrderById(Guid id)
@@ -200,6 +190,10 @@ namespace Chibest.Service.Services
                 if (detail != null)
                 {
                     detail.ActualQuantity = detailReq.ActualQuantity ?? detail.ActualQuantity;
+                    detail.ReFee = detailReq.ReFee;
+                    detail.UnitPrice = detailReq.UnitPrice;
+                    detail.Discount = detailReq.Discount;
+                    detail.Note = detailReq.Note;
                 }
             }
             purchaseOrder.SubTotal = request.SubTotal;
@@ -209,10 +203,7 @@ namespace Chibest.Service.Services
             purchaseOrder.Status = request.Status.ToString();
             purchaseOrder.UpdatedAt = DateTime.Now;
 
-            await _unitOfWork.BeginTransaction();
 
-            try
-            {
                 _unitOfWork.PurchaseOrderRepository.Update(purchaseOrder);
                 await _unitOfWork.SaveChangesAsync();
 
@@ -230,7 +221,6 @@ namespace Chibest.Service.Services
 
                             if (result.StatusCode != Const.SUCCESS)
                             {
-                                await _unitOfWork.RollbackTransaction();
                                 return new BusinessResult(Const.ERROR_EXCEPTION,
                                     $"Lỗi cập nhật tồn kho cho sản phẩm {detail.ProductId}: {result.Message}");
                             }
@@ -250,7 +240,6 @@ namespace Chibest.Service.Services
 
                         if (debtResult.StatusCode != Const.HTTP_STATUS_OK)
                         {
-                            await _unitOfWork.RollbackTransaction();
                             return new BusinessResult(Const.ERROR_EXCEPTION,
                                 "Lỗi xử lý công nợ nhà cung cấp");
                         }
@@ -259,14 +248,33 @@ namespace Chibest.Service.Services
                 var detailsToUpdate = purchaseOrder.PurchaseOrderDetails.ToList();
                 await _unitOfWork.BulkUpdateAsync(detailsToUpdate);
 
-                await _unitOfWork.CommitTransaction();
 
                 return new BusinessResult(Const.SUCCESS, "Cập nhật phiếu nhập hàng và công nợ thành công");
+            
+        }
+
+        public async Task<IBusinessResult> DeletePurchaseOrder(Guid id)
+        {
+            var purchaseOrder = await _unitOfWork.PurchaseOrderRepository
+                .GetByWhere(x => x.Id == id)
+                .FirstOrDefaultAsync();
+
+            if (purchaseOrder == null)
+                return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, "Không tìm thấy phiếu nhập hàng");
+
+            if (purchaseOrder.Status == OrderStatus.Received.ToString())
+                return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Không thể xóa phiếu nhập hàng đã nhận");
+
+            try
+            {
+                _unitOfWork.PurchaseOrderRepository.Delete(purchaseOrder);
+                await _unitOfWork.SaveChangesAsync();
+
+                return new BusinessResult(Const.HTTP_STATUS_OK, "Xóa phiếu nhập hàng thành công");
             }
             catch (Exception ex)
             {
-                await _unitOfWork.RollbackTransaction();
-                return new BusinessResult(Const.ERROR_EXCEPTION, "Lỗi khi cập nhật phiếu nhập hàng", ex.Message);
+                return new BusinessResult(Const.ERROR_EXCEPTION, "Lỗi khi xóa phiếu nhập hàng", ex.Message);
             }
         }
 

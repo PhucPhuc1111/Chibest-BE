@@ -9,6 +9,7 @@ namespace Chibest.Service.ModelDTOs.Response
     public class BranchResponse
     {
         public Guid Id { get; set; }
+        public string Code { get; set; } = null!;
         public string Name { get; set; } = null!;
         public string Address { get; set; } = null!;
         public string? PhoneNumber { get; set; }

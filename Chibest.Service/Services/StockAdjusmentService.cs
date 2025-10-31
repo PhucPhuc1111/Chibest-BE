@@ -68,26 +68,17 @@ namespace Chibest.Service.Services
             }
 
             stockAdjustment.TotalValueChange = totalValueChange;
-            await _unitOfWork.BeginTransaction();
 
-            try
-            {
                 await _unitOfWork.StockAdjusmentRepository.AddAsync(stockAdjustment);
                 await _unitOfWork.SaveChangesAsync();
                 await _unitOfWork.BulkInsertAsync(adjustmentDetails);
-                await _unitOfWork.CommitTransaction();
 
                 return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_CREATE_MSG, new
                 {
                     stockAdjustment.AdjustmentCode,
                     TotalValueChange = stockAdjustment.TotalValueChange
                 });
-            }
-            catch (Exception ex)
-            {
-                await _unitOfWork.RollbackTransaction();
-                return new BusinessResult(Const.ERROR_EXCEPTION, "Error creating Stock Adjustment", ex.Message);
-            }
+            
         }
 
         public async Task<IBusinessResult> UpdateStockAdjustment(Guid id, StockAdjustmentUpdate request)
@@ -137,10 +128,6 @@ namespace Chibest.Service.Services
 
             stockAdjustment.TotalValueChange = totalValueChange;
 
-            await _unitOfWork.BeginTransaction();
-
-            try
-            {
                 _unitOfWork.StockAdjusmentRepository.Update(stockAdjustment);
                 
                 var detailsToUpdate = stockAdjustment.StockAdjustmentDetails.ToList();
@@ -160,7 +147,6 @@ namespace Chibest.Service.Services
 
                             if (result.StatusCode != Const.SUCCESS)
                             {
-                                await _unitOfWork.RollbackTransaction();
                                 return new BusinessResult(Const.ERROR_EXCEPTION,
                                     $"Lỗi cập nhật tồn kho cho sản phẩm {detail.ProductId}: {result.Message}");
                             }
@@ -170,7 +156,6 @@ namespace Chibest.Service.Services
                     stockAdjustment.ApprovedAt = DateTime.Now;
                     await _unitOfWork.SaveChangesAsync();
                 }
-                await _unitOfWork.CommitTransaction();
 
                 return new BusinessResult(Const.HTTP_STATUS_OK, "Cập nhật phiếu điều chỉnh tồn kho thành công", new
                 {
@@ -178,12 +163,7 @@ namespace Chibest.Service.Services
                     TotalValueChange = stockAdjustment.TotalValueChange
                 });
 
-            }
-            catch (Exception ex)
-            {
-                await _unitOfWork.RollbackTransaction();
-                return new BusinessResult(Const.ERROR_EXCEPTION, "Lỗi khi cập nhật phiếu nhập hàng", ex.Message);
-            }
+            
         }
 
         public async Task<IBusinessResult> GetStockAdjustmentList(

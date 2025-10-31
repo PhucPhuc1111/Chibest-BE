@@ -28,6 +28,7 @@ namespace Chibest.Service.ModelDTOs.Stock.PurchaseOrder
         public decimal Discount { get; set; }
 
         public decimal ReFee { get; set; }
+        public string? Note { get; set; }
         public int? ActualQuantity { get; set; }
     }
 }

@@ -61,5 +61,11 @@ namespace Chibest.API.Controllers
             var result = await _transferOrderService.ReadTransferDetailFromExcel(file);
             return StatusCode(result.StatusCode, result);
         }
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteTransferOrder(Guid id)
+        {
+            var result = await _transferOrderService.DeleteTransferOrder(id);
+            return StatusCode(result.StatusCode, result);
+        }
     }
 }
