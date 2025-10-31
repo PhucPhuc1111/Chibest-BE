@@ -8,6 +8,7 @@ using Chibest.Service.ModelDTOs.Request.Query;
 using Chibest.Service.ModelDTOs.Response;
 using Chibest.Service.Utilities;
 using Mapster;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
 using System.Text.Json;
@@ -24,7 +25,6 @@ public class ProductService : IProductService
         _unitOfWork = unitOfWork;
         _systemLogService = systemLogService;
     }
-
     public async Task<IBusinessResult> GetListAsync(ProductQuery query)
     {
         Expression<Func<Product, bool>> predicate = p => true;
@@ -69,23 +69,27 @@ public class ProductService : IProductService
             };
         }
 
-        // Include ProductPriceHistories để lấy thông tin giá
+        // Include both ProductPriceHistories and BranchStocks
         var products = await _unitOfWork.ProductRepository.GetPagedAsync(
-            query.PageNumber,
-            query.PageSize,
-            predicate,
-            orderBy,
-            include: q => q.Include(p => p.ProductPriceHistories)
-        );
+    query.PageNumber,
+    query.PageSize,
+    predicate,
+    orderBy,
+    include: q => q
+        .Include(p => p.ProductPriceHistories)
+        .Include(p => p.BranchStocks)
+        .Include(p => p.Category) // ✅ Thêm dòng này
+);
 
-        var totalCount = await _unitOfWork.ProductRepository.GetByWhere(predicate).CountAsync();
-
-        // Map sang ProductResponse với giá mới nhất
         var response = products.Select(product =>
         {
             var latestPrice = product.ProductPriceHistories?
                 .OrderByDescending(h => h.CreatedAt)
                 .FirstOrDefault();
+
+            var branchStock = query.BranchId.HasValue
+                ? product.BranchStocks?.FirstOrDefault(bs => bs.BranchId == query.BranchId.Value)
+                : null;
 
             return new ProductResponse
             {
@@ -102,13 +106,16 @@ public class ProductService : IProductService
                 Weight = product.Weight,
                 IsMaster = product.IsMaster,
                 Status = product.Status,
-                CategoryId = product.CategoryId,
                 ParentSku = product.ParentSku,
+                CategoryName = product.Category?.Name, 
                 CostPrice = latestPrice?.CostPrice,
-                SellingPrice = latestPrice?.SellingPrice
+                SellingPrice = latestPrice?.SellingPrice,
+                StockQuantity = branchStock?.AvailableQty ?? 0
             };
         }).ToList();
 
+
+        var totalCount = await _unitOfWork.ProductRepository.GetByWhere(predicate).CountAsync();
         var pagedResult = new PagedResult<ProductResponse>
         {
             DataList = response,
@@ -120,14 +127,20 @@ public class ProductService : IProductService
         return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_READ_MSG, pagedResult);
     }
 
-    public async Task<IBusinessResult> GetByIdAsync(Guid id)
+    public async Task<IBusinessResult> GetByIdAsync(Guid id,Guid? branchId)
     {
         var product = await _unitOfWork.ProductRepository
             .GetByWhere(p => p.Id == id)
             .Include(p => p.ProductPriceHistories)
+            .Include(p => p.Category)
             .AsNoTracking()
             .FirstOrDefaultAsync();
-
+        var branchStock = branchId.HasValue
+            ? await _unitOfWork.BranchStockRepository
+                .GetByWhere(bs => bs.ProductId == id && bs.BranchId == branchId.Value)
+                .AsNoTracking()
+                .FirstOrDefaultAsync()
+            : null;
         if (product == null)
             return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, Const.FAIL_READ_MSG);
 
@@ -150,23 +163,30 @@ public class ProductService : IProductService
             Weight = product.Weight,
             IsMaster = product.IsMaster,
             Status = product.Status,
-            CategoryId = product.CategoryId,
             ParentSku = product.ParentSku,
+            CategoryName = product.Category.Name,
             CostPrice = latestPrice?.CostPrice,
-            SellingPrice = latestPrice?.SellingPrice
+            SellingPrice = latestPrice?.SellingPrice,
+            StockQuantity = branchStock?.AvailableQty ?? 0
         };
 
         return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_READ_MSG, response);
     }
 
 
-    public async Task<IBusinessResult> GetBySKUAsync(string sku)
+    public async Task<IBusinessResult> GetBySKUAsync(string sku, [FromForm] Guid? branchId)
     {
         var product = await _unitOfWork.ProductRepository.GetByWhere(p => p.Sku == sku)
             .Include(p => p.ProductPriceHistories)
+            .Include(p => p.Category)
             .AsNoTracking()
             .FirstOrDefaultAsync();
-
+        var branchStock = branchId.HasValue
+            ? await _unitOfWork.BranchStockRepository
+                .GetByWhere(bs => bs.ProductId == product.Id && bs.BranchId == branchId)
+                .AsNoTracking()
+                .FirstOrDefaultAsync()
+            : null;
         if (product == null)
             return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, Const.FAIL_READ_MSG);
 
@@ -189,10 +209,11 @@ public class ProductService : IProductService
             Weight = product.Weight,
             IsMaster = product.IsMaster,
             Status = product.Status,
-            CategoryId = product.CategoryId,
             ParentSku = product.ParentSku,
+            CategoryName = product.Category.Name,
             CostPrice = latestPrice?.CostPrice,
-            SellingPrice = latestPrice?.SellingPrice
+            SellingPrice = latestPrice?.SellingPrice,
+            StockQuantity = branchStock?.AvailableQty ?? 0
         };
 
         return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_READ_MSG, response);

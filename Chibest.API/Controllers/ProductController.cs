@@ -28,18 +28,18 @@ public class ProductController : ControllerBase
     }
 
     [Authorize]
-    [HttpGet("{id}")]
-    public async Task<IActionResult> GetById([FromRoute] Guid id)
+    [HttpGet("{id}/{branchId}")]
+    public async Task<IActionResult> GetById([FromRoute] Guid id, [FromRoute] Guid? branchId)
     {
-        var result = await _productService.GetByIdAsync(id);
+        var result = await _productService.GetByIdAsync(id,branchId);
         return StatusCode(result.StatusCode, result);
     }
 
     [Authorize]
-    [HttpGet("sku/{sku}")]
-    public async Task<IActionResult> GetBySKU([FromRoute] string sku)
+    [HttpGet("sku/{sku}/{branchId}")]
+    public async Task<IActionResult> GetBySKU([FromRoute] string sku, [FromRoute] Guid? branchId)
     {
-        var result = await _productService.GetBySKUAsync(sku);
+        var result = await _productService.GetBySKUAsync(sku,branchId);
         return StatusCode(result.StatusCode, result);
     }
 
