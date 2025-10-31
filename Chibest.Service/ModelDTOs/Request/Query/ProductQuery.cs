@@ -7,4 +7,5 @@ public class ProductQuery: BaseQuery
     public Guid? CategoryId { get; set; }
     public bool? IsMaster { get; set; }
     public string? Brand { get; set; }
+    public Guid? BranchId { get; set; }
 }

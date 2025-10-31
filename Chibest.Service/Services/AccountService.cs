@@ -12,8 +12,6 @@ using Microsoft.IdentityModel.Tokens;
 using System.Linq.Expressions;
 using System.Security.Claims;
 using static Chibest.Common.Const;
-
-
 namespace Chibest.Service.Services;
 
 public class AccountService : IAccountService

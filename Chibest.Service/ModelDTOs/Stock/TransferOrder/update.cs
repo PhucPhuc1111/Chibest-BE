@@ -24,7 +24,10 @@ namespace Chibest.Service.ModelDTOs.Stock.TransferOrder
             public Guid Id { get; set; }
             public decimal ExtraFee { get; set; } = 0;
             public decimal CommissionFee { get; set; } = 0;
+            public decimal UnitPrice { get; set; }
             public int? ActualQuantity { get; set; }
+            public string? Note { get; set; }
+
         }
     }
 }

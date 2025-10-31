@@ -33,8 +33,11 @@ namespace Chibest.Service.Services
             var response = new WarehouseResponse
             {
                 Id = warehouse.Id,
+                Code = warehouse.Code,
                 Name = warehouse.Name,
                 Address = warehouse.Address,
+                PhoneNumber = warehouse.PhoneNumber,
+                Status = warehouse.Status,
                 BranchName = warehouse.Branch?.Name,
                 CreatedAt = warehouse.CreatedAt,
                 UpdatedAt = warehouse.UpdatedAt
@@ -54,11 +57,12 @@ namespace Chibest.Service.Services
             {
                 Id = Guid.NewGuid(),
                 Code = request.Code,
+                PhoneNumber = request.PhoneNumber,
                 Name = request.Name,
                 Address = request.Address,
                 BranchId = request.BranchId,
                 CreatedAt = DateTime.Now,
-                UpdatedAt = DateTime.Now
+                UpdatedAt = DateTime.Now,
             };
 
             await _unitOfWork.WarehouseRepository.AddAsync(warehouseEntity);
@@ -85,7 +89,10 @@ namespace Chibest.Service.Services
             var response = warehouses.Select(x => new WarehouseResponse
             {
                 Id = x.Id,
+                Code = x.Code,
                 Name = x.Name,
+                Status = x.Status,
+                PhoneNumber = x.PhoneNumber,
                 Address = x.Address,
                 BranchName = x.Branch?.Name,
                 CreatedAt = x.CreatedAt,
@@ -106,6 +113,7 @@ namespace Chibest.Service.Services
 
             warehouseEntity.Name = request.Name;
             warehouseEntity.Code = request.Code;
+            warehouseEntity.PhoneNumber = request.PhoneNumber;
             warehouseEntity.Address = request.Address;
             warehouseEntity.BranchId = request.BranchId;
             warehouseEntity.Status = string.IsNullOrEmpty(request.Status) ? warehouseEntity.Status : request.Status;

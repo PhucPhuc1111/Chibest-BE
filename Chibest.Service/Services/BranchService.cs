@@ -33,6 +33,7 @@ public class BranchService : IBranchService
         {
             Id = branch.Id,
             Name = branch.Name,
+            Code = branch.Code,
             Address = branch.Address,
             PhoneNumber = branch.PhoneNumber,
             IsFranchise = branch.IsFranchise,
@@ -89,6 +90,7 @@ public class BranchService : IBranchService
         var responseList = branches.Select(branch => new BranchResponse
         {
             Id = branch.Id,
+            Code = branch.Code,
             Name = branch.Name,
             Address = branch.Address,
             PhoneNumber = branch.PhoneNumber,
