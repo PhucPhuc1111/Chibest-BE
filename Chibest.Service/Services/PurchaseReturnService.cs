@@ -56,24 +56,15 @@ namespace Chibest.Service.Services
                 ReturnPrice = detailReq.ReturnPrice,
                 Note = detailReq.Note
             }).ToList();
-            await _unitOfWork.BeginTransaction();
 
-            try
-            {
                 await _unitOfWork.PurchaseReturnRepository.AddAsync(purchaseReturn);
                 await _unitOfWork.SaveChangesAsync();
 
                 await _unitOfWork.BulkInsertAsync(returnDetails);
 
-                await _unitOfWork.CommitTransaction();
 
                 return new BusinessResult(Const.HTTP_STATUS_OK, "Tạo phiếu trả hàng thành công", new { purchaseReturn.InvoiceCode });
-            }
-            catch (Exception ex)
-            {
-                await _unitOfWork.RollbackTransaction();
-                return new BusinessResult(Const.ERROR_EXCEPTION, "Lỗi khi tạo phiếu trả hàng", ex.Message);
-            }
+            
         }
 
         public async Task<IBusinessResult> GetPurchaseReturnById(Guid id)
@@ -188,10 +179,7 @@ namespace Chibest.Service.Services
             purchaseReturn.Status = status.ToString();
             purchaseReturn.UpdatedAt = DateTime.Now;
 
-            await _unitOfWork.BeginTransaction();
 
-            try
-            {
                 _unitOfWork.PurchaseReturnRepository.Update(purchaseReturn);
                 await _unitOfWork.SaveChangesAsync();
 
@@ -209,7 +197,6 @@ namespace Chibest.Service.Services
 
                             if (decreaseResult.StatusCode != Const.SUCCESS)
                             {
-                                await _unitOfWork.RollbackTransaction();
                                 return new BusinessResult(Const.ERROR_EXCEPTION,
                                     $"Lỗi khi giảm tồn kho cho sản phẩm {detail.ProductId}: {decreaseResult.Message}");
                             }
@@ -230,7 +217,6 @@ namespace Chibest.Service.Services
 
                             if (debtResult.StatusCode != Const.HTTP_STATUS_OK)
                             {
-                                await _unitOfWork.RollbackTransaction();
                                 return new BusinessResult(Const.ERROR_EXCEPTION,
                                     "Lỗi xử lý công nợ nhà cung cấp khi trả hàng");
                             }
@@ -258,7 +244,6 @@ namespace Chibest.Service.Services
 
                                     if (branchDebtResult.StatusCode != Const.HTTP_STATUS_OK)
                                     {
-                                        await _unitOfWork.RollbackTransaction();
                                         return new BusinessResult(Const.ERROR_EXCEPTION,
                                             "Lỗi xử lý công nợ chi nhánh khi trả hàng");
                                     }
@@ -268,14 +253,8 @@ namespace Chibest.Service.Services
                     }
                 }
 
-                await _unitOfWork.CommitTransaction();
                 return new BusinessResult(Const.SUCCESS, "Cập nhật phiếu trả hàng và công nợ thành công");
-            }
-            catch (Exception ex)
-            {
-                await _unitOfWork.RollbackTransaction();
-                return new BusinessResult(Const.ERROR_EXCEPTION, "Lỗi khi cập nhật phiếu trả hàng", ex.Message);
-            }
+            
         }
 
 

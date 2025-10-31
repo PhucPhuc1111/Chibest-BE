@@ -24,105 +24,95 @@ namespace YourProjectNamespace.Services
             if (transactions == null || !transactions.Any())
                 return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "No transaction data provided");
 
-            await _unitOfWork.BeginTransaction();
 
-            try
+            var branchDebt = await _unitOfWork.BranchDebtRepository
+                .GetByWhere(x => x.BranchId == branchId)
+                .FirstOrDefaultAsync();
+
+            if (branchDebt == null)
             {
-                var branchDebt = await _unitOfWork.BranchDebtRepository
-                    .GetByWhere(x => x.BranchId == branchId)
-                    .FirstOrDefaultAsync();
-
-                if (branchDebt == null)
+                branchDebt = new BranchDebt
                 {
-                    branchDebt = new BranchDebt
-                    {
-                        Id = Guid.NewGuid(),
-                        BranchId = branchId,
-                        TotalDebt = 0,
-                        PaidAmount = 0,
-                        LastTransactionDate = DateTime.Now,
-                        LastUpdated = DateTime.Now
-                    };
-
-                    await _unitOfWork.BranchDebtRepository.AddAsync(branchDebt);
-                    await _unitOfWork.SaveChangesAsync();
-                }
-
-                decimal currentBalance = branchDebt.RemainingDebt ?? 0;
-                var historyEntities = new List<BranchDebtHistory>();
-
-                foreach (var t in transactions)
-                {
-                    decimal balanceBefore = currentBalance;
-                    decimal balanceAfter = balanceBefore;
-
-                    switch (t.TransactionType)
-                    {
-                        case "TransferIn":
-                            branchDebt.TotalDebt += t.Amount;
-                            balanceAfter = balanceBefore + t.Amount;
-                            break;
-
-                        case "TransferOut":
-                            branchDebt.PaidAmount += t.Amount;
-                            balanceAfter = balanceBefore - t.Amount;
-                            break;
-
-                        case "Return":
-                            balanceAfter = balanceBefore - t.Amount;
-                            break;
-
-                        case "Custom":
-                            balanceAfter = t.Amount;
-                            branchDebt.RemainingDebt = t.Amount;
-
-                            branchDebt.TotalDebt = Math.Max(t.Amount, 0);
-                            branchDebt.PaidAmount = branchDebt.TotalDebt - t.Amount;
-                            break;
-
-                        default:
-                            throw new Exception($"Invalid TransactionType: {t.TransactionType}");
-                    }
-
-                    branchDebt.RemainingDebt = balanceAfter;
-                    currentBalance = balanceAfter;
-
-                    historyEntities.Add(new BranchDebtHistory
-                    {
-                        Id = Guid.NewGuid(),
-                        BranchDebtId = branchDebt.Id,
-                        TransactionType = t.TransactionType,
-                        TransactionDate = t.TransactionDate,
-                        Amount = t.Amount,
-                        BalanceBefore = balanceBefore,
-                        BalanceAfter = balanceAfter,
-                        Note = t.Note,
-                        CreatedAt = DateTime.Now
-                    });
-                }
-
-                branchDebt.LastTransactionDate = DateTime.Now;
-                branchDebt.LastUpdated = DateTime.Now;
-                _unitOfWork.BranchDebtRepository.Update(branchDebt);
-                await _unitOfWork.SaveChangesAsync();
-
-                await _unitOfWork.BulkInsertAsync(historyEntities);
-
-                await _unitOfWork.CommitTransaction();
-
-                return new BusinessResult(Const.HTTP_STATUS_OK, "Branch transactions created successfully", new
-                {
+                    Id = Guid.NewGuid(),
                     BranchId = branchId,
-                    branchDebt.TotalDebt,
-                    branchDebt.PaidAmount,
-                    branchDebt.RemainingDebt
+                    TotalDebt = 0,
+                    PaidAmount = 0,
+                    LastTransactionDate = DateTime.Now,
+                    LastUpdated = DateTime.Now
+                };
+
+                await _unitOfWork.BranchDebtRepository.AddAsync(branchDebt);
+                await _unitOfWork.SaveChangesAsync();
+            }
+
+            decimal currentBalance = branchDebt.RemainingDebt ?? 0;
+            var historyEntities = new List<BranchDebtHistory>();
+
+            foreach (var t in transactions)
+            {
+                decimal balanceBefore = currentBalance;
+                decimal balanceAfter = balanceBefore;
+
+                switch (t.TransactionType)
+                {
+                    case "TransferIn":
+                        branchDebt.TotalDebt += t.Amount;
+                        balanceAfter = balanceBefore + t.Amount;
+                        break;
+
+                    case "TransferOut":
+                        branchDebt.PaidAmount += t.Amount;
+                        balanceAfter = balanceBefore - t.Amount;
+                        break;
+
+                    case "Return":
+                        balanceAfter = balanceBefore - t.Amount;
+                        break;
+
+                    case "Custom":
+                        balanceAfter = t.Amount;
+                        branchDebt.RemainingDebt = t.Amount;
+
+                        branchDebt.TotalDebt = Math.Max(t.Amount, 0);
+                        branchDebt.PaidAmount = branchDebt.TotalDebt - t.Amount;
+                        break;
+
+                    default:
+                        throw new Exception($"Invalid TransactionType: {t.TransactionType}");
+                }
+
+                branchDebt.RemainingDebt = balanceAfter;
+                currentBalance = balanceAfter;
+
+                historyEntities.Add(new BranchDebtHistory
+                {
+                    Id = Guid.NewGuid(),
+                    BranchDebtId = branchDebt.Id,
+                    TransactionType = t.TransactionType,
+                    TransactionDate = t.TransactionDate,
+                    Amount = t.Amount,
+                    BalanceBefore = balanceBefore,
+                    BalanceAfter = balanceAfter,
+                    Note = t.Note,
+                    CreatedAt = DateTime.Now
                 });
             }
-            catch (Exception ex)
+
+            branchDebt.LastTransactionDate = DateTime.Now;
+            branchDebt.LastUpdated = DateTime.Now;
+            _unitOfWork.BranchDebtRepository.Update(branchDebt);
+            await _unitOfWork.SaveChangesAsync();
+
+            await _unitOfWork.BulkInsertAsync(historyEntities);
+
+
+            return new BusinessResult(Const.HTTP_STATUS_OK, "Branch transactions created successfully", new
             {
-                await _unitOfWork.RollbackTransaction();
-                return new BusinessResult(Const.ERROR_EXCEPTION, "Error creating branch transactions", ex.Message);
-            }
+                BranchId = branchId,
+                branchDebt.TotalDebt,
+                branchDebt.PaidAmount,
+                branchDebt.RemainingDebt
+            });
         }
         #endregion
 
@@ -211,66 +201,56 @@ namespace YourProjectNamespace.Services
         {
             await _unitOfWork.BeginTransaction();
 
-            try
+            var branchDebt = await _unitOfWork.BranchDebtRepository.GetByWhere(x => x.Id == branchDebtId).Include(x => x.BranchDebtHistories).FirstOrDefaultAsync();
+
+            if (branchDebt == null)
+                return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, "Không tìm thấy công nợ chi nhánh");
+
+            var history = branchDebt.BranchDebtHistories
+                ?.FirstOrDefault(x => x.Id == historyId);
+
+            if (history == null)
+                return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, "Không tìm thấy lịch sử công nợ cần xoá");
+
+            decimal remaining = branchDebt.RemainingDebt ?? 0;
+
+            switch (history.TransactionType)
             {
-                var branchDebt = await _unitOfWork.BranchDebtRepository.GetByWhere(x => x.Id == branchDebtId).Include(x => x.BranchDebtHistories).FirstOrDefaultAsync();
+                case "TransferIn":
+                    branchDebt.TotalDebt -= history.Amount;
+                    remaining -= history.Amount;
+                    break;
 
-                if (branchDebt == null)
-                    return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, "Không tìm thấy công nợ chi nhánh");
+                case "TransferOut":
+                    branchDebt.PaidAmount -= history.Amount;
+                    remaining += history.Amount;
+                    break;
 
-                var history = branchDebt.BranchDebtHistories
-                    ?.FirstOrDefault(x => x.Id == historyId);
+                case "Return":
+                    remaining += history.Amount;
+                    break;
 
-                if (history == null)
-                    return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, "Không tìm thấy lịch sử công nợ cần xoá");
-
-                decimal remaining = branchDebt.RemainingDebt ?? 0;
-
-                switch (history.TransactionType)
-                {
-                    case "TransferIn":
-                        branchDebt.TotalDebt -= history.Amount;
-                        remaining -= history.Amount;
-                        break;
-
-                    case "TransferOut":
-                        branchDebt.PaidAmount -= history.Amount;
-                        remaining += history.Amount;
-                        break;
-
-                    case "Return":
-                        remaining += history.Amount;
-                        break;
-
-                    case "Custom":
-                        branchDebt.TotalDebt = 0;
-                        branchDebt.PaidAmount = 0;
-                        remaining = 0;
-                        break;
-                }
-
-                if (remaining < 0)
+                case "Custom":
+                    branchDebt.TotalDebt = 0;
+                    branchDebt.PaidAmount = 0;
                     remaining = 0;
-
-                branchDebt.RemainingDebt = remaining;
-                branchDebt.LastUpdated = DateTime.Now;
-
-                // 4️⃣ Xoá bản ghi lịch sử công nợ
-                branchDebt.BranchDebtHistories.Remove(history);
-                _unitOfWork.BranchDebtRepository.Update(branchDebt);
-
-                await _unitOfWork.SaveChangesAsync();
-                await _unitOfWork.CommitTransaction();
-
-                return new BusinessResult(Const.HTTP_STATUS_OK,
-                    "Đã xoá lịch sử công nợ và cập nhật lại công nợ chi nhánh");
+                    break;
             }
-            catch (Exception ex)
-            {
-                await _unitOfWork.RollbackTransaction();
-                return new BusinessResult(Const.ERROR_EXCEPTION,
-                    "Lỗi khi xoá lịch sử công nợ chi nhánh", ex.Message);
-            }
+
+            if (remaining < 0)
+                remaining = 0;
+
+            branchDebt.RemainingDebt = remaining;
+            branchDebt.LastUpdated = DateTime.Now;
+
+            branchDebt.BranchDebtHistories.Remove(history);
+            _unitOfWork.BranchDebtRepository.Update(branchDebt);
+
+            await _unitOfWork.SaveChangesAsync();
+
+            return new BusinessResult(Const.HTTP_STATUS_OK,
+                "Đã xoá lịch sử công nợ và cập nhật lại công nợ chi nhánh");
+            
         }
         #endregion
 

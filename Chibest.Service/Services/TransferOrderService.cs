@@ -114,6 +114,10 @@ namespace Chibest.Service.Services
                 if (detail != null)
                 {
                     detail.ActualQuantity = detailReq.ActualQuantity ?? detail.ActualQuantity;
+                    detail.UnitPrice = detailReq.UnitPrice;
+                    detail.CommissionFee = detailReq.CommissionFee;
+                    detail.ExtraFee = detailReq.ExtraFee;
+                    detail.Note = detailReq.Note;
                 }
             }
 
@@ -123,9 +127,6 @@ namespace Chibest.Service.Services
             transferOrder.Paid = request.Paid;
             transferOrder.UpdatedAt = DateTime.Now;
 
-            await _unitOfWork.BeginTransaction();
-            try
-            {
                 _unitOfWork.TransferOrderRepository.Update(transferOrder);
                 await _unitOfWork.SaveChangesAsync();
 
@@ -142,7 +143,6 @@ namespace Chibest.Service.Services
 
                         if (debtResult.StatusCode != Const.HTTP_STATUS_OK)
                         {
-                            await _unitOfWork.RollbackTransaction();
                             return new BusinessResult(Const.ERROR_EXCEPTION,
                                 "Lỗi xử lý công nợ chi nhánh nhận hàng");
                         }
@@ -155,7 +155,6 @@ namespace Chibest.Service.Services
 
                         if (debtOutResult.StatusCode != Const.HTTP_STATUS_OK)
                         {
-                            await _unitOfWork.RollbackTransaction();
                             return new BusinessResult(Const.ERROR_EXCEPTION,
                                 "Lỗi xử lý công nợ chi nhánh chuyển hàng");
                         }
@@ -175,7 +174,6 @@ namespace Chibest.Service.Services
 
                             if (increaseResult.StatusCode != Const.SUCCESS)
                             {
-                                await _unitOfWork.RollbackTransaction();
                                 return new BusinessResult(Const.ERROR_EXCEPTION,
                                     $"Lỗi khi tăng tồn kho tại kho đích cho sản phẩm {detail.ProductId}: {increaseResult.Message}");
                             }
@@ -185,14 +183,8 @@ namespace Chibest.Service.Services
 
                 await _unitOfWork.BulkUpdateAsync(transferOrder.TransferOrderDetails.ToList());
 
-                await _unitOfWork.CommitTransaction();
                 return new BusinessResult(Const.SUCCESS, "Cập nhật phiếu chuyển kho thành công");
-            }
-            catch (Exception ex)
-            {
-                await _unitOfWork.RollbackTransaction();
-                return new BusinessResult(Const.ERROR_EXCEPTION, "Lỗi khi cập nhật phiếu chuyển kho", ex.Message);
-            }
+            
         }
 
         public async Task<IBusinessResult> AddTransferOrder(TransferOrderCreate request)
@@ -235,10 +227,6 @@ namespace Chibest.Service.Services
                 Note = detailReq.Note
             }).ToList();
 
-            await _unitOfWork.BeginTransaction();
-
-            try
-            {
                 await _unitOfWork.TransferOrderRepository.AddAsync(transferOrder);
                 await _unitOfWork.SaveChangesAsync();
                 await _unitOfWork.BulkInsertAsync(transferDetails);
@@ -253,21 +241,13 @@ namespace Chibest.Service.Services
 
                     if (decreaseResult.StatusCode != Const.SUCCESS)
                     {
-                        await _unitOfWork.RollbackTransaction();
                         return new BusinessResult(Const.ERROR_EXCEPTION,
                             $"Lỗi khi trừ tồn kho tại kho nguồn cho sản phẩm {detail.ProductId}: {decreaseResult.Message}");
                     }
                 }
 
-                await _unitOfWork.CommitTransaction();
-
                 return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_CREATE_MSG, new { transferOrder.InvoiceCode });
-            }
-            catch (Exception ex)
-            {
-                await _unitOfWork.RollbackTransaction();
-                return new BusinessResult(Const.ERROR_EXCEPTION, "Error creating Transfer Order", ex.Message);
-            }
+            
         }
 
         public async Task<IBusinessResult> GetTransferOrderList(
@@ -492,11 +472,7 @@ namespace Chibest.Service.Services
             if (transferOrder.Status == OrderStatus.Received.ToString())
                 return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Không thể xóa phiếu chuyển kho đã nhận");
 
-            await _unitOfWork.BeginTransaction();
 
-            try
-            {
-                // Restore stock quantities in source warehouse
                 foreach (var detail in transferOrder.TransferOrderDetails)
                 {
                     var restoreResult = await _unitOfWork.BranchStockRepository.UpdateBranchStockAsync(
@@ -507,7 +483,6 @@ namespace Chibest.Service.Services
 
                     if (restoreResult.StatusCode != Const.SUCCESS)
                     {
-                        await _unitOfWork.RollbackTransaction();
                         return new BusinessResult(Const.ERROR_EXCEPTION,
                             $"Lỗi khi khôi phục tồn kho tại kho nguồn cho sản phẩm {detail.ProductId}");
                     }
@@ -516,15 +491,9 @@ namespace Chibest.Service.Services
                 // Delete the transfer order - related details will be deleted automatically due to cascade delete
                 _unitOfWork.TransferOrderRepository.Delete(transferOrder);
                 await _unitOfWork.SaveChangesAsync();
-                await _unitOfWork.CommitTransaction();
 
                 return new BusinessResult(Const.HTTP_STATUS_OK, "Xóa phiếu chuyển kho thành công");
-            }
-            catch (Exception ex)
-            {
-                await _unitOfWork.RollbackTransaction();
-                return new BusinessResult(Const.ERROR_EXCEPTION, "Lỗi khi xóa phiếu chuyển kho", ex.Message);
-            }
+            
         }
     }
 }

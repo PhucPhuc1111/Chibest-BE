@@ -232,10 +232,7 @@ public class ProductService : IProductService
         if (existingSku != null)
             return new BusinessResult(Const.HTTP_STATUS_CONFLICT, "SKU đã tồn tại");
 
-        await _unitOfWork.BeginTransaction();
-
-        try
-        {
+       
             var product = request.Adapt<Product>();
             product.Id = Guid.NewGuid();
             product.CreatedAt = DateTime.Now;
@@ -268,18 +265,8 @@ public class ProductService : IProductService
             await LogSystemAction("Create", "Product", product.Id, accountId,
                 null, JsonSerializer.Serialize(productLog),
                 $"Tạo mới sản phẩm: {product.Name} (SKU: {product.Sku})");
-
-
-            await _unitOfWork.CommitTransaction();
-
             var response = product.Adapt<ProductResponse>();
             return new BusinessResult(Const.HTTP_STATUS_CREATED, Const.SUCCESS_CREATE_MSG, response);
-        }
-        catch (Exception ex)
-        {
-            await _unitOfWork.RollbackTransaction();
-            return new BusinessResult(Const.HTTP_STATUS_INTERNAL_ERROR, ex.Message);
-        }
     }
 
 
