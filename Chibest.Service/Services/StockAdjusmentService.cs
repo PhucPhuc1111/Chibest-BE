@@ -71,7 +71,7 @@ namespace Chibest.Service.Services
 
                 await _unitOfWork.StockAdjusmentRepository.AddAsync(stockAdjustment);
                 await _unitOfWork.SaveChangesAsync();
-                await _unitOfWork.BulkInsertAsync(adjustmentDetails);
+                await _unitOfWork.StockAdjustmentDetailRepository.AddRangeAsync(adjustmentDetails);
 
                 return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_CREATE_MSG, new
                 {
@@ -131,7 +131,7 @@ namespace Chibest.Service.Services
                 _unitOfWork.StockAdjusmentRepository.Update(stockAdjustment);
                 
                 var detailsToUpdate = stockAdjustment.StockAdjustmentDetails.ToList();
-                await _unitOfWork.BulkUpdateAsync(detailsToUpdate);
+                _unitOfWork.StockAdjustmentDetailRepository.UpdateRange(detailsToUpdate);
 
                 if (request.Status == "Hoàn Thành" || request.Status == "Đã Duyệt")
                 {

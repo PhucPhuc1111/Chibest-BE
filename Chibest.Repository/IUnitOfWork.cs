@@ -4,13 +4,7 @@ namespace Chibest.Repository;
 
 public interface IUnitOfWork
 {
-    Task BeginTransaction();
-    Task CommitTransaction();
-    Task RollbackTransaction();
     Task SaveChangesAsync();
-    Task BulkInsertAsync<T>(IList<T> entities) where T : class;
-    Task BulkUpdateAsync<T>(IList<T> entities) where T : class;
-    Task BulkDeleteAsync<T>(IList<T> entities) where T : class;
 
     IWarehouseRepository WarehouseRepository { get; }
     IAccountRepository AccountRepository { get; }
@@ -29,4 +23,10 @@ public interface IUnitOfWork
     IStockAdjusmentRepository StockAdjusmentRepository { get; }
     ISupplierDebtRepository SupplierDebtRepository { get; }
     IBranchDebtRepository BranchDebtRepository { get; }
+    IBranchDebtHistoryRepository BranchDebtHistoryRepository { get; }
+    IPurchaseOrderDetailRepository PurchaseOrderDetailRepository { get; }
+    IPurchaseReturnDetailRepository PurchaseReturnDetailRepository { get; }
+    IStockAdjustmentDetailRepository StockAdjustmentDetailRepository { get; }
+    ISupplierDebtHistoryRepository SupplierDebtHistoryRepository { get; }
+    ITransferOrderDetailRepository TransferOrderDetailRepository { get; }
 }

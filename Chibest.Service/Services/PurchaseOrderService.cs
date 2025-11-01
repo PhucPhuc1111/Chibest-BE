@@ -61,8 +61,9 @@ namespace Chibest.Service.Services
             }).ToList();
 
             await _unitOfWork.PurchaseOrderRepository.AddAsync(purchaseOrder);
+            await _unitOfWork.PurchaseOrderDetailRepository.AddRangeAsync(orderDetails);
+
             await _unitOfWork.SaveChangesAsync();
-            await _unitOfWork.BulkInsertAsync(orderDetails);
 
             return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_CREATE_MSG, new { purchaseOrder.InvoiceCode });
             
@@ -205,7 +206,6 @@ namespace Chibest.Service.Services
 
 
                 _unitOfWork.PurchaseOrderRepository.Update(purchaseOrder);
-                await _unitOfWork.SaveChangesAsync();
 
                 if (request.Status == OrderStatus.Received)
                 {
@@ -246,10 +246,10 @@ namespace Chibest.Service.Services
                     }
                 }
                 var detailsToUpdate = purchaseOrder.PurchaseOrderDetails.ToList();
-                await _unitOfWork.BulkUpdateAsync(detailsToUpdate);
+                _unitOfWork.PurchaseOrderDetailRepository.UpdateRange(detailsToUpdate);
 
-
-                return new BusinessResult(Const.SUCCESS, "Cập nhật phiếu nhập hàng và công nợ thành công");
+            await _unitOfWork.SaveChangesAsync();
+            return new BusinessResult(Const.SUCCESS, "Cập nhật phiếu nhập hàng và công nợ thành công");
             
         }
 
@@ -327,8 +327,7 @@ namespace Chibest.Service.Services
                         if (string.IsNullOrEmpty(productCode))
                             break;
 
-                        try
-                        {
+                        
                             var unitPrice = ParseDecimal(sheet.Cells[row, 2].Text);
                             var discount = ParseDecimal(sheet.Cells[row, 3].Text);
                             var reFee = ParseDecimal(sheet.Cells[row, 4].Text);
@@ -351,11 +350,7 @@ namespace Chibest.Service.Services
                                 ReFee = reFee,
                                 Quantity = quantity
                             });
-                        }
-                        catch (Exception ex)
-                        {
-                            errorRows.Add($"Dòng {row}: Lỗi xử lý dữ liệu ({ex.Message})");
-                        }
+                        
 
                         row++;
                     }

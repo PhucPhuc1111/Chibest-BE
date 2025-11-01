@@ -32,8 +32,8 @@ namespace Chibest.Repository.Repositories
                         TotalDebt = 0,
                         PaidAmount = 0,
                         RemainingDebt = 0,
-                        LastTransactionDate = DateTime.UtcNow,
-                        LastUpdated = DateTime.UtcNow
+                        LastTransactionDate = DateTime.Now,
+                        LastUpdated = DateTime.Now
                     };
                     await _context.SupplierDebts.AddAsync(supplierDebt);
                     await _context.SaveChangesAsync();
@@ -70,8 +70,8 @@ namespace Chibest.Repository.Repositories
                 }
 
                 supplierDebt.RemainingDebt = balanceAfter;
-                supplierDebt.LastTransactionDate = DateTime.UtcNow;
-                supplierDebt.LastUpdated = DateTime.UtcNow;
+                supplierDebt.LastTransactionDate = DateTime.Now;
+                supplierDebt.LastUpdated = DateTime.Now;
 
                 _context.SupplierDebts.Update(supplierDebt);
                 await _context.SaveChangesAsync();
@@ -81,11 +81,11 @@ namespace Chibest.Repository.Repositories
                     Id = Guid.NewGuid(),
                     SupplierDebtId = supplierDebt.Id,
                     TransactionType = transactionType,
-                    TransactionDate = DateTime.UtcNow,
+                    TransactionDate = DateTime.Now,
                     Amount = amount,
                     BalanceBefore = balanceBefore,
                     BalanceAfter = balanceAfter,
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = DateTime.Now
                 };
 
                 await _context.SupplierDebtHistories.AddAsync(history);
