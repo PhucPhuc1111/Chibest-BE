@@ -60,7 +60,7 @@ namespace Chibest.Service.Services
                 await _unitOfWork.PurchaseReturnRepository.AddAsync(purchaseReturn);
                 await _unitOfWork.SaveChangesAsync();
 
-                await _unitOfWork.BulkInsertAsync(returnDetails);
+                await _unitOfWork.PurchaseReturnDetailRepository.AddRangeAsync(returnDetails);
 
 
                 return new BusinessResult(Const.HTTP_STATUS_OK, "Tạo phiếu trả hàng thành công", new { purchaseReturn.InvoiceCode });

@@ -100,7 +100,7 @@ namespace Chibest.Service.Services
                 _unitOfWork.SupplierDebtRepository.Update(supplierDebt);
                 await _unitOfWork.SaveChangesAsync();
 
-                await _unitOfWork.BulkInsertAsync(historyEntities);
+                await _unitOfWork.SupplierDebtHistoryRepository.AddRangeAsync(historyEntities);
 
 
                 return new BusinessResult(Const.HTTP_STATUS_OK, "Supplier transactions created successfully", new

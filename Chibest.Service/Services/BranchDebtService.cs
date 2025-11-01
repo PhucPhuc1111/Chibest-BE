@@ -18,7 +18,6 @@ namespace YourProjectNamespace.Services
             _unitOfWork = unitOfWork;
         }
 
-        #region Add Branch Transactions
         public async Task<IBusinessResult> AddBranchTransactionAsync(Guid branchId, List<BranchDebtHistoryRequest> transactions)
         {
             if (transactions == null || !transactions.Any())
@@ -103,7 +102,7 @@ namespace YourProjectNamespace.Services
             _unitOfWork.BranchDebtRepository.Update(branchDebt);
             await _unitOfWork.SaveChangesAsync();
 
-            await _unitOfWork.BulkInsertAsync(historyEntities);
+            await _unitOfWork.BranchDebtHistoryRepository.AddRangeAsync(historyEntities);
 
 
             return new BusinessResult(Const.HTTP_STATUS_OK, "Branch transactions created successfully", new
@@ -114,9 +113,6 @@ namespace YourProjectNamespace.Services
                 branchDebt.RemainingDebt
             });
         }
-        #endregion
-
-        #region  Get Branch Debt By Id
         public async Task<IBusinessResult> GetBranchDebtAsync(Guid id)
         {
             try
@@ -162,9 +158,6 @@ namespace YourProjectNamespace.Services
                 return new BusinessResult(Const.ERROR_EXCEPTION, "Error retrieving branch debt", ex.Message);
             }
         }
-        #endregion
-
-        #region 📋 Get Branch Debt List
         public async Task<IBusinessResult> GetBranchDebtList(int pageIndex, int pageSize, string search)
         {
             string searchTerm = search?.ToLower() ?? string.Empty;
@@ -194,12 +187,8 @@ namespace YourProjectNamespace.Services
 
             return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_READ_MSG, responseList);
         }
-        #endregion
-
-        #region  Delete Single Branch Debt History
         public async Task<IBusinessResult> DeleteBranchDebtHistoryAsync(Guid branchDebtId, Guid historyId)
         {
-            await _unitOfWork.BeginTransaction();
 
             var branchDebt = await _unitOfWork.BranchDebtRepository.GetByWhere(x => x.Id == branchDebtId).Include(x => x.BranchDebtHistories).FirstOrDefaultAsync();
 
@@ -252,7 +241,6 @@ namespace YourProjectNamespace.Services
                 "Đã xoá lịch sử công nợ và cập nhật lại công nợ chi nhánh");
             
         }
-        #endregion
 
     }
 }

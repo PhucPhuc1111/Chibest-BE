@@ -25,7 +25,12 @@ namespace Chibest.Repository
         private IStockAdjusmentRepository _stockAdjusmentRepository;
         private ISupplierDebtRepository _supplierDebtRepository;    
         private IBranchDebtRepository _branchDebtRepository;
-
+        private IBranchDebtHistoryRepository _branchDebtHistoryRepository;
+        private IPurchaseOrderDetailRepository _purchaseOrderDetailRepository;
+        private IPurchaseReturnDetailRepository _purchaseReturnDetailRepository;
+        private IStockAdjustmentDetailRepository _stockAdjustmentDetailRepository;
+        private ISupplierDebtHistoryRepository _supplierDebtHistoryRepository;
+        private ITransferOrderDetailRepository _transferOrderDetailRepository;
         public UnitOfWork(ChiBestDbContext context)
         {
             _context = context;
@@ -54,41 +59,16 @@ namespace Chibest.Repository
         public IStockAdjusmentRepository StockAdjusmentRepository => _stockAdjusmentRepository ??= new StockAdjusmentRepository(_context);
         public ISupplierDebtRepository SupplierDebtRepository => _supplierDebtRepository ??= new SupplierDebtRepository(_context);
         public IBranchDebtRepository BranchDebtRepository => _branchDebtRepository ??=new BranchDebtRepository(_context);
-        public async Task BeginTransaction()
-        {
-            await _context.Database.BeginTransactionAsync();
-        }
-
-        public async Task CommitTransaction()
-        {
-            await _context.Database.CommitTransactionAsync();
-        }
-
-        public async Task RollbackTransaction()
-        {
-            await _context.Database.RollbackTransactionAsync();
-        }
-
+        public IBranchDebtHistoryRepository BranchDebtHistoryRepository => _branchDebtHistoryRepository ??= new BranchDebtHistoryRepository(_context);
+        public IPurchaseOrderDetailRepository PurchaseOrderDetailRepository => _purchaseOrderDetailRepository ??= new PurchaseOrderDetailRepository(_context);
+        public IPurchaseReturnDetailRepository PurchaseReturnDetailRepository => _purchaseReturnDetailRepository ??= new PurchaseReturnDetailRepository(_context);
+        public IStockAdjustmentDetailRepository StockAdjustmentDetailRepository => _stockAdjustmentDetailRepository ??= new StockAdjustmentDetailRepository(_context);
+        public ISupplierDebtHistoryRepository SupplierDebtHistoryRepository => _supplierDebtHistoryRepository ??= new SupplierDebtHistoryRepository(_context);
+        public ITransferOrderDetailRepository TransferOrderDetailRepository => _transferOrderDetailRepository ??= new TransferOrderDetailRepository(_context);
         public async Task SaveChangesAsync()
         {
             await _context.SaveChangesAsync();
         }
-        public async Task BulkInsertAsync<T>(IList<T> entities) where T : class
-        {
-            if (entities == null || entities.Count == 0) return;
-            await _context.BulkInsertAsync(entities);
-        }
-
-        public async Task BulkUpdateAsync<T>(IList<T> entities) where T : class
-        {
-            if (entities == null || entities.Count == 0) return;
-            await _context.BulkUpdateAsync(entities);
-        }
-
-        public async Task BulkDeleteAsync<T>(IList<T> entities) where T : class
-        {
-            if (entities == null || entities.Count == 0) return;
-            await _context.BulkDeleteAsync(entities);
-        }
+        
     }
 }

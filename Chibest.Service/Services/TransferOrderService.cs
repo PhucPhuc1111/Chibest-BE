@@ -181,7 +181,7 @@ namespace Chibest.Service.Services
                     }
                 }
 
-                await _unitOfWork.BulkUpdateAsync(transferOrder.TransferOrderDetails.ToList());
+                _unitOfWork.TransferOrderDetailRepository.UpdateRange(transferOrder.TransferOrderDetails.ToList());
 
                 return new BusinessResult(Const.SUCCESS, "Cập nhật phiếu chuyển kho thành công");
             
@@ -229,7 +229,7 @@ namespace Chibest.Service.Services
 
                 await _unitOfWork.TransferOrderRepository.AddAsync(transferOrder);
                 await _unitOfWork.SaveChangesAsync();
-                await _unitOfWork.BulkInsertAsync(transferDetails);
+                await _unitOfWork.TransferOrderDetailRepository.AddRangeAsync(transferDetails);
 
                 foreach (var detail in transferDetails)
                 {
