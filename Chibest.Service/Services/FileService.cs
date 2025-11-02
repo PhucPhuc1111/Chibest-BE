@@ -32,7 +32,14 @@ public class FileService : IFileService
         _imageMaxSizeByte = (long.TryParse(Environment.GetEnvironmentVariable("Image_Max_Size_MB"), out var MB)
             ? MB : 2) * 1024 * 1024;
         _compressionQuality = int.TryParse(Environment.GetEnvironmentVariable("Image_Compressiom_Quality_Percent"), out var percent) ? percent : 75;
-        _allowedImageExtensions = Regex.Split(Environment.GetEnvironmentVariable("Image_Type") ?? "", ",");
+        
+        var rawExtensions = Environment.GetEnvironmentVariable("Image_Type") ?? "jpg,png";
+        // Xử lý chuỗi này để đảm bảo mọi phần tử đều có dấu "."
+        _allowedImageExtensions = Regex.Split(rawExtensions, ",")
+            .Select(ext => ext.Trim().ToLowerInvariant()) // 1. Dọn dẹp: cắt khoảng trắng, chuyển chữ thường
+            .Where(ext => !string.IsNullOrWhiteSpace(ext)) // 2. Loại bỏ các chuỗi rỗng (nếu ENV là "png,,jpg")
+            .Select(ext => ext.StartsWith(".") ? ext : "." + ext) // 3. Thêm dấu "." nếu chưa có
+            .ToArray();
         _contentTypeProvider = contentTypeProvider;
         _configuration = configuration;
 

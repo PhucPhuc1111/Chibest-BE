@@ -24,16 +24,11 @@ public class FileController : ControllerBase
     [Authorize]
     [HttpPost("image")]
     [Consumes("multipart/form-data")]
-    public async Task<IActionResult> UploadAvatar([FromForm] ImageRequest request)
+    public async Task<IActionResult> UploadImage([FromForm] ImageRequest request)
     {
-        try
-        {
-            var relativePath = await _fileService.SaveImageAsync(request.FileData,request.Name,request.Category);
+        var relativePath = await _fileService.SaveImageAsync(request.FileData, request.Name, request.Category);
 
-            return Ok(relativePath);
-        }
-        catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
-        catch (Exception ex) { return StatusCode(500, "Lỗi hệ thống."); }
+        return Ok(relativePath);
     }
 
     [Authorize]
@@ -43,44 +38,9 @@ public class FileController : ControllerBase
         if (string.IsNullOrEmpty(urlPath))
             return BadRequest("Đường dẫn file là bắt buộc.");
 
-        try
-        {
+        var (fileStream, contentType) = _fileService.GetImageFileAsync(urlPath);
 
-            var (fileStream, contentType) = _fileService.GetImageFileAsync(urlPath);
-
-            // Trả về file stream, trình duyệt sẽ tự hiển thị
-            return File(fileStream, contentType);
-        }
-        catch (FileNotFoundException) { return NotFound("Không tìm thấy file."); }
-        catch (ArgumentException ex) { return BadRequest(ex.Message); }
-        catch (Exception) { return StatusCode(500, "Lỗi hệ thống."); }
-    }
-
-    [HttpGet("export/accounts")]
-    public async Task<IActionResult> ExportAccounts()
-    {
-        // Lấy data từ DB (ví dụ)
-        var mockAccounts = new List<Account> { /* ... */ };
-
-        // Chỉ cần truyền key "Account"
-        var fileBytes = await _fileService.ExportToExcelAsync(mockAccounts, "Account");
-
-        return File(fileBytes,
-                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    "accounts.xlsx");
-    }
-
-    [HttpPost("import/accounts")]
-    [Consumes("multipart/form-data")]
-    public async Task<IActionResult> ImportAccounts(IFormFile file)
-    {
-            // Chỉ cần truyền key "Account" và Model
-            var importedData = await _fileService.ImportFromExcelAsync<Account>(file, "Account");
-
-            return Ok(new
-            {
-                message = $"Nhập thành công các tài khoản.",
-                data = importedData
-            });
+        // Trả về file stream, trình duyệt sẽ tự hiển thị
+        return File(fileStream, contentType);
     }
 }
