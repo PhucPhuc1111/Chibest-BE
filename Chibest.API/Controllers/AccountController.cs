@@ -107,7 +107,9 @@ public class AccountController : ControllerBase
         if (accountId == null || accountId == Guid.Empty.ToString())
             return StatusCode(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
 
-        var result = await _accountService.ChangeAccountStatusAsync(Guid.Parse(accountId),"Chờ Xóa");
+        var parsedId = Guid.Parse(accountId);
+
+        var result = await _accountService.ChangeAccountStatusAsync(parsedId, "Waiting Delete", parsedId);
         return StatusCode(result.StatusCode, result);
     }
 
@@ -122,14 +124,10 @@ public class AccountController : ControllerBase
     }
 
     [Authorize(Roles = Const.Roles.Admin)]
-    [HttpDelete]
-    public async Task<IActionResult> DeleteByAdmin()
+    [HttpDelete("{accountId}")]
+    public async Task<IActionResult> DeleteByAdmin(Guid accountId)
     {
-        var accountId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (accountId == null || accountId == Guid.Empty.ToString())
-            return StatusCode(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
-
-        var result = await _accountService.DeleteAccountAsync(Guid.Parse(accountId));
+        var result = await _accountService.DeleteAccountAsync(accountId);
         return StatusCode(result.StatusCode, result);
     }
 
