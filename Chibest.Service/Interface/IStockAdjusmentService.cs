@@ -22,5 +22,6 @@ namespace Chibest.Service.Interface
     string? adjustmentType = null);
         Task<IBusinessResult> AddStockAdjustment(StockAdjustmentCreate request);
         Task<IBusinessResult> UpdateStockAdjustment(Guid id, StockAdjustmentUpdate request);
+        Task<IBusinessResult> DeleteStockAdjustment(Guid id);
     }
 }

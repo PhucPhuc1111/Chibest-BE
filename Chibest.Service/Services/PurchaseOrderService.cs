@@ -62,13 +62,11 @@ namespace Chibest.Service.Services
 
             await _unitOfWork.PurchaseOrderRepository.AddAsync(purchaseOrder);
             await _unitOfWork.PurchaseOrderDetailRepository.AddRangeAsync(orderDetails);
-
             await _unitOfWork.SaveChangesAsync();
 
             return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_CREATE_MSG, new { purchaseOrder.InvoiceCode });
             
         }
-
         public async Task<IBusinessResult> GetPurchaseOrderById(Guid id)
         {
             var po = await _unitOfWork.PurchaseOrderRepository
@@ -85,7 +83,7 @@ namespace Chibest.Service.Services
                     Paid = x.Paid,
                     Note = x.Note,
                     Status = x.Status,
-
+                    PayMethod = x.PayMethod,
                     WarehouseName = x.Warehouse != null ? x.Warehouse.Name : null,
                     EmployeeName = x.Employee != null ? x.Employee.Name : null,
                     SupplierName = x.Supplier != null ? x.Supplier.Name : null,
@@ -219,7 +217,7 @@ namespace Chibest.Service.Services
                                 deltaAvailableQty: detail.ActualQuantity.Value
                             );
 
-                            if (result.StatusCode != Const.SUCCESS)
+                            if (result.StatusCode != Const.HTTP_STATUS_OK)
                             {
                                 return new BusinessResult(Const.ERROR_EXCEPTION,
                                     $"Lỗi cập nhật tồn kho cho sản phẩm {detail.ProductId}: {result.Message}");
@@ -249,7 +247,7 @@ namespace Chibest.Service.Services
                 _unitOfWork.PurchaseOrderDetailRepository.UpdateRange(detailsToUpdate);
 
             await _unitOfWork.SaveChangesAsync();
-            return new BusinessResult(Const.SUCCESS, "Cập nhật phiếu nhập hàng và công nợ thành công");
+            return new BusinessResult(Const.HTTP_STATUS_OK, "Cập nhật phiếu nhập hàng và công nợ thành công");
             
         }
 

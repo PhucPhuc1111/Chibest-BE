@@ -78,33 +78,20 @@ namespace Chibest.Service.Services
 
         public async Task<IBusinessResult> UpdateTransferOrderAsync(Guid id, TransferOrderUpdate request)
         {
-            var transferOrderData = await _unitOfWork.TransferOrderRepository
+            var transferOrder = await _unitOfWork.TransferOrderRepository
                 .GetByWhere(x => x.Id == id)
-                .Select(x => new
-                {
-                    TransferOrder = x,
-                    FromBranch = new
-                    {
-                        Id = x.FromWarehouse.Branch.Id,
-                        IsFranchise = x.FromWarehouse.Branch.IsFranchise
-                    },
-                    ToBranch = new
-                    {
-                        Id = x.ToWarehouse.Branch.Id,
-                        IsFranchise = x.ToWarehouse.Branch.IsFranchise
-                    },
-                    Details = x.TransferOrderDetails
-                        .Select(d => new { d.Id, d.ProductId, d.ActualQuantity })
-                        .ToList()
-                })
+                .Include(x => x.FromWarehouse)
+                    .ThenInclude(w => w.Branch)
+                .Include(x => x.ToWarehouse)
+                    .ThenInclude(w => w.Branch)
+                .Include(x => x.TransferOrderDetails)
                 .FirstOrDefaultAsync();
 
-            if (transferOrderData == null)
+            if (transferOrder == null)
                 return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, "Không tìm thấy phiếu chuyển kho");
 
-            var transferOrder = transferOrderData.TransferOrder;
-            var fromBranch = transferOrderData.FromBranch;
-            var toBranch = transferOrderData.ToBranch;
+            var fromBranch = new { Id = transferOrder.FromWarehouse.Branch.Id, IsFranchise = transferOrder.FromWarehouse.Branch.IsFranchise };
+            var toBranch = new { Id = transferOrder.ToWarehouse.Branch.Id, IsFranchise = transferOrder.ToWarehouse.Branch.IsFranchise };
             var oldStatus = transferOrder.Status;
             foreach (var detailReq in request.TransferOrderDetails)
             {
@@ -120,7 +107,7 @@ namespace Chibest.Service.Services
                     detail.Note = detailReq.Note;
                 }
             }
-
+            transferOrder.PayMethod = request.PayMethod;
             transferOrder.Status = request.Status.ToString();
             transferOrder.SubTotal = request.SubTotal;
             transferOrder.DiscountAmount = request.DiscountAmount;
@@ -172,7 +159,7 @@ namespace Chibest.Service.Services
                                 deltaAvailableQty: qty
                             );
 
-                            if (increaseResult.StatusCode != Const.SUCCESS)
+                            if (increaseResult.StatusCode != Const.HTTP_STATUS_OK)
                             {
                                 return new BusinessResult(Const.ERROR_EXCEPTION,
                                     $"Lỗi khi tăng tồn kho tại kho đích cho sản phẩm {detail.ProductId}: {increaseResult.Message}");
@@ -182,8 +169,8 @@ namespace Chibest.Service.Services
                 }
 
                 _unitOfWork.TransferOrderDetailRepository.UpdateRange(transferOrder.TransferOrderDetails.ToList());
-
-                return new BusinessResult(Const.SUCCESS, "Cập nhật phiếu chuyển kho thành công");
+                 await _unitOfWork.SaveChangesAsync();
+                return new BusinessResult(Const.HTTP_STATUS_OK, "Cập nhật phiếu chuyển kho thành công");
             
         }
 
@@ -228,10 +215,10 @@ namespace Chibest.Service.Services
             }).ToList();
 
                 await _unitOfWork.TransferOrderRepository.AddAsync(transferOrder);
-                await _unitOfWork.SaveChangesAsync();
                 await _unitOfWork.TransferOrderDetailRepository.AddRangeAsync(transferDetails);
+            await _unitOfWork.SaveChangesAsync();
 
-                foreach (var detail in transferDetails)
+            foreach (var detail in transferDetails)
                 {
                     var decreaseResult = await _unitOfWork.BranchStockRepository.UpdateBranchStockAsync(
                         warehouseId: (Guid)transferOrder.FromWarehouseId,
@@ -239,7 +226,7 @@ namespace Chibest.Service.Services
                         deltaAvailableQty: -detail.Quantity
                     );
 
-                    if (decreaseResult.StatusCode != Const.SUCCESS)
+                    if (decreaseResult.StatusCode != Const.HTTP_STATUS_OK)
                     {
                         return new BusinessResult(Const.ERROR_EXCEPTION,
                             $"Lỗi khi trừ tồn kho tại kho nguồn cho sản phẩm {detail.ProductId}: {decreaseResult.Message}");
@@ -482,7 +469,7 @@ namespace Chibest.Service.Services
                         deltaAvailableQty: detail.Quantity
                     );
 
-                    if (restoreResult.StatusCode != Const.SUCCESS)
+                    if (restoreResult.StatusCode != Const.HTTP_STATUS_OK)
                     {
                         return new BusinessResult(Const.ERROR_EXCEPTION,
                             $"Lỗi khi khôi phục tồn kho tại kho nguồn cho sản phẩm {detail.ProductId}");
