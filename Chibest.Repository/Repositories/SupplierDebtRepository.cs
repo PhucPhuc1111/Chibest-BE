@@ -55,6 +55,7 @@ namespace Chibest.Repository.Repositories
                         break;
 
                     case "Return":
+                        supplierDebt.TotalDebt = Math.Max(0, supplierDebt.TotalDebt - amount);
                         balanceAfter = balanceBefore - amount;
                         break;
 
