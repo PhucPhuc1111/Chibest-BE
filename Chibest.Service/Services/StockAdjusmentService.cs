@@ -70,10 +70,10 @@ namespace Chibest.Service.Services
             stockAdjustment.TotalValueChange = totalValueChange;
 
                 await _unitOfWork.StockAdjusmentRepository.AddAsync(stockAdjustment);
-                await _unitOfWork.SaveChangesAsync();
                 await _unitOfWork.StockAdjustmentDetailRepository.AddRangeAsync(adjustmentDetails);
+            await _unitOfWork.SaveChangesAsync();
 
-                return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_CREATE_MSG, new
+            return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_CREATE_MSG, new
                 {
                     stockAdjustment.AdjustmentCode,
                     TotalValueChange = stockAdjustment.TotalValueChange
@@ -145,7 +145,7 @@ namespace Chibest.Service.Services
                                 deltaAvailableQty: detail.DifferenceQty ?? 0
                             );
 
-                            if (result.StatusCode != Const.SUCCESS)
+                            if (result.StatusCode != Const.HTTP_STATUS_OK)
                             {
                                 return new BusinessResult(Const.ERROR_EXCEPTION,
                                     $"Lỗi cập nhật tồn kho cho sản phẩm {detail.ProductId}: {result.Message}");
@@ -289,15 +289,15 @@ namespace Chibest.Service.Services
             string datePart = DateTime.Now.ToString("yyyyMMdd");
             string prefix = "KK" + datePart;
 
-            var latest = await _unitOfWork.PurchaseOrderRepository
-                .GetByWhere(x => x.InvoiceCode.StartsWith(prefix))
-                .OrderByDescending(x => x.InvoiceCode)
+            var latest = await _unitOfWork.StockAdjusmentRepository
+                .GetByWhere(x => x.AdjustmentCode.StartsWith(prefix))
+                .OrderByDescending(x => x.AdjustmentCode)
                 .FirstOrDefaultAsync();
 
             int nextNumber = 1;
             if (latest != null)
             {
-                string lastNumberPart = latest.InvoiceCode.Substring(prefix.Length);
+                string lastNumberPart = latest.AdjustmentCode.Substring(prefix.Length);
                 if (int.TryParse(lastNumberPart, out int lastNumber))
                 {
                     nextNumber = lastNumber + 1;
@@ -305,6 +305,25 @@ namespace Chibest.Service.Services
             }
 
             return $"{prefix}{nextNumber:D4}";
+        }
+        
+        public async Task<IBusinessResult> DeleteStockAdjustment(Guid id)
+        {
+            var stockAdjustment = await _unitOfWork.StockAdjusmentRepository
+                .GetByWhere(x => x.Id == id)
+                .Include(x => x.StockAdjustmentDetails)
+                .FirstOrDefaultAsync();
+
+            if (stockAdjustment == null)
+                return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, "Không tìm thấy phiếu kiểm kho");
+
+            if (stockAdjustment.Status != "Lưu Tạm")
+                return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Không thể xóa phiếu kiểm kho đã duyệt/hoàn thành");
+
+            _unitOfWork.StockAdjusmentRepository.Delete(stockAdjustment);
+            await _unitOfWork.SaveChangesAsync();
+
+            return new BusinessResult(Const.HTTP_STATUS_OK, "Xóa phiếu kiểm kho kho thành công");
         }
     }
 }

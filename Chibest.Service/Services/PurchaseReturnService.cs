@@ -58,12 +58,12 @@ namespace Chibest.Service.Services
             }).ToList();
 
                 await _unitOfWork.PurchaseReturnRepository.AddAsync(purchaseReturn);
-                await _unitOfWork.SaveChangesAsync();
+                
 
                 await _unitOfWork.PurchaseReturnDetailRepository.AddRangeAsync(returnDetails);
+            await _unitOfWork.SaveChangesAsync();
 
-
-                return new BusinessResult(Const.HTTP_STATUS_OK, "Tạo phiếu trả hàng thành công", new { purchaseReturn.InvoiceCode });
+            return new BusinessResult(Const.HTTP_STATUS_OK, "Tạo phiếu trả hàng thành công", new { purchaseReturn.InvoiceCode });
             
         }
 
@@ -195,7 +195,7 @@ namespace Chibest.Service.Services
                                 deltaAvailableQty: -detail.Quantity
                             );
 
-                            if (decreaseResult.StatusCode != Const.SUCCESS)
+                            if (decreaseResult.StatusCode != Const.HTTP_STATUS_OK)
                             {
                                 return new BusinessResult(Const.ERROR_EXCEPTION,
                                     $"Lỗi khi giảm tồn kho cho sản phẩm {detail.ProductId}: {decreaseResult.Message}");
@@ -253,7 +253,7 @@ namespace Chibest.Service.Services
                     }
                 }
 
-                return new BusinessResult(Const.SUCCESS, "Cập nhật phiếu trả hàng và công nợ thành công");
+                return new BusinessResult(Const.HTTP_STATUS_OK, "Cập nhật phiếu trả hàng và công nợ thành công");
             
         }
 

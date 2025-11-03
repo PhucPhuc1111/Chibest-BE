@@ -44,5 +44,11 @@ namespace Chibest.API.Controllers
             var result = await _stockAdjusmentService.UpdateStockAdjustment(id,request);
             return StatusCode(result.StatusCode, result);
         }
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteStockAdjustment(Guid id)
+        {
+            var result = await _stockAdjusmentService.DeleteStockAdjustment(id);
+            return StatusCode(result.StatusCode, result);
+        }
     }
 }

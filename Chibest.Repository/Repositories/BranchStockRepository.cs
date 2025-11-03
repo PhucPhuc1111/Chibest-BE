@@ -89,11 +89,11 @@ public class BranchStockRepository : GenericRepository<BranchStock>, IBranchStoc
             // 5️⃣ Lưu DB
             await _context.SaveChangesAsync();
 
-            return new BusinessResult(Const.SUCCESS, "Cập nhật tồn kho thành công", branchStock);
+            return new BusinessResult(Const.HTTP_STATUS_OK, "Cập nhật tồn kho thành công", branchStock);
         }
         catch (Exception ex)
         {
-            return new BusinessResult(Const.ERROR_EXCEPTION, ex.Message);
+            return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, ex.Message);
         }
     }
 

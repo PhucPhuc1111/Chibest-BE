@@ -12,6 +12,7 @@ namespace Chibest.Service.ModelDTOs.Stock.PurchaseOrder
         public Guid Id { get; set; }
 
         public string InvoiceCode { get; set; } = null!;
+        public string? PayMethod { get; set; }
 
         public DateTime OrderDate { get; set; }
 
