@@ -437,6 +437,7 @@ namespace Chibest.Service.Services
 
                         result.Add(new TransferOrderDetailResponse
                         {
+                            Id = product.Id,
                             ProductName = product.Name,
                             Sku = product.Sku,
                             Quantity = quantity,

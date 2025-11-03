@@ -326,7 +326,7 @@ namespace Chibest.Service.Services
 
                             result.Add(new PurchaseReturnDetailResponse
                             {
-                                Id = Guid.NewGuid(),
+                                Id = product.Id,
                                 Sku = product.Sku,
                                 ProductName = product.Name,
                                 Quantity = quantity,

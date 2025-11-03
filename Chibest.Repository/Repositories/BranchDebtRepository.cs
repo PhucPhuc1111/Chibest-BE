@@ -30,8 +30,8 @@ namespace Chibest.Repository.Repositories
                         TotalDebt = 0,
                         PaidAmount = 0,
                         RemainingDebt = 0,
-                        LastTransactionDate = DateTime.UtcNow,
-                        LastUpdated = DateTime.UtcNow
+                        LastTransactionDate = DateTime.Now,
+                        LastUpdated = DateTime.Now
                     };
 
                     await _context.BranchDebts.AddAsync(branchDebt);
@@ -67,8 +67,8 @@ namespace Chibest.Repository.Repositories
                         throw new Exception($"Invalid TransactionType: {transactionType}");
                 }
                 branchDebt.RemainingDebt = balanceAfter;
-                branchDebt.LastTransactionDate = DateTime.UtcNow;
-                branchDebt.LastUpdated = DateTime.UtcNow;
+                branchDebt.LastTransactionDate = DateTime.Now;
+                branchDebt.LastUpdated = DateTime.Now;
 
                 _context.BranchDebts.Update(branchDebt);
                 await _context.SaveChangesAsync();
@@ -78,12 +78,12 @@ namespace Chibest.Repository.Repositories
                     Id = Guid.NewGuid(),
                     BranchDebtId = branchDebt.Id,
                     TransactionType = transactionType,
-                    TransactionDate = DateTime.UtcNow,
+                    TransactionDate = DateTime.Now,
                     Amount = amount,
                     BalanceBefore = balanceBefore,
                     BalanceAfter = balanceAfter,
                     Note = note,
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = DateTime.Now
                 };
                 await _context.BranchDebtHistories.AddAsync(history);
                 await _context.SaveChangesAsync();
