@@ -8,6 +8,7 @@ using Chibest.Service.ModelDTOs.Request.Query;
 using Chibest.Service.ModelDTOs.Response;
 using Chibest.Service.Utilities;
 using Mapster;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
 using System.Text.Json;
@@ -192,28 +193,41 @@ public class ProductPriceHistoryService : IProductPriceHistoryService
         if (request.EffectiveDate < DateTime.Now.AddDays(-1))
             return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Ngày hiệu lực không thể trong quá khứ");
 
-        // Check for overlapping price periods for the same product and branch
-        var overlappingPrices = await _unitOfWork.ProductPriceHistoryRepository.GetByWhere(p =>
-            p.ProductId == request.ProductId &&
-            p.BranchId == request.BranchId &&
-            p.EffectiveDate <= request.ExpiryDate &&
-            (p.ExpiryDate == null || p.ExpiryDate >= request.EffectiveDate))
-            .AnyAsync();
+        if(request.ProductId.HasValue == false || request.ProductId == Guid.Empty)
+            return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "ProductId là bắt buộc.");
 
-        if (overlappingPrices)
-            return new BusinessResult(Const.HTTP_STATUS_CONFLICT, "Đã tồn tại giá trong khoảng thời gian này");
+        var currentPrice = _unitOfWork.ProductPriceHistoryRepository
+            .GetByWhere(p =>
+                p.ProductId == request.ProductId &&
+                p.BranchId == request.BranchId && // So sánh cả (null == null)
+                p.ExpiryDate == null)
+            .FirstOrDefault();
 
-        var priceHistory = request.Adapt<ProductPriceHistory>();
-        priceHistory.Id = Guid.NewGuid();
-        priceHistory.CreatedBy = accountId;
-        priceHistory.CreatedAt = DateTime.Now;
+        if (currentPrice != null)
+        {
+            // 2. Kiểm tra xung đột ngày
+            if (request.EffectiveDate <= currentPrice.EffectiveDate)
+            {
+                return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Ngày hiệu lực mới phải sau ngày hiệu lực của giá hiện tại.");
+            }
 
-        await _unitOfWork.ProductPriceHistoryRepository.AddAsync(priceHistory);
-        await _unitOfWork.SaveChangesAsync();
+            // 3. Cập nhật ngày hết hạn cho giá cũ
+            // Đặt ngày hết hạn là ngay trước khi giá mới có hiệu lực
+            currentPrice.ExpiryDate = request.EffectiveDate.GetValueOrDefault().AddMilliseconds(-1);
+            _unitOfWork.ProductPriceHistoryRepository.Update(currentPrice);
+        }
 
-        await LogSystemAction("Create", "ProductPriceHistory", priceHistory.Id, accountId,
-                            null, JsonSerializer.Serialize(priceHistory),
-                            $"Tạo mới lịch sử giá cho sản phẩm {request.ProductId} - Giá: {request.SellingPrice}");
+        // 4. Tạo giá mới
+        var newPrice = request.Adapt<ProductPriceHistory>();
+        newPrice.Id = Guid.NewGuid();
+        newPrice.CreatedBy = accountId;
+        // Các trường Id, CreatedAt được set tự động bởi DB (DEFAULT)
+
+        await _unitOfWork.ProductPriceHistoryRepository.AddAsync(newPrice);
+
+        await LogSystemAction("Create", "ProductPriceHistory", newPrice.Id, accountId,
+                            null, JsonSerializer.Serialize(newPrice),
+                            $"Tạo mới lịch sử giá cho sản phẩm {request.ProductId} - Giá bán: {request.SellingPrice}");
 
         return new BusinessResult(Const.HTTP_STATUS_CREATED, Const.SUCCESS_CREATE_MSG);
     }
