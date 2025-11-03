@@ -1,10 +1,15 @@
 ﻿using Chibest.Common;
 using Chibest.Common.BusinessResult;
+using Chibest.Repository;
 using Chibest.Repository.Models;
 using Chibest.Service.Interface;
+using Chibest.Service.ModelDTOs.Request;
+using Chibest.Service.ModelDTOs.Response;
+using ClosedXML.Excel;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.StaticFiles;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using OfficeOpenXml;
 using OfficeOpenXml.Style;
@@ -19,15 +24,19 @@ namespace Chibest.Service.Services;
 
 public class FileService : IFileService
 {
+    private readonly IUnitOfWork _unitOfWork;
+
     private readonly long _imageMaxSizeByte;
     private readonly int _compressionQuality;
     private readonly string[] _allowedImageExtensions;
     private readonly IContentTypeProvider _contentTypeProvider;
     private readonly string _privateStoragePath;
     private readonly IConfiguration _configuration;// For excel mapping config
+    private readonly Dictionary<string, Func<ProductExportView, object?>> _columnMap;// For excel mapping config
 
-    public FileService(IConfiguration configuration, IWebHostEnvironment webHostEnvironment, IContentTypeProvider contentTypeProvider)
+    public FileService(IUnitOfWork unitOfWork,IConfiguration configuration, IWebHostEnvironment webHostEnvironment, IContentTypeProvider contentTypeProvider)
     {
+        _unitOfWork = unitOfWork;
         //Convert from MB -> Mb -> b
         _imageMaxSizeByte = (long.TryParse(Environment.GetEnvironmentVariable("Image_Max_Size_MB"), out var MB)
             ? MB : 2) * 1024 * 1024;
@@ -52,6 +61,22 @@ public class FileService : IFileService
         // Make sure folder exist
         if (!Directory.Exists(_privateStoragePath))
             Directory.CreateDirectory(_privateStoragePath);
+
+        _columnMap = new Dictionary<string, Func<ProductExportView, object?>>(StringComparer.OrdinalIgnoreCase)
+            {
+            // Product columns
+            { "ProductId", p => p.Id },
+            { "Sku", p => p.Sku },
+            { "Name", p => p.Name },
+            { "Description", p => p.Description },
+            // ... Thêm các cột Product khác ...
+
+            // PriceHistory columns
+            { "SellingPrice", p => p.SellingPrice },
+            { "CostPrice", p => p.CostPrice },
+            { "PriceEffectiveDate", p => p.EffectiveDate }
+            // ... Thêm các cột Price khác ...
+        };
     }
 
     //====================================================================================
@@ -153,56 +178,109 @@ public class FileService : IFileService
         return (fileStream, contentType);
     }
 
-    public async Task<byte[]> ExportToExcelAsync<T>(
-        IEnumerable<T> data,
-        string mappingKey) where T : class
+    public async Task<byte[]> ExportProductsToExcelAsync(ExcelExportRequest request)
     {
-        // 1. Đọc mapping từ config
-        var headers = _configuration.GetSection($"ExcelMappings:{mappingKey}")
-                                    .Get<Dictionary<string, string>>();
+        // 1. Lấy dữ liệu "phẳng" từ database
+        var productData = await GetFlatProductDataAsync();
 
-        if (headers == null || !headers.Any())
+        // 2. Xác định các cột sẽ được export dựa trên request
+        var defaultProductCols = new List<string> { "Sku", "Name", "SellingPrice" };
+
+        // Nếu request.ProductColumns là null/rỗng, dùng list mặc định
+        var productCols = (request.ProductColumns != null && request.ProductColumns.Any())
+            ? request.ProductColumns
+            : defaultProductCols;
+
+        // Nếu request.CurrentPriceColumns được cung cấp, hãy thêm chúng vào
+        var priceCols = request.CurrentPriceColumns ?? new List<string>();
+
+        // Gộp lại và lọc ra những cột có tồn tại trong _columnMap
+        var headers = productCols.Concat(priceCols)
+                                 .Distinct(StringComparer.OrdinalIgnoreCase)
+                                 .Where(c => _columnMap.ContainsKey(c))
+                                 .ToList();
+
+        // 3. Tạo file Excel
+        using (var workbook = new XLWorkbook())
         {
-            throw new ArgumentException($"Không tìm thấy mapping cho key: {mappingKey}");
-        }
+            var worksheet = workbook.Worksheets.Add("Products");
 
-        using var package = new ExcelPackage();
-        var worksheet = package.Workbook.Worksheets.Add("Data");
-
-        // 2. Lấy tên thuộc tính (tiếng Anh) theo thứ tự
-        var propertyNames = headers.Keys.ToList();
-
-        // 3. Ghi tên cột (tiếng Việt)
-        for (int i = 0; i < headers.Count; i++)
-        {
-            worksheet.Cells[1, i + 1].Value = headers.Values.ElementAt(i);
-        }
-
-        // ... (Định dạng header nếu muốn) ...
-
-        // 4. Lấy PropertyInfo
-        var properties = typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance)
-            .Where(p => propertyNames.Contains(p.Name))
-            .ToList();
-
-        var orderedProperties = propertyNames
-            .Select(name => properties.FirstOrDefault(p => p.Name == name))
-            .Where(p => p != null)
-            .ToList();
-
-        // 5. Ghi dữ liệu
-        var row = 2;
-        foreach (var item in data)
-        {
-            for (int col = 0; col < orderedProperties.Count; col++)
+            // 3.1 Ghi Headers
+            for (int i = 0; i < headers.Count; i++)
             {
-                worksheet.Cells[row, col + 1].Value = orderedProperties[col].GetValue(item);
+                worksheet.Cell(1, i + 1).Value = headers[i];
             }
-            row++;
-        }
 
-        worksheet.Cells.AutoFitColumns();
-        return await package.GetAsByteArrayAsync();
+            // 3.2 Ghi Dữ liệu
+            for (int row = 0; row < productData.Count; row++)
+            {
+                var item = productData[row];
+                for (int col = 0; col < headers.Count; col++)
+                {
+                    // Lấy tên cột từ header
+                    string header = headers[col];
+
+                    // Dùng _columnMap để lấy giá trị tương ứng từ item
+                    var value = _columnMap[header](item);
+
+                    // Ghi vào cell (row + 2 vì header ở dòng 1)
+                    worksheet.Cell(row + 2, col + 1).Value = XLCellValue.FromObject(value);
+                }
+            }
+
+            // 3.3 Tự động căn chỉnh cột
+            worksheet.Columns().AdjustToContents();
+
+            // 3.4 Lưu ra MemoryStream và trả về byte[]
+            using (var stream = new MemoryStream())
+            {
+                workbook.SaveAs(stream);
+                return stream.ToArray();
+            }
+        }
+    }
+
+    private async Task<List<ProductExportView>> GetFlatProductDataAsync()
+    {
+        // Giả định bạn có ProductRepository trong UnitOfWork
+        var query = _unitOfWork.ProductRepository.GetAll(); // IQueryable<Product>
+
+        // Đây là logic quan trọng:
+        // 1. Select vào ProductExportViewModel
+        // 2. Dùng sub-query để lấy giá hiện tại (ExpiryDate == null)
+        // 3. EF Core đủ thông minh để dịch query này thành SQL (LEFT JOIN)
+
+        var flatQuery = query.Select(p => new ProductExportView
+        {
+            // Map trường của Product
+            Id = p.Id,
+            Sku = p.Sku,
+            Name = p.Name,
+            Description = p.Description,
+            // ...
+
+            // Map trường của giá hiện tại (dùng sub-query)
+            // Lấy giá có ExpiryDate == null, và là giá mới nhất
+            SellingPrice = p.ProductPriceHistories
+                            .Where(h => h.ExpiryDate == null)
+                            .OrderByDescending(h => h.EffectiveDate)
+                            .Select(h => (decimal?)h.SellingPrice) // Cast sang nullable
+                            .FirstOrDefault(),
+
+            CostPrice = p.ProductPriceHistories
+                         .Where(h => h.ExpiryDate == null)
+                         .OrderByDescending(h => h.EffectiveDate)
+                         .Select(h => (decimal?)h.CostPrice)
+                         .FirstOrDefault(),
+
+            EffectiveDate = p.ProductPriceHistories
+                                  .Where(h => h.ExpiryDate == null)
+                                  .OrderByDescending(h => h.EffectiveDate)
+                                  .Select(h => (DateTime?)h.EffectiveDate)
+                                  .FirstOrDefault()
+        });
+
+        return await flatQuery.ToListAsync();
     }
 
     public async Task<List<T>> ImportFromExcelAsync<T>(

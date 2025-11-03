@@ -43,4 +43,20 @@ public class FileController : ControllerBase
         // Trả về file stream, trình duyệt sẽ tự hiển thị
         return File(fileStream, contentType);
     }
+
+    [HttpPost("export")]
+    [ProducesResponseType(typeof(FileContentResult), 200)]
+    public async Task<IActionResult> ExportProducts([FromBody] ExcelExportRequest request)
+    {
+        var fileBytes = await _fileService.ExportProductsToExcelAsync(request);
+
+        // Đặt tên file
+        var fileName = $"Products_{DateTime.Now:yyyyMMddHHmmss}.xlsx";
+
+        // Đặt ContentType cho file Excel (XLSX)
+        var contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+
+        // Trả về file
+        return File(fileBytes, contentType, fileName);
+    }
 }
