@@ -13,7 +13,7 @@ public interface IAccountService
     Task<IBusinessResult> GetAccountsListAsync(int pageIndex, int pageSize, string? search);
     Task<IBusinessResult> CreateAccountAsync(AccountRequest request);
     Task<IBusinessResult> UpdateAccountAsync(AccountRequest newData);
-    Task<IBusinessResult> ChangeAccountStatusAsync(Guid accountId, string status);
+    Task<IBusinessResult> ChangeAccountStatusAsync(Guid accountId, string status, Guid makerId);
     Task<IBusinessResult> ChangeAccountPasswordAsync(Guid accountId, string newPassword);
     Task<IBusinessResult> DeleteAccountAsync(Guid id);
     Task<IBusinessResult> GetSupplierAccountsAsync();

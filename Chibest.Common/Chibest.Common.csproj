@@ -6,4 +6,14 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <None Remove="Excel\excel-mapping.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Excel\excel-mapping.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
 </Project>

@@ -167,8 +167,9 @@ namespace Chibest.Service.Services
                 pageIndex,
                 pageSize,
                 x => string.IsNullOrEmpty(searchTerm)
-                    || (x.Branch != null && !string.IsNullOrEmpty(x.Branch.Name) && x.Branch.Name.ToLower().Contains(searchTerm))
-                    || (x.Branch != null && !string.IsNullOrEmpty(x.Branch.PhoneNumber) && x.Branch.PhoneNumber.ToLower().Contains(searchTerm)),
+                    || x.Branch.Name.ToLower().Contains(searchTerm)
+                    || x.Branch.PhoneNumber.ToLower().Contains(searchTerm)
+                    || x.Branch.PhoneNumber != null && x.Branch.PhoneNumber.ToLower().Contains(searchTerm),
                 include: q => q.Include(x => x.Branch)
             );
 

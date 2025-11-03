@@ -5,10 +5,10 @@ public static class Const
     #region System Roles
     public static class Roles
     {
-        public const string Admin = "Quản Trị Viên";
-        public const string Supplier = "Nhà Cung Cấp";
-        public const string Cashier = "Nhân Viên Thu Ngân";
-        public const string Staff = "Nhân Viên";
+        public const string Admin = "Admin";
+        public const string Supplier = "Supplier";
+        public const string Cashier = "Cashier";
+        public const string Staff = "Staff";
         // Other role ...;
     }
     #endregion

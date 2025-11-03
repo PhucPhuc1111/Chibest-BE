@@ -1,4 +1,5 @@
-﻿using Chibest.Common;
+﻿using Azure.Core;
+using Chibest.Common;
 using Chibest.Common.BusinessResult;
 using Chibest.Repository;
 using Chibest.Repository.Models;
@@ -8,9 +9,11 @@ using Chibest.Service.ModelDTOs.Response;
 using Chibest.Service.Utilities;
 using Mapster;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Identity.Client;
 using Microsoft.IdentityModel.Tokens;
 using System.Linq.Expressions;
 using System.Security.Claims;
+using System.Text.Json;
 using static Chibest.Common.Const;
 namespace Chibest.Service.Services;
 
@@ -18,11 +21,13 @@ public class AccountService : IAccountService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly ITokenService _tokenService;
+    private readonly ISystemLogService _systemLogService;
 
-    public AccountService(IUnitOfWork unitOfWork, ITokenService tokenService)
+    public AccountService(IUnitOfWork unitOfWork, ITokenService tokenService, ISystemLogService systemLogService)
     {
         _unitOfWork = unitOfWork;
         _tokenService = tokenService;
+        _systemLogService = systemLogService;
     }
 
     //=================================================================================================
@@ -200,7 +205,7 @@ public class AccountService : IAccountService
         // Validate input
         if (request == null || BoolUtils.IsEmptyString(request.Code, request.Email,
             request.Password, request.Name, request.Status))
-            return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
+            return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG + " Null input");
 
         // Check if code, email already exists
         var existingAccount = await _unitOfWork.AccountRepository
@@ -208,35 +213,32 @@ public class AccountService : IAccountService
             acc.Email.ToLower().Equals(request.Email!.ToLower()))
             .FirstOrDefaultAsync();
         if (existingAccount != null)
-            return new BusinessResult(Const.HTTP_STATUS_CONFLICT, Const.FAIL_CREATE_MSG);
+            return new BusinessResult(Const.HTTP_STATUS_CONFLICT, Const.FAIL_CREATE_MSG + " Exist Account");
 
         // Create new account
         var account = request.Adapt<Account>();
         account.Id = Guid.NewGuid();
         account.CreatedAt = DateTime.Now;
+        account.Password = StringUtils.HashStringSHA256(request.Password!);//Hash Password
         account.UpdatedAt = DateTime.Now;
         await _unitOfWork.AccountRepository.AddAsync(account);
 
         // If Role and branch is specific
-        if (request.RoleId is not null && request.BranchId is not null)
+        if (request.RoleId is not null)
         {
             // Validate Role and Branch
-            bool isValid = true;
             var existedRole = await _unitOfWork.RoleRepository.GetByIdAsync(request.RoleId);
-            var existedBracch = await _unitOfWork.BranchRepository.GetByIdAsync(request.BranchId);
-
-            // Flag wrong condition
-            isValid = existedRole is not null? true : false;
-            isValid = await _unitOfWork.BranchRepository.GetByIdAsync(request.BranchId) is Repository.Models.Branch _;
+            var existedBranch = request.BranchId.HasValue ?
+                await _unitOfWork.BranchRepository.GetByIdAsync(request.BranchId) : null;
 
             // If those ids are valid, create AccountRole
-            if (isValid)
+            if (existedRole is not null)
             {
                 var accountRole = new AccountRole
                 {
                     AccountId = account.Id,
-                    RoleId = existedRole!.Id,
-                    BranchId = request.BranchId,
+                    RoleId = existedRole.Id,
+                    BranchId = request.BranchId,//branch can be null so don't check
                     StartDate = DateTime.Now,
                     EndDate = null
                 };
@@ -276,16 +278,18 @@ public class AccountService : IAccountService
         }
 
         // Update properties
+        var tempPassword = existingAccount.Password;
         newData.Adapt(existingAccount);
+
+        existingAccount.Password = tempPassword; // Retain existing password
         existingAccount.UpdatedAt = DateTime.Now;
 
-        _unitOfWork.AccountRepository.Update(existingAccount);
         await _unitOfWork.SaveChangesAsync();
 
         return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_UPDATE_MSG);
     }
 
-    public async Task<IBusinessResult> ChangeAccountStatusAsync(Guid accountId, string status)
+    public async Task<IBusinessResult> ChangeAccountStatusAsync(Guid accountId, string status, Guid makerId)
     {
         if (accountId == Guid.Empty || string.IsNullOrEmpty(status))
             return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
@@ -296,9 +300,15 @@ public class AccountService : IAccountService
 
         account.Status = status;
         account.UpdatedAt = DateTime.Now;
+        var oldValue = JsonSerializer.Serialize(account);
 
         _unitOfWork.AccountRepository.Update(account);
         await _unitOfWork.SaveChangesAsync();
+
+        if (status.Equals("Waiting Delete", StringComparison.OrdinalIgnoreCase))
+            await LogSystemAction("Waiting Delete", "Account", account.Id, makerId,
+                                oldValue, null,
+                                $"{account.Name} muốn xóa tài khoản của họ, Id: {account.Id}");
 
         return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_UPDATE_MSG);
     }
@@ -334,6 +344,7 @@ public class AccountService : IAccountService
 
         _unitOfWork.AccountRepository.Delete(account);
         await _unitOfWork.SaveChangesAsync();
+
 
         return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_DELETE_MSG);
     }
@@ -378,5 +389,28 @@ public class AccountService : IAccountService
         }).ToList();
 
         return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_READ_MSG, response);
+    }
+
+    private async Task LogSystemAction(string action, string entityType, Guid entityId, Guid accountId,
+                                     string? oldValue, string? newValue, string description)
+    {
+        var account = await _unitOfWork.AccountRepository
+            .GetByWhere(acc => acc.Id == accountId)
+            .AsNoTracking().FirstOrDefaultAsync();
+        var logRequest = new SystemLogRequest
+        {
+            Action = action,
+            EntityType = entityType,
+            EntityId = entityId,
+            OldValue = oldValue,
+            NewValue = newValue,
+            Description = description,
+            AccountId = accountId,
+            AccountName = account != null ? account.Name : null,
+            Module = "Account",
+            LogLevel = "INFO"
+        };
+
+        await _systemLogService.CreateAsync(logRequest);
     }
 }
