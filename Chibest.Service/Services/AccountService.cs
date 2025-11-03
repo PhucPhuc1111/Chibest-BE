@@ -75,7 +75,8 @@ public class AccountService : IAccountService
             AccountId = existAccount.Id,
             Email = existAccount.Email,
             UserName = existAccount.Name,
-            Role = existAccRole.Role.Name
+            Role = existAccRole.Role.Name,
+            BranchId = existAccRole.BranchId,
         };
         return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_LOGIN_MSG, authResponse);
     }
@@ -126,7 +127,8 @@ public class AccountService : IAccountService
             AccountId = existAccount.Id,
             Email = existAccount.Email,
             UserName = existAccount.Name,
-            Role = existAccRole.Role.Name
+            Role = existAccRole.Role.Name,
+            BranchId = existAccRole.BranchId
         };
         return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_LOGIN_MSG, authResponse);
     }

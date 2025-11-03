@@ -343,6 +343,7 @@ namespace Chibest.Service.Services
 
                             result.Add(new PurchaseOrderDetailResponse
                             {
+                                Id = product.Id,
                                 ProductName = product.Name,
                                 Sku = product.Sku,
                                 UnitPrice = unitPrice,
