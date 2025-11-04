@@ -39,6 +39,12 @@ public class ProductExportView
     public string? ParentSku { get; set; }
 
 
+    // --- Category Info ---
+    public string? Type { get; set; }
+    public string? CategoryName { get; set; }
+    public Guid? ParentCategoryId { get; set; }
+
+
     // --- Product Price ---
     public decimal? SellingPrice { get; set; }
 

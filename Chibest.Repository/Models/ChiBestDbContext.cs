@@ -161,8 +161,6 @@ public partial class ChiBestDbContext : DbContext
 
             entity.HasIndex(e => new { e.EmployeeId, e.WorkDate }, "ix_attendance_employeeid").IsDescending(false, true);
 
-            entity.HasIndex(e => new { e.EmployeeId, e.WorkDate }, "uq_attendance_employee_date").IsUnique();
-
             entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
             entity.Property(e => e.AttendanceStatus)
                 .HasMaxLength(50)

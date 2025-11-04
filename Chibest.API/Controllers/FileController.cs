@@ -44,6 +44,7 @@ public class FileController : ControllerBase
         return File(fileStream, contentType);
     }
 
+    [Authorize]
     [HttpPost("export")]
     [ProducesResponseType(typeof(FileContentResult), 200)]
     public async Task<IActionResult> ExportProducts([FromBody] ExcelExportRequest request)
