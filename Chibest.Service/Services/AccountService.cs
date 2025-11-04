@@ -243,6 +243,29 @@ public class AccountService : IAccountService
                     EndDate = null
                 };
                 await _unitOfWork.AccountRoleRepository.AddAsync(accountRole);
+
+                    // If role is Supplier, ensure a SupplierDebt record exists for this supplier
+                    if (string.Equals(existedRole.Name, "Supplier", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var existingSupplierDebt = await _unitOfWork.SupplierDebtRepository
+                            .GetByWhere(x => x.SupplierId == account.Id)
+                            .FirstOrDefaultAsync();
+
+                        if (existingSupplierDebt == null)
+                        {
+                            var supplierDebt = new SupplierDebt
+                            {
+                                Id = Guid.NewGuid(),
+                                SupplierId = account.Id,
+                                TotalDebt = 0,
+                                PaidAmount = 0,
+                                ReturnAmount = 0,
+                                LastTransactionDate = DateTime.Now,
+                                LastUpdated = DateTime.Now
+                            };
+                            await _unitOfWork.SupplierDebtRepository.AddAsync(supplierDebt);
+                        }
+                    }
             }
         }
 

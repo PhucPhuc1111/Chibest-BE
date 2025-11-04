@@ -5,6 +5,7 @@ using Chibest.Repository.Models;
 using Chibest.Service.Interface;
 using Chibest.Service.ModelDTOs.Request;
 using Chibest.Service.ModelDTOs.Response;
+using Chibest.Service.Utilities;
 using Microsoft.EntityFrameworkCore;
 
 namespace Chibest.Service.Services
@@ -18,31 +19,15 @@ namespace Chibest.Service.Services
             _unitOfWork = unitOfWork;
         }
 
-        public async Task<IBusinessResult> AddBranchTransactionAsync(Guid branchId, List<BranchDebtHistoryRequest> transactions)
+        public async Task<IBusinessResult> AddBranchTransactionAsync(Guid branchDebtId, List<BranchDebtHistoryRequest> transactions)
         {
             if (transactions == null || !transactions.Any())
                 return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "No transaction data provided");
 
 
             var branchDebt = await _unitOfWork.BranchDebtRepository
-                .GetByWhere(x => x.BranchId == branchId)
+                .GetByWhere(x => x.Id == branchDebtId)
                 .FirstOrDefaultAsync();
-
-            if (branchDebt == null)
-            {
-                branchDebt = new BranchDebt
-                {
-                    Id = Guid.NewGuid(),
-                    BranchId = branchId,
-                    TotalDebt = 0,
-                    PaidAmount = 0,
-                    LastTransactionDate = DateTime.Now,
-                    LastUpdated = DateTime.Now
-                };
-
-                await _unitOfWork.BranchDebtRepository.AddAsync(branchDebt);
-                await _unitOfWork.SaveChangesAsync();
-            }
 
             decimal currentBalance = branchDebt.RemainingDebt ?? 0;
             var historyEntities = new List<BranchDebtHistory>();
@@ -56,17 +41,17 @@ namespace Chibest.Service.Services
                 {
                     case "TransferIn":
                         branchDebt.TotalDebt += t.Amount;
-                        balanceAfter = balanceBefore + t.Amount;
+                        balanceAfter = branchDebt.TotalDebt - branchDebt.PaidAmount - branchDebt.ReturnAmount;
                         break;
 
                     case "TransferOut":
                         branchDebt.PaidAmount += t.Amount;
-                        balanceAfter = balanceBefore - t.Amount;
+                        balanceAfter = branchDebt.TotalDebt - branchDebt.PaidAmount - branchDebt.ReturnAmount;
                         break;
 
                     case "Return":
-                        branchDebt.TotalDebt = Math.Max(0, branchDebt.TotalDebt - t.Amount);
-                        balanceAfter = balanceBefore - t.Amount;
+                        branchDebt.ReturnAmount += t.Amount;
+                        balanceAfter = branchDebt.TotalDebt - branchDebt.PaidAmount - branchDebt.ReturnAmount;
                         break;
 
                     case "Custom":
@@ -75,14 +60,15 @@ namespace Chibest.Service.Services
 
                         branchDebt.TotalDebt = Math.Max(t.Amount, 0);
                         branchDebt.PaidAmount = branchDebt.TotalDebt - t.Amount;
+                        branchDebt.ReturnAmount = 0;
                         break;
 
                     default:
                         throw new Exception($"Invalid TransactionType: {t.TransactionType}");
                 }
 
-                branchDebt.RemainingDebt = balanceAfter;
-                currentBalance = balanceAfter;
+                branchDebt.RemainingDebt = Math.Max(0, balanceAfter);
+                currentBalance = branchDebt.RemainingDebt ?? 0;
 
                 historyEntities.Add(new BranchDebtHistory
                 {
@@ -108,9 +94,9 @@ namespace Chibest.Service.Services
 
             return new BusinessResult(Const.HTTP_STATUS_OK, "Branch transactions created successfully", new
             {
-                BranchId = branchId,
                 branchDebt.TotalDebt,
                 branchDebt.PaidAmount,
+                branchDebt.ReturnAmount,
                 branchDebt.RemainingDebt
             });
         }
@@ -133,6 +119,7 @@ namespace Chibest.Service.Services
                     BranchName = branchDebt.Branch?.Name ?? "Unknown",
                     TotalDebt = branchDebt.TotalDebt,
                     PaidAmount = branchDebt.PaidAmount,
+                    ReturnAmount = branchDebt.ReturnAmount,
                     RemainingDebt = branchDebt.RemainingDebt,
                     LastTransactionDate = branchDebt.LastTransactionDate,
                     LastUpdated = branchDebt.LastUpdated,
@@ -159,36 +146,67 @@ namespace Chibest.Service.Services
                 return new BusinessResult(Const.ERROR_EXCEPTION, "Error retrieving branch debt", ex.Message);
             }
         }
-        public async Task<IBusinessResult> GetBranchDebtList(int pageIndex, int pageSize, string search)
-        {
-            string searchTerm = search?.ToLower() ?? string.Empty;
 
-            var branchDebts = await _unitOfWork.BranchDebtRepository.GetPagedAsync(
-                pageIndex,
-                pageSize,
-                x => string.IsNullOrEmpty(searchTerm)
-                    || x.Branch.Name.ToLower().Contains(searchTerm)
-                    || x.Branch.PhoneNumber.ToLower().Contains(searchTerm)
-                    || x.Branch.PhoneNumber != null && x.Branch.PhoneNumber.ToLower().Contains(searchTerm),
-                include: q => q.Include(x => x.Branch)
-            );
-
-            if (branchDebts == null || !branchDebts.Any())
-                return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, Const.FAIL_READ_MSG);
-
-            var responseList = branchDebts.Select(x => new BranchDebtResponse
+        public async Task<IBusinessResult> GetBranchDebtList(
+            int pageIndex,
+            int pageSize,
+            string? search = null,
+            decimal? totalFrom = null,
+            decimal? totalTo = null,
+            string? datePreset = null,
+            DateTime? fromDate = null,
+            DateTime? toDate = null,
+            decimal? debtFrom = null,
+            decimal? debtTo = null)
             {
-                Id = x.Id,
-                BranchName = x.Branch?.Name ?? "Unknown",
-                TotalDebt = x.TotalDebt,
-                PaidAmount = x.PaidAmount,
-                RemainingDebt = x.RemainingDebt,
-                LastTransactionDate = x.LastTransactionDate
-            }).ToList();
+                string searchTerm = search?.ToLower() ?? string.Empty;
 
-            return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_READ_MSG, responseList);
-        }
-        public async Task<IBusinessResult> DeleteBranchDebtHistoryAsync(Guid branchDebtId, Guid historyId)
+                // Dùng helper để suy ra khoảng ngày
+                var (startDate, endDate) = DateRangeHelper.GetDateRange(datePreset, fromDate, toDate);
+
+                var branchDebts = await _unitOfWork.BranchDebtRepository.GetPagedAsync(
+                    pageIndex,
+                    pageSize,
+                    x =>
+                        // Search
+                        (string.IsNullOrEmpty(searchTerm)
+                            || (x.Branch != null && x.Branch.Name.ToLower().Contains(searchTerm))
+                            || (x.Branch != null && x.Branch.PhoneNumber != null && x.Branch.PhoneNumber.ToLower().Contains(searchTerm)))
+
+                        // Total filter
+                        && (!totalFrom.HasValue || x.TotalDebt >= totalFrom.Value)
+                        && (!totalTo.HasValue || x.TotalDebt <= totalTo.Value)
+
+                        // Debt filter
+                        && (!debtFrom.HasValue || x.RemainingDebt >= debtFrom.Value)
+                        && (!debtTo.HasValue || x.RemainingDebt <= debtTo.Value)
+
+                        // Date filter
+                        && (!startDate.HasValue || x.LastTransactionDate >= startDate.Value)
+                        && (!endDate.HasValue || x.LastTransactionDate < endDate.Value),
+
+                    include: q => q.Include(x => x.Branch)
+                );
+
+                if (branchDebts == null || !branchDebts.Any())
+                    return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, Const.FAIL_READ_MSG);
+
+                var responseList = branchDebts.Select(x => new BranchDebtResponse
+                {
+                    Id = x.Id,
+                    BranchName = x.Branch?.Name ?? "Unknown",
+                    TotalDebt = x.TotalDebt,
+                    PaidAmount = x.PaidAmount,
+                    ReturnAmount = x.ReturnAmount,
+                    RemainingDebt = x.RemainingDebt,
+                    LastTransactionDate = x.LastTransactionDate
+                }).ToList();
+
+                return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_READ_MSG, responseList);
+            }
+
+
+    public async Task<IBusinessResult> DeleteBranchDebtHistoryAsync(Guid branchDebtId, Guid historyId)
         {
             try
             {
@@ -215,6 +233,7 @@ namespace Chibest.Service.Services
 
                 decimal totalDebt = 0;
                 decimal paidAmount = 0;
+                decimal returnAmount = 0;
                 decimal currentBalance = 0;
                 DateTime? lastTransactionDate = null;
 
@@ -227,29 +246,33 @@ namespace Chibest.Service.Services
                 {
                     switch (h.TransactionType)
                     {
-                        case "TransferIn":
+                        case "Transfer":
                             totalDebt += h.Amount;
-                            currentBalance += h.Amount;
                             break;
 
-                        case "TransferOut":
+                        case "Payment":
                             paidAmount += h.Amount;
-                            currentBalance -= h.Amount;
                             break;
 
                         case "Return":
-                            totalDebt = Math.Max(0, totalDebt - h.Amount);
-                            currentBalance -= h.Amount;
+                            returnAmount += h.Amount;
                             break;
 
                         case "Custom":
                             currentBalance = h.Amount;
                             totalDebt = Math.Max(h.Amount, 0);
                             paidAmount = totalDebt - h.Amount;
+                            returnAmount = 0;
                             break;
 
                         default:
                             throw new Exception($"Invalid TransactionType: {h.TransactionType}");
+                    }
+
+                    // Calculate RemainingDebt = TotalDebt - PaidAmount - ReturnAmount
+                    if (h.TransactionType != "Custom")
+                    {
+                        currentBalance = totalDebt - paidAmount - returnAmount;
                     }
 
                     if (currentBalance < 0)
@@ -261,7 +284,8 @@ namespace Chibest.Service.Services
 
                 branchDebt.TotalDebt = totalDebt;
                 branchDebt.PaidAmount = paidAmount;
-                branchDebt.RemainingDebt = currentBalance;
+                branchDebt.ReturnAmount = returnAmount;
+                branchDebt.RemainingDebt = Math.Max(0, currentBalance);
                 branchDebt.LastTransactionDate = lastTransactionDate;
                 branchDebt.LastUpdated = DateTime.Now;
 
@@ -275,6 +299,7 @@ namespace Chibest.Service.Services
                         branchDebt.Id,
                         branchDebt.TotalDebt,
                         branchDebt.PaidAmount,
+                        branchDebt.ReturnAmount,
                         branchDebt.RemainingDebt
                     });
             }

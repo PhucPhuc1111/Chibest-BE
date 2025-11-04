@@ -406,8 +406,8 @@ CREATE INDEX IX_StockAdjustment_BranchId ON "StockAdjustment"("BranchId", "Adjus
 
 CREATE TABLE "StockAdjustmentDetail" (
     "Id" UUID DEFAULT GEN_RANDOM_UUID() PRIMARY KEY,
-    "StockAdjustmentId" UUID NOT NULL REFERENCES "StockAdjustment"("Id"),
-    "ProductId" UUID NOT NULL REFERENCES "Product"("Id") ON DELETE CASCADE,
+    "StockAdjustmentId" UUID NOT NULL REFERENCES "StockAdjustment"("Id") ON DELETE CASCADE,
+    "ProductId" UUID NOT NULL REFERENCES "Product"("Id"),
     
     "SystemQty" INT NOT NULL, -- Số lượng trong hệ thống
     "ActualQty" INT NOT NULL, -- Số lượng thực tế
@@ -546,11 +546,10 @@ CREATE TABLE "SupplierDebt" (
     
     "TotalDebt" MONEY NOT NULL DEFAULT 0,
     "PaidAmount" MONEY NOT NULL DEFAULT 0,
-    "RemainingDebt" MONEY GENERATED ALWAYS AS ("TotalDebt" - "PaidAmount") STORED,
-    
+    "ReturnAmount" MONEY NOT NULL DEFAULT 0,
+    "RemainingDebt" MONEY GENERATED ALWAYS AS ("TotalDebt" - "PaidAmount" - "ReturnAmount") STORED,
     "LastTransactionDate" TIMESTAMP(3) NULL,
     "LastUpdated" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    
     CONSTRAINT UQ_SupplierDebt_Supplier UNIQUE ("SupplierId")
 );
 
@@ -576,8 +575,8 @@ CREATE TABLE "BranchDebt" (
 
     "TotalDebt" MONEY NOT NULL DEFAULT 0,
     "PaidAmount" MONEY NOT NULL DEFAULT 0,
-    "RemainingDebt" MONEY GENERATED ALWAYS AS ("TotalDebt" - "PaidAmount") STORED,
-
+    "ReturnAmount" MONEY NOT NULL DEFAULT 0,
+    "RemainingDebt" MONEY GENERATED ALWAYS AS ("TotalDebt" - "PaidAmount" - "ReturnAmount") STORED,
     "LastTransactionDate" TIMESTAMP(3) NULL,
     "LastUpdated" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 

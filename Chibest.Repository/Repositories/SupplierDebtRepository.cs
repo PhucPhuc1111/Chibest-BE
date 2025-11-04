@@ -31,6 +31,7 @@ namespace Chibest.Repository.Repositories
                         SupplierId = supplierId,
                         TotalDebt = 0,
                         PaidAmount = 0,
+                        ReturnAmount = 0,
                         RemainingDebt = 0,
                         LastTransactionDate = DateTime.Now,
                         LastUpdated = DateTime.Now
@@ -46,17 +47,17 @@ namespace Chibest.Repository.Repositories
                 {
                     case "Purchase":
                         supplierDebt.TotalDebt += amount;
-                        balanceAfter = balanceBefore + amount;
+                        balanceAfter = supplierDebt.TotalDebt - supplierDebt.PaidAmount - supplierDebt.ReturnAmount;
                         break;
 
                     case "Payment":
                         supplierDebt.PaidAmount += amount;
-                        balanceAfter = balanceBefore - amount;
+                        balanceAfter = supplierDebt.TotalDebt - supplierDebt.PaidAmount - supplierDebt.ReturnAmount;
                         break;
 
                     case "Return":
-                        supplierDebt.TotalDebt = Math.Max(0, supplierDebt.TotalDebt - amount);
-                        balanceAfter = balanceBefore - amount;
+                        supplierDebt.ReturnAmount += amount;
+                        balanceAfter = supplierDebt.TotalDebt - supplierDebt.PaidAmount - supplierDebt.ReturnAmount;
                         break;
 
                     case "Custom":
@@ -64,13 +65,14 @@ namespace Chibest.Repository.Repositories
                         supplierDebt.RemainingDebt = amount;
                         supplierDebt.TotalDebt = Math.Max(amount, 0);
                         supplierDebt.PaidAmount = supplierDebt.TotalDebt - amount;
+                        supplierDebt.ReturnAmount = 0;
                         break;
 
                     default:
                         throw new Exception($"Invalid TransactionType: {transactionType}");
                 }
 
-                supplierDebt.RemainingDebt = balanceAfter;
+                supplierDebt.RemainingDebt = Math.Max(0, balanceAfter);
                 supplierDebt.LastTransactionDate = DateTime.Now;
                 supplierDebt.LastUpdated = DateTime.Now;
 

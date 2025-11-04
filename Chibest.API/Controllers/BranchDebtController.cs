@@ -16,9 +16,9 @@ namespace Chibest.API.Controllers
             _branchDebtService = branchDebtService;
         }
         [HttpPost]
-        public async Task<IActionResult> CreateBranchDebt(Guid branchId, [FromBody] List<BranchDebtHistoryRequest> transactions)
+        public async Task<IActionResult> CreateBranchDebt(Guid branchDebtId, [FromBody] List<BranchDebtHistoryRequest> transactions)
         {
-            var result = await _branchDebtService.AddBranchTransactionAsync(branchId, transactions);
+            var result = await _branchDebtService.AddBranchTransactionAsync(branchDebtId, transactions);
             return StatusCode(result.StatusCode, result);
         }
 
@@ -30,13 +30,34 @@ namespace Chibest.API.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetBranchDebtList([FromQuery] int pageIndex = 1,
-            [FromQuery] int pageSize = 10,
-            [FromQuery] string? search = null)
+        public async Task<IActionResult> GetBranchDebtList(
+    [FromQuery] int pageIndex = 1,
+    [FromQuery] int pageSize = 10,
+    [FromQuery] string? search = null,
+    [FromQuery] decimal? totalFrom = null,
+    [FromQuery] decimal? totalTo = null,
+    [FromQuery] string? datePreset = null,
+    [FromQuery] DateTime? fromDate = null,
+    [FromQuery] DateTime? toDate = null,
+    [FromQuery] decimal? debtFrom = null,
+    [FromQuery] decimal? debtTo = null)
         {
-            var result = await _branchDebtService.GetBranchDebtList(pageIndex, pageSize, search);
+            var result = await _branchDebtService.GetBranchDebtList(
+                pageIndex,
+                pageSize,
+                search,
+                totalFrom,
+                totalTo,
+                datePreset,
+                fromDate,
+                toDate,
+                debtFrom,
+                debtTo
+            );
+
             return StatusCode(result.StatusCode, result);
         }
+
         [HttpDelete]
         public async Task<IActionResult> DeleteBranchDebt(Guid branchdebtId, Guid historyId)
         {
