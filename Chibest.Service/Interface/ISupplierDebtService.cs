@@ -13,10 +13,19 @@ namespace Chibest.Service.Interface
     public interface ISupplierDebtService
     {
         Task<IBusinessResult> AddSupplierTransactionAsync(
-    Guid supplierId,
+    Guid supplierDebtId,
     List<SupplierDebtHistoryRequest> transactions);
-        Task<IBusinessResult> GetSupplierDebtList(int pageIndex, int pageSize, string search);
-        Task<IBusinessResult> GetSupplierDebtAsync(Guid id);
+        Task<IBusinessResult> GetSupplierDebtList(int pageIndex,
+        int pageSize,
+        string? search = null,
+        decimal? totalFrom = null,
+        decimal? totalTo = null,
+        string? datePreset = null,
+        DateTime? fromDate = null,
+        DateTime? toDate = null,
+        decimal? debtFrom = null,
+        decimal? debtTo = null);
+        Task<IBusinessResult> GetSupplierDebtAsync(Guid id, string transactionType = null);
         Task<IBusinessResult> DeleteSupplierDebtHistoryAsync(Guid supplierDebtId, Guid historyId);
 
     }

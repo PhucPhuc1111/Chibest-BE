@@ -17,6 +17,7 @@ namespace Chibest.Service.ModelDTOs.Response
         public decimal TotalDebt { get; set; }
 
         public decimal PaidAmount { get; set; }
+        public decimal ReturnAmount { get; set; }
 
         public decimal? RemainingDebt { get; set; }
 

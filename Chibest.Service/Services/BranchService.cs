@@ -68,6 +68,27 @@ public class BranchService : IBranchService
         await _unitOfWork.BranchRepository.AddAsync(branchEntity);
         await _unitOfWork.SaveChangesAsync();
 
+        // Create default BranchDebt for new branch
+        var existingBranchDebt = await _unitOfWork.BranchDebtRepository
+            .GetByWhere(x => x.BranchId == branchEntity.Id)
+            .FirstOrDefaultAsync();
+
+        if (existingBranchDebt == null)
+        {
+            var branchDebt = new BranchDebt
+            {
+                Id = Guid.NewGuid(),
+                BranchId = branchEntity.Id,
+                TotalDebt = 0,
+                PaidAmount = 0,
+                ReturnAmount = 0,
+                LastTransactionDate = DateTime.Now,
+                LastUpdated = DateTime.Now
+            };
+            await _unitOfWork.BranchDebtRepository.AddAsync(branchDebt);
+            await _unitOfWork.SaveChangesAsync();
+        }
+
         return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_CREATE_MSG);
     }
 

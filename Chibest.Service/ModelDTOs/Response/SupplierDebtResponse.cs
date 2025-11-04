@@ -13,10 +13,11 @@ namespace Chibest.Service.ModelDTOs.Response
 
         public string SupplierName { get; set; } = string.Empty;
         public string? SupplierPhone { get; set; }
-
+        public Guid? supplierId { get; set; }
         public decimal TotalDebt { get; set; }
 
         public decimal PaidAmount { get; set; }
+        public decimal ReturnAmount { get; set; }
 
         public decimal? RemainingDebt { get; set; }
 

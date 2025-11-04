@@ -125,7 +125,7 @@ namespace Chibest.Service.Services
                     if (fromBranch.IsFranchise && !toBranch.IsFranchise)
                     {
                         var debtResult = await _unitOfWork.BranchDebtRepository.AddBranchTransactionAsync(
-                            fromBranch.Id, "TransferOut", debt, note
+                            fromBranch.Id, "Return", debt, note
                         );
 
                         if (debtResult.StatusCode != Const.HTTP_STATUS_OK)
@@ -137,7 +137,7 @@ namespace Chibest.Service.Services
                     if (!fromBranch.IsFranchise && toBranch.IsFranchise)
                     {
                         var debtOutResult = await _unitOfWork.BranchDebtRepository.AddBranchTransactionAsync(
-                            toBranch.Id, "TransferIn", debt, note
+                            toBranch.Id, "Transfer", debt, note
                         );
 
                         if (debtOutResult.StatusCode != Const.HTTP_STATUS_OK)
@@ -317,7 +317,6 @@ namespace Chibest.Service.Services
 
             return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_READ_MSG, transferOrders);
         }
-
 
         public async Task<IBusinessResult> GetTransferOrderById(Guid id)
         {

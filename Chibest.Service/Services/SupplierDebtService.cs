@@ -5,6 +5,7 @@ using Chibest.Repository.Models;
 using Chibest.Service.Interface;
 using Chibest.Service.ModelDTOs.Request;
 using Chibest.Service.ModelDTOs.Response;
+using Chibest.Service.Utilities;
 using Microsoft.EntityFrameworkCore;
 
 namespace Chibest.Service.Services
@@ -17,31 +18,16 @@ namespace Chibest.Service.Services
             _unitOfWork = unitOfWork;
         }
         public async Task<IBusinessResult> AddSupplierTransactionAsync(
-    Guid supplierId,
+    Guid supplierDebtId,
     List<SupplierDebtHistoryRequest> transactions)
         {
             if (transactions == null || !transactions.Any())
                 return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "No transaction data provided");
 
                 var supplierDebt = await _unitOfWork.SupplierDebtRepository
-                    .GetByWhere(x => x.SupplierId == supplierId)
+                    .GetByWhere(x => x.Id == supplierDebtId)
                     .FirstOrDefaultAsync();
 
-                if (supplierDebt == null)
-                {
-                    supplierDebt = new SupplierDebt
-                    {
-                        Id = Guid.NewGuid(),
-                        SupplierId = supplierId,
-                        TotalDebt = 0,
-                        PaidAmount = 0,
-                        LastTransactionDate = DateTime.Now,
-                        LastUpdated = DateTime.Now
-                    };
-
-                    await _unitOfWork.SupplierDebtRepository.AddAsync(supplierDebt);
-                    await _unitOfWork.SaveChangesAsync();
-                }
 
                 decimal currentBalance = supplierDebt.RemainingDebt ?? 0;
                 var historyEntities = new List<SupplierDebtHistory>();
@@ -55,17 +41,17 @@ namespace Chibest.Service.Services
                     {
                         case "Purchase":
                             supplierDebt.TotalDebt += t.Amount;
-                            balanceAfter = balanceBefore + t.Amount;
+                            balanceAfter = supplierDebt.TotalDebt - supplierDebt.PaidAmount - supplierDebt.ReturnAmount;
                             break;
 
                         case "Payment":
                             supplierDebt.PaidAmount += t.Amount;
-                            balanceAfter = balanceBefore - t.Amount;
+                            balanceAfter = supplierDebt.TotalDebt - supplierDebt.PaidAmount - supplierDebt.ReturnAmount;
                             break;
 
                         case "Return":
-                            supplierDebt.TotalDebt = Math.Max(0, supplierDebt.TotalDebt - t.Amount);
-                            balanceAfter = balanceBefore - t.Amount;
+                            supplierDebt.ReturnAmount += t.Amount;
+                            balanceAfter = supplierDebt.TotalDebt - supplierDebt.PaidAmount - supplierDebt.ReturnAmount;
                             break;
                         case "Custom":
                             balanceAfter = t.Amount;
@@ -73,14 +59,15 @@ namespace Chibest.Service.Services
 
                             supplierDebt.TotalDebt = Math.Max(t.Amount, 0);
                             supplierDebt.PaidAmount = supplierDebt.TotalDebt - t.Amount;
+                            supplierDebt.ReturnAmount = 0;
                             break;
 
                         default:
                             throw new Exception($"Invalid TransactionType: {t.TransactionType}");
                     }
 
-                    supplierDebt.RemainingDebt = balanceAfter;
-                    currentBalance = balanceAfter;
+                    supplierDebt.RemainingDebt = Math.Max(0, balanceAfter);
+                    currentBalance = supplierDebt.RemainingDebt ?? 0;
 
                     historyEntities.Add(new SupplierDebtHistory
                     {
@@ -99,23 +86,23 @@ namespace Chibest.Service.Services
                 supplierDebt.LastTransactionDate = DateTime.Now;
                 supplierDebt.LastUpdated = DateTime.Now;
                 _unitOfWork.SupplierDebtRepository.Update(supplierDebt);
-                await _unitOfWork.SaveChangesAsync();
 
                 await _unitOfWork.SupplierDebtHistoryRepository.AddRangeAsync(historyEntities);
 
+             await _unitOfWork.SaveChangesAsync();
 
-                return new BusinessResult(Const.HTTP_STATUS_OK, "Supplier transactions created successfully", new
+            return new BusinessResult(Const.HTTP_STATUS_OK, "Supplier transactions created successfully", new
                 {
-                    SupplierId = supplierId,
                     supplierDebt.TotalDebt,
                     supplierDebt.PaidAmount,
+                    supplierDebt.ReturnAmount,
                     supplierDebt.RemainingDebt,
                 });
             
         }
 
 
-        public async Task<IBusinessResult> GetSupplierDebtAsync(Guid id)
+        public async Task<IBusinessResult> GetSupplierDebtAsync(Guid id, string transactionType)
         {
             try
             {
@@ -131,16 +118,26 @@ namespace Chibest.Service.Services
                     return new BusinessResult(Const.HTTP_STATUS_OK, "No debt record found");
                 }
 
+                // Filter histories by transaction type if provided
+                var historiesQuery = supplierDebt.SupplierDebtHistories.AsQueryable();
+
+                if (!string.IsNullOrEmpty(transactionType) && transactionType != "all")
+                {
+                    historiesQuery = historiesQuery.Where(h => h.TransactionType == transactionType);
+                }
+
                 var response = new SupplierDebtResponse
                 {
                     Id = supplierDebt.Id,
                     SupplierName = supplierDebt.Supplier?.Name ?? "Unknown",
                     TotalDebt = supplierDebt.TotalDebt,
                     PaidAmount = supplierDebt.PaidAmount,
+                    ReturnAmount = supplierDebt.ReturnAmount,
                     RemainingDebt = supplierDebt.RemainingDebt,
                     LastTransactionDate = supplierDebt.LastTransactionDate,
                     LastUpdated = supplierDebt.LastUpdated,
-                    SupplierDebtHistories = supplierDebt.SupplierDebtHistories
+                    supplierId = supplierDebt.Supplier?.Id,
+                    SupplierDebtHistories = historiesQuery
                         .OrderByDescending(h => h.TransactionDate)
                         .Select(h => new SupplierDebtHistoryResponse
                         {
@@ -164,24 +161,51 @@ namespace Chibest.Service.Services
             }
         }
 
-        public async Task<IBusinessResult> GetSupplierDebtList(int pageIndex, int pageSize, string search)
+
+        public async Task<IBusinessResult> GetSupplierDebtList(
+        int pageIndex,
+        int pageSize,
+        string? search = null,
+        decimal? totalFrom = null,
+        decimal? totalTo = null,
+        string? datePreset = null,
+        DateTime? fromDate = null,
+        DateTime? toDate = null,
+        decimal? debtFrom = null,
+        decimal? debtTo = null)
         {
             string searchTerm = search?.ToLower() ?? string.Empty;
+
+            // Dùng helper để suy ra khoảng ngày
+            var (startDate, endDate) = DateRangeHelper.GetDateRange(datePreset, fromDate, toDate);
 
             var supplierDebts = await _unitOfWork.SupplierDebtRepository.GetPagedAsync(
                 pageIndex,
                 pageSize,
-                x => string.IsNullOrEmpty(searchTerm)
-                    || (x.Supplier != null && !string.IsNullOrEmpty(x.Supplier.Name) && x.Supplier.Name.ToLower().Contains(searchTerm))
-                    || (x.Supplier != null && !string.IsNullOrEmpty(x.Supplier.PhoneNumber) && x.Supplier.PhoneNumber.ToLower().Contains(searchTerm))
-                    || (x.Supplier != null && !string.IsNullOrEmpty(x.Supplier.Email) && x.Supplier.Email.ToLower().Contains(searchTerm)),
-                include: q => q.Include(x => x.Supplier).OrderByDescending(x=> x.TotalDebt)
+                x =>
+                    // Search theo tên/điện thoại/email NCC
+                    (string.IsNullOrEmpty(searchTerm)
+                        || (x.Supplier != null && !string.IsNullOrEmpty(x.Supplier.Name) && x.Supplier.Name.ToLower().Contains(searchTerm))
+                        || (x.Supplier != null && !string.IsNullOrEmpty(x.Supplier.PhoneNumber) && x.Supplier.PhoneNumber.ToLower().Contains(searchTerm))
+                        || (x.Supplier != null && !string.IsNullOrEmpty(x.Supplier.Email) && x.Supplier.Email.ToLower().Contains(searchTerm)))
+
+                    // Total filter
+                    && (!totalFrom.HasValue || x.TotalDebt >= totalFrom.Value)
+                    && (!totalTo.HasValue || x.TotalDebt <= totalTo.Value)
+
+                    // Debt filter
+                    && (!debtFrom.HasValue || x.RemainingDebt >= debtFrom.Value)
+                    && (!debtTo.HasValue || x.RemainingDebt <= debtTo.Value)
+
+                    // Date filter (lọc theo ngày giao dịch cuối/ gần nhất)
+                    && (!startDate.HasValue || x.LastTransactionDate >= startDate.Value)
+                    && (!endDate.HasValue || x.LastTransactionDate < endDate.Value),
+
+                include: q => q.Include(x => x.Supplier).OrderByDescending(x => x.TotalDebt)
             );
 
             if (supplierDebts == null || !supplierDebts.Any())
-            {
                 return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, Const.FAIL_READ_MSG);
-            }
 
             var responseList = supplierDebts.Select(x => new SupplierDebtResponse
             {
@@ -190,6 +214,7 @@ namespace Chibest.Service.Services
                 SupplierPhone = x.Supplier?.PhoneNumber ?? string.Empty,
                 TotalDebt = x.TotalDebt,
                 PaidAmount = x.PaidAmount,
+                ReturnAmount = x.ReturnAmount,
                 RemainingDebt = x.RemainingDebt,
                 LastTransactionDate = x.LastTransactionDate,
             }).ToList();
@@ -197,8 +222,9 @@ namespace Chibest.Service.Services
             return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_READ_MSG, responseList);
         }
 
-        #region  Delete Supplier Debt History
-        public async Task<IBusinessResult> DeleteSupplierDebtHistoryAsync(Guid supplierDebtId, Guid historyId)
+
+    #region  Delete Supplier Debt History
+    public async Task<IBusinessResult> DeleteSupplierDebtHistoryAsync(Guid supplierDebtId, Guid historyId)
         {
             try
             {
@@ -225,6 +251,7 @@ namespace Chibest.Service.Services
 
                 decimal totalDebt = 0;
                 decimal paidAmount = 0;
+                decimal returnAmount = 0;
                 decimal currentBalance = 0;
                 DateTime? lastTransactionDate = null;
 
@@ -239,27 +266,31 @@ namespace Chibest.Service.Services
                     {
                         case "Purchase":
                             totalDebt += h.Amount;
-                            currentBalance += h.Amount;
                             break;
 
                         case "Payment":
                             paidAmount += h.Amount;
-                            currentBalance -= h.Amount;
                             break;
 
                         case "Return":
-                            totalDebt = Math.Max(0, totalDebt - h.Amount);
-                            currentBalance -= h.Amount;
+                            returnAmount += h.Amount;
                             break;
 
                         case "Custom":
                             currentBalance = h.Amount;
                             totalDebt = Math.Max(h.Amount, 0);
                             paidAmount = totalDebt - h.Amount;
+                            returnAmount = 0;
                             break;
 
                         default:
                             throw new Exception($"Invalid TransactionType: {h.TransactionType}");
+                    }
+
+                    // Calculate RemainingDebt = TotalDebt - PaidAmount - ReturnAmount
+                    if (h.TransactionType != "Custom")
+                    {
+                        currentBalance = totalDebt - paidAmount - returnAmount;
                     }
 
                     if (currentBalance < 0)
@@ -271,7 +302,8 @@ namespace Chibest.Service.Services
 
                 supplierDebt.TotalDebt = totalDebt;
                 supplierDebt.PaidAmount = paidAmount;
-                supplierDebt.RemainingDebt = currentBalance;
+                supplierDebt.ReturnAmount = returnAmount;
+                supplierDebt.RemainingDebt = Math.Max(0, currentBalance);
                 supplierDebt.LastTransactionDate = lastTransactionDate;
                 supplierDebt.LastUpdated = DateTime.Now;
 
@@ -285,6 +317,7 @@ namespace Chibest.Service.Services
                         supplierDebt.Id,
                         supplierDebt.TotalDebt,
                         supplierDebt.PaidAmount,
+                        supplierDebt.ReturnAmount,
                         supplierDebt.RemainingDebt
                     });
             }

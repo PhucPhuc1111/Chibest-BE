@@ -10,9 +10,18 @@ namespace Chibest.Service.Interface
 {
     public interface IBranchDebtService
     {
-        Task<IBusinessResult> AddBranchTransactionAsync(Guid branchId, List<BranchDebtHistoryRequest> transactions);
+        Task<IBusinessResult> AddBranchTransactionAsync(Guid branchDebtId, List<BranchDebtHistoryRequest> transactions);
         Task<IBusinessResult> GetBranchDebtAsync(Guid id);
-        Task<IBusinessResult> GetBranchDebtList(int pageIndex, int pageSize, string search);
+        Task<IBusinessResult> GetBranchDebtList(int pageIndex,
+    int pageSize,
+    string? search = null,
+    decimal? totalFrom = null,
+    decimal? totalTo = null,
+    string? datePreset = null,
+    DateTime? fromDate = null,
+    DateTime? toDate = null,
+    decimal? debtFrom = null,
+    decimal? debtTo = null);
         Task<IBusinessResult> DeleteBranchDebtHistoryAsync(Guid branchDebtId, Guid historyId);
     }
 }

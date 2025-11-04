@@ -237,8 +237,9 @@ public partial class ChiBestDbContext : DbContext
                 .HasColumnType("timestamp(3) without time zone");
             entity.Property(e => e.PaidAmount).HasColumnType("money");
             entity.Property(e => e.RemainingDebt)
-                .HasComputedColumnSql("(\"TotalDebt\" - \"PaidAmount\")", true)
+                .HasComputedColumnSql("((\"TotalDebt\" - \"PaidAmount\") - \"ReturnAmount\")", true)
                 .HasColumnType("money");
+            entity.Property(e => e.ReturnAmount).HasColumnType("money");
             entity.Property(e => e.TotalDebt).HasColumnType("money");
 
             entity.HasOne(d => d.Branch).WithOne(p => p.BranchDebt)
@@ -1012,11 +1013,11 @@ public partial class ChiBestDbContext : DbContext
 
             entity.HasOne(d => d.Product).WithMany(p => p.StockAdjustmentDetails)
                 .HasForeignKey(d => d.ProductId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("StockAdjustmentDetail_ProductId_fkey");
 
             entity.HasOne(d => d.StockAdjustment).WithMany(p => p.StockAdjustmentDetails)
                 .HasForeignKey(d => d.StockAdjustmentId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("StockAdjustmentDetail_StockAdjustmentId_fkey");
         });
 
@@ -1035,8 +1036,9 @@ public partial class ChiBestDbContext : DbContext
                 .HasColumnType("timestamp(3) without time zone");
             entity.Property(e => e.PaidAmount).HasColumnType("money");
             entity.Property(e => e.RemainingDebt)
-                .HasComputedColumnSql("(\"TotalDebt\" - \"PaidAmount\")", true)
+                .HasComputedColumnSql("((\"TotalDebt\" - \"PaidAmount\") - \"ReturnAmount\")", true)
                 .HasColumnType("money");
+            entity.Property(e => e.ReturnAmount).HasColumnType("money");
             entity.Property(e => e.TotalDebt).HasColumnType("money");
 
             entity.HasOne(d => d.Supplier).WithOne(p => p.SupplierDebt)
