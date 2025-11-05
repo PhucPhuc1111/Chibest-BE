@@ -174,8 +174,7 @@ public class ProductPriceHistoryService : IProductPriceHistoryService
 
     public async Task<IBusinessResult> GetByBranchIdAsync(Guid branchId)
     {
-        var priceHistories = await _unitOfWork.ProductPriceHistoryRepository.GetByWhere(p =>
-                p.BranchId == branchId || p.BranchId == null)
+        var priceHistories = await _unitOfWork.ProductPriceHistoryRepository.GetByWhere(p => p.BranchId == branchId)
             .OrderByDescending(p => p.EffectiveDate)
             .ThenByDescending(p => p.CreatedAt)
             .ToListAsync();
@@ -224,6 +223,7 @@ public class ProductPriceHistoryService : IProductPriceHistoryService
         // Các trường Id, CreatedAt được set tự động bởi DB (DEFAULT)
 
         await _unitOfWork.ProductPriceHistoryRepository.AddAsync(newPrice);
+        await _unitOfWork.SaveChangesAsync();
 
         await LogSystemAction("Create", "ProductPriceHistory", newPrice.Id, accountId,
                             null, JsonSerializer.Serialize(newPrice),

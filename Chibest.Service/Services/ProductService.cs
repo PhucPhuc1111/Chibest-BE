@@ -71,15 +71,14 @@ public class ProductService : IProductService
 
         // Include both ProductPriceHistories and BranchStocks
         var products = await _unitOfWork.ProductRepository.GetPagedAsync(
-    query.PageNumber,
-    query.PageSize,
-    predicate,
-    orderBy,
-    include: q => q
-        .Include(p => p.ProductPriceHistories)
-        .Include(p => p.BranchStocks)
-        .Include(p => p.Category) // ✅ Thêm dòng này
-);
+            query.PageNumber,
+            query.PageSize,
+            predicate,
+            orderBy,
+            include: q => q.Include(p => p.ProductPriceHistories)
+            .Include(p => p.BranchStocks)
+            .Include(p => p.Category)
+        );
 
         var response = products.Select(product =>
         {
@@ -107,7 +106,7 @@ public class ProductService : IProductService
                 IsMaster = product.IsMaster,
                 Status = product.Status,
                 ParentSku = product.ParentSku,
-                CategoryName = product.Category?.Name, 
+                CategoryName = product.Category?.Name,
                 CostPrice = latestPrice?.CostPrice,
                 SellingPrice = latestPrice?.SellingPrice,
                 StockQuantity = branchStock?.AvailableQty ?? 0
@@ -127,7 +126,7 @@ public class ProductService : IProductService
         return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_READ_MSG, pagedResult);
     }
 
-    public async Task<IBusinessResult> GetByIdAsync(Guid id,Guid? branchId)
+    public async Task<IBusinessResult> GetByIdAsync(Guid id, Guid? branchId)
     {
         var product = await _unitOfWork.ProductRepository
             .GetByWhere(p => p.Id == id)
@@ -135,8 +134,8 @@ public class ProductService : IProductService
             .Include(p => p.Category)
             .AsNoTracking()
             .FirstOrDefaultAsync();
-        var branchStock = branchId.HasValue
-            ? await _unitOfWork.BranchStockRepository
+        var branchStock = branchId.HasValue ?
+            await _unitOfWork.BranchStockRepository
                 .GetByWhere(bs => bs.ProductId == id && bs.BranchId == branchId.Value)
                 .AsNoTracking()
                 .FirstOrDefaultAsync()
@@ -232,41 +231,41 @@ public class ProductService : IProductService
         if (existingSku != null)
             return new BusinessResult(Const.HTTP_STATUS_CONFLICT, "SKU đã tồn tại");
 
-       
-            var product = request.Adapt<Product>();
-            product.Id = Guid.NewGuid();
-            product.CreatedAt = DateTime.Now;
-            product.UpdatedAt = DateTime.Now;
 
-            await _unitOfWork.ProductRepository.AddAsync(product);
-            await _unitOfWork.SaveChangesAsync();
+        var product = request.Adapt<Product>();
+        product.Id = Guid.NewGuid();
+        product.CreatedAt = DateTime.Now;
+        product.UpdatedAt = DateTime.Now;
 
-            if (request.SellingPrice.HasValue && request.CostPrice.HasValue)
+        await _unitOfWork.ProductRepository.AddAsync(product);
+        await _unitOfWork.SaveChangesAsync();
+
+        if (request.SellingPrice.HasValue && request.CostPrice.HasValue)
+        {
+            var priceHistory = new ProductPriceHistory
             {
-                var priceHistory = new ProductPriceHistory
-                {
-                    Id = Guid.NewGuid(),
-                    ProductId = product.Id,
-                    BranchId = request.BranchId,
-                    SellingPrice = request.SellingPrice.Value,
-                    CostPrice = request.CostPrice.Value,
-                    EffectiveDate = request.EffectiveDate ?? DateTime.Now,
-                    ExpiryDate = request.ExpiryDate,
-                    CreatedAt = DateTime.Now,
-                    CreatedBy = accountId,
-                    Note = "Giá khởi tạo sản phẩm"
-                };
+                Id = Guid.NewGuid(),
+                ProductId = product.Id,
+                BranchId = request.BranchId,
+                SellingPrice = request.SellingPrice.Value,
+                CostPrice = request.CostPrice.Value,
+                EffectiveDate = request.EffectiveDate ?? DateTime.Now,
+                ExpiryDate = request.ExpiryDate,
+                CreatedAt = DateTime.Now,
+                CreatedBy = accountId,
+                Note = "Giá khởi tạo sản phẩm"
+            };
 
-                await _unitOfWork.ProductPriceHistoryRepository.AddAsync(priceHistory);
-                await _unitOfWork.SaveChangesAsync();
-            }
+            await _unitOfWork.ProductPriceHistoryRepository.AddAsync(priceHistory);
+            await _unitOfWork.SaveChangesAsync();
+        }
 
-            var productLog = product.Adapt<ProductRequest>(); // hoặc ProductResponse
-            await LogSystemAction("Create", "Product", product.Id, accountId,
-                null, JsonSerializer.Serialize(productLog),
-                $"Tạo mới sản phẩm: {product.Name} (SKU: {product.Sku})");
-            var response = product.Adapt<ProductResponse>();
-            return new BusinessResult(Const.HTTP_STATUS_CREATED, Const.SUCCESS_CREATE_MSG, response);
+        var productLog = product.Adapt<ProductRequest>(); // hoặc ProductResponse
+        await LogSystemAction("Create", "Product", product.Id, accountId,
+            null, JsonSerializer.Serialize(productLog),
+            $"Tạo mới sản phẩm: {product.Name} (SKU: {product.Sku})");
+        var response = product.Adapt<ProductResponse>();
+        return new BusinessResult(Const.HTTP_STATUS_CREATED, Const.SUCCESS_CREATE_MSG, response);
     }
 
 
