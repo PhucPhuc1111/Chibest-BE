@@ -11,7 +11,7 @@ namespace Chibest.Service.Interface
     public interface IBranchDebtService
     {
         Task<IBusinessResult> AddBranchTransactionAsync(Guid branchDebtId, List<BranchDebtHistoryRequest> transactions);
-        Task<IBusinessResult> GetBranchDebtAsync(Guid id);
+        Task<IBusinessResult> GetBranchDebtAsync(Guid id, string transactionType = null);
         Task<IBusinessResult> GetBranchDebtList(int pageIndex,
     int pageSize,
     string? search = null,
