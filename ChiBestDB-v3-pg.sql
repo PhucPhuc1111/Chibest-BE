@@ -15,7 +15,7 @@ CREATE TABLE "Branch" (
     "Name" VARCHAR(255) NOT NULL,
     "Address" VARCHAR(500) NOT NULL,
     "PhoneNumber" VARCHAR(15),
-    "Status" VARCHAR(40) NOT NULL DEFAULT 'Hoạt Động',
+    "Status" VARCHAR(40) NOT NULL DEFAULT 'Working',
     "IsFranchise" BOOLEAN NOT NULL DEFAULT FALSE,
     "OwnerName" VARCHAR(255) NULL,
     "CreatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -30,7 +30,7 @@ CREATE TABLE "Warehouse" (
     "PhoneNumber" VARCHAR(15),
     "IsMainWarehouse" BOOLEAN NOT NULL DEFAULT FALSE,
     "IsOnlineWarehouse" BOOLEAN NOT NULL DEFAULT FALSE,
-    "Status" VARCHAR(40) NOT NULL DEFAULT 'Hoạt Động',
+    "Status" VARCHAR(40) NOT NULL DEFAULT 'Working',
     "CreatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "UpdatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
@@ -58,7 +58,7 @@ CREATE TABLE "Account" (
     "FcmToken" VARCHAR(255),
     "RefreshToken" TEXT,
     "RefreshTokenExpiryTime" TIMESTAMP(3),
-    "Status" VARCHAR(40) NOT NULL DEFAULT 'Hoạt Động',
+    "Status" VARCHAR(40) NOT NULL DEFAULT 'Working',
     "CreatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "UpdatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -113,7 +113,7 @@ CREATE TABLE "Customer" (
     "Email" VARCHAR(100),
     "DateOfBirth" TIMESTAMP(3),
     "AvatarURL" TEXT,
-    "Status" VARCHAR(30) NOT NULL DEFAULT 'Hoạt Động',
+    "Status" VARCHAR(30) NOT NULL DEFAULT 'Working',
     "CreatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "UpdatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "LastActive" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -154,7 +154,7 @@ CREATE TABLE "Product" (
     "Material" VARCHAR(100),
     "Weight" INT NOT NULL DEFAULT 0,
     "IsMaster" BOOLEAN NOT NULL DEFAULT TRUE,
-    "Status" VARCHAR(40) NOT NULL DEFAULT 'Khả Dụng',
+    "Status" VARCHAR(40) NOT NULL DEFAULT 'Available',
     "CreatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "UpdatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
@@ -237,7 +237,7 @@ CREATE TABLE "ProductDetail" (
     "SupplierId" UUID NULL REFERENCES "Account"("Id"),
     
     -- Trạng thái và vị trí hiện tại
-    "Status" VARCHAR(50) NOT NULL DEFAULT 'Khả Dụng',
+    "Status" VARCHAR(50) NOT NULL DEFAULT 'Available',
     "LastTransactionDate" TIMESTAMP(3) NULL,
     "LastTransactionType" VARCHAR(50) NULL,
     
@@ -286,7 +286,7 @@ CREATE TABLE "PurchaseOrderDetail" (
     "ActualQuantity" INT,
     "ReFee" money not null,
     "UnitPrice" MONEY NOT NULL,
-    "Discount" Money NOT NULL DEFAULT 0,
+    "Discount" MONEY NOT NULL DEFAULT 0,
     "Note" TEXT,
     "PurchaseOrderId" UUID NOT NULL REFERENCES "PurchaseOrder"("Id") ON DELETE CASCADE,
     "ProductId" UUID NOT NULL REFERENCES "Product"("Id") ON DELETE CASCADE
@@ -406,8 +406,8 @@ CREATE INDEX IX_StockAdjustment_BranchId ON "StockAdjustment"("BranchId", "Adjus
 
 CREATE TABLE "StockAdjustmentDetail" (
     "Id" UUID DEFAULT GEN_RANDOM_UUID() PRIMARY KEY,
-    "StockAdjustmentId" UUID NOT NULL REFERENCES "StockAdjustment"("Id") ON DELETE CASCADE,
-    "ProductId" UUID NOT NULL REFERENCES "Product"("Id"),
+    "StockAdjustmentId" UUID NOT NULL REFERENCES "StockAdjustment"("Id"),
+    "ProductId" UUID NOT NULL REFERENCES "Product"("Id") ON DELETE CASCADE,
     
     "SystemQty" INT NOT NULL, -- Số lượng trong hệ thống
     "ActualQty" INT NOT NULL, -- Số lượng thực tế
@@ -451,7 +451,7 @@ CREATE TABLE "Voucher" (
     "ApplicableProducts" TEXT NULL, -- JSON array of product IDs
     "ApplicableCategories" TEXT NULL, -- JSON array of category IDs
     
-    "Status" VARCHAR(40) NOT NULL DEFAULT 'Khả Dụng',
+    "Status" VARCHAR(40) NOT NULL DEFAULT 'Available',
     
     "CreatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "UpdatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -546,10 +546,11 @@ CREATE TABLE "SupplierDebt" (
     
     "TotalDebt" MONEY NOT NULL DEFAULT 0,
     "PaidAmount" MONEY NOT NULL DEFAULT 0,
-    "ReturnAmount" MONEY NOT NULL DEFAULT 0,
-    "RemainingDebt" MONEY GENERATED ALWAYS AS ("TotalDebt" - "PaidAmount" - "ReturnAmount") STORED,
+    "RemainingDebt" MONEY GENERATED ALWAYS AS ("TotalDebt" - "PaidAmount") STORED,
+    
     "LastTransactionDate" TIMESTAMP(3) NULL,
     "LastUpdated" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    
     CONSTRAINT UQ_SupplierDebt_Supplier UNIQUE ("SupplierId")
 );
 
@@ -575,8 +576,8 @@ CREATE TABLE "BranchDebt" (
 
     "TotalDebt" MONEY NOT NULL DEFAULT 0,
     "PaidAmount" MONEY NOT NULL DEFAULT 0,
-    "ReturnAmount" MONEY NOT NULL DEFAULT 0,
-    "RemainingDebt" MONEY GENERATED ALWAYS AS ("TotalDebt" - "PaidAmount" - "ReturnAmount") STORED,
+    "RemainingDebt" MONEY GENERATED ALWAYS AS ("TotalDebt" - "PaidAmount") STORED,
+
     "LastTransactionDate" TIMESTAMP(3) NULL,
     "LastUpdated" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
@@ -668,9 +669,7 @@ CREATE TABLE "Attendance" (
     
     "Note" TEXT,
     "CreatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "UpdatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    
-    CONSTRAINT UQ_Attendance_Employee_Date UNIQUE ("EmployeeId", "WorkDate")
+    "UpdatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IX_Attendance_EmployeeId ON "Attendance"("EmployeeId", "WorkDate" DESC);
