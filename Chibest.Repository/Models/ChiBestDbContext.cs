@@ -235,9 +235,8 @@ public partial class ChiBestDbContext : DbContext
                 .HasColumnType("timestamp(3) without time zone");
             entity.Property(e => e.PaidAmount).HasColumnType("money");
             entity.Property(e => e.RemainingDebt)
-                .HasComputedColumnSql("((\"TotalDebt\" - \"PaidAmount\") - \"ReturnAmount\")", true)
+                .HasComputedColumnSql("(\"TotalDebt\" - \"PaidAmount\")", true)
                 .HasColumnType("money");
-            entity.Property(e => e.ReturnAmount).HasColumnType("money");
             entity.Property(e => e.TotalDebt).HasColumnType("money");
 
             entity.HasOne(d => d.Branch).WithOne(p => p.BranchDebt)
@@ -551,7 +550,11 @@ public partial class ChiBestDbContext : DbContext
 
             entity.ToTable("ProductDetail");
 
+            entity.HasIndex(e => e.BarCode, "ProductDetail_BarCode_key").IsUnique();
+
             entity.HasIndex(e => e.ChipCode, "ProductDetail_ChipCode_key").IsUnique();
+
+            entity.HasIndex(e => e.TagId, "ProductDetail_TagId_key").IsUnique();
 
             entity.HasIndex(e => new { e.BranchId, e.WarehouseId }, "ix_productdetail_branchid_warehouseid");
 
@@ -560,6 +563,7 @@ public partial class ChiBestDbContext : DbContext
             entity.HasIndex(e => new { e.ProductId, e.Status }, "ix_productdetail_productid_status");
 
             entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(e => e.BarCode).HasMaxLength(100);
             entity.Property(e => e.ChipCode).HasMaxLength(100);
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
@@ -570,9 +574,11 @@ public partial class ChiBestDbContext : DbContext
             entity.Property(e => e.LastTransactionDate).HasColumnType("timestamp(3) without time zone");
             entity.Property(e => e.LastTransactionType).HasMaxLength(50);
             entity.Property(e => e.PurchasePrice).HasColumnType("money");
+            entity.Property(e => e.SellingPrice).HasColumnType("money");
             entity.Property(e => e.Status)
                 .HasMaxLength(50)
                 .HasDefaultValueSql("'Available'::character varying");
+            entity.Property(e => e.TagId).HasMaxLength(100);
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("timestamp(3) without time zone");
@@ -688,7 +694,7 @@ public partial class ChiBestDbContext : DbContext
             entity.HasIndex(e => e.ProductId, "ix_transactionorderdetail_productid");
 
             entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
-            entity.Property(e => e.Discount).HasPrecision(5, 2);
+            entity.Property(e => e.Discount).HasColumnType("money");
             entity.Property(e => e.ReFee).HasColumnType("money");
             entity.Property(e => e.UnitPrice).HasColumnType("money");
 
@@ -1034,9 +1040,8 @@ public partial class ChiBestDbContext : DbContext
                 .HasColumnType("timestamp(3) without time zone");
             entity.Property(e => e.PaidAmount).HasColumnType("money");
             entity.Property(e => e.RemainingDebt)
-                .HasComputedColumnSql("((\"TotalDebt\" - \"PaidAmount\") - \"ReturnAmount\")", true)
+                .HasComputedColumnSql("(\"TotalDebt\" - \"PaidAmount\")", true)
                 .HasColumnType("money");
-            entity.Property(e => e.ReturnAmount).HasColumnType("money");
             entity.Property(e => e.TotalDebt).HasColumnType("money");
 
             entity.HasOne(d => d.Supplier).WithOne(p => p.SupplierDebt)
@@ -1161,7 +1166,7 @@ public partial class ChiBestDbContext : DbContext
 
             entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
             entity.Property(e => e.CommissionFee).HasColumnType("money");
-            entity.Property(e => e.Discount).HasPrecision(5, 2);
+            entity.Property(e => e.Discount).HasColumnType("money");
             entity.Property(e => e.ExtraFee).HasColumnType("money");
             entity.Property(e => e.UnitPrice).HasColumnType("money");
 

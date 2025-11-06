@@ -136,7 +136,6 @@ namespace Chibest.Service.Services
                     RemainingDebt = supplierDebt.RemainingDebt,
                     LastTransactionDate = supplierDebt.LastTransactionDate,
                     LastUpdated = supplierDebt.LastUpdated,
-                    supplierId = supplierDebt.Supplier?.Id,
                     SupplierDebtHistories = historiesQuery
                         .OrderByDescending(h => h.TransactionDate)
                         .Select(h => new SupplierDebtHistoryResponse

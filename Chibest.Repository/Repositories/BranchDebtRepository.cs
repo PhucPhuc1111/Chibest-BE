@@ -29,7 +29,6 @@ namespace Chibest.Repository.Repositories
                         BranchId = branchId,
                         TotalDebt = 0,
                         PaidAmount = 0,
-                        ReturnAmount = 0,
                         RemainingDebt = 0,
                         LastTransactionDate = DateTime.Now,
                         LastUpdated = DateTime.Now
@@ -45,17 +44,12 @@ namespace Chibest.Repository.Repositories
                 {
                     case "TransferIn":
                         branchDebt.TotalDebt += amount;
-                        balanceAfter = branchDebt.TotalDebt - branchDebt.PaidAmount - branchDebt.ReturnAmount;
+                        balanceAfter = branchDebt.TotalDebt - branchDebt.PaidAmount;
                         break;
 
                     case "TransferOut":
                         branchDebt.PaidAmount += amount;
-                        balanceAfter = branchDebt.TotalDebt - branchDebt.PaidAmount - branchDebt.ReturnAmount;
-                        break;
-
-                    case "Return":
-                        branchDebt.ReturnAmount += amount;
-                        balanceAfter = branchDebt.TotalDebt - branchDebt.PaidAmount - branchDebt.ReturnAmount;
+                        balanceAfter = branchDebt.TotalDebt - branchDebt.PaidAmount;
                         break;
 
                     case "Custom":
@@ -63,7 +57,6 @@ namespace Chibest.Repository.Repositories
                         branchDebt.RemainingDebt = amount;
                         branchDebt.TotalDebt = Math.Max(amount, 0);
                         branchDebt.PaidAmount = branchDebt.TotalDebt - amount;
-                        branchDebt.ReturnAmount = 0;
                         break;
 
                     default:
