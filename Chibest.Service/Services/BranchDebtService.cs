@@ -87,9 +87,9 @@ namespace Chibest.Service.Services
             branchDebt.LastTransactionDate = DateTime.Now;
             branchDebt.LastUpdated = DateTime.Now;
             _unitOfWork.BranchDebtRepository.Update(branchDebt);
-            await _unitOfWork.SaveChangesAsync();
 
             await _unitOfWork.BranchDebtHistoryRepository.AddRangeAsync(historyEntities);
+            await _unitOfWork.SaveChangesAsync();
 
 
             return new BusinessResult(Const.HTTP_STATUS_OK, "Branch transactions created successfully", new
@@ -100,7 +100,7 @@ namespace Chibest.Service.Services
                 branchDebt.RemainingDebt
             });
         }
-        public async Task<IBusinessResult> GetBranchDebtAsync(Guid id)
+        public async Task<IBusinessResult> GetBranchDebtAsync(Guid id, string transactionType)
         {
             try
             {
@@ -108,11 +108,16 @@ namespace Chibest.Service.Services
                     .GetByWhere(x => x.Id == id)
                     .Include(x => x.Branch)
                     .Include(x => x.BranchDebtHistories)
+                    .OrderByDescending(x => x.TotalDebt)
                     .FirstOrDefaultAsync();
 
                 if (branchDebt == null)
                     return new BusinessResult(Const.HTTP_STATUS_OK, "No branch debt record found");
-
+                var historiesQuery = branchDebt.BranchDebtHistories.AsQueryable();
+                if (!string.IsNullOrEmpty(transactionType) && transactionType != "all")
+                {
+                    historiesQuery = historiesQuery.Where(h => h.TransactionType == transactionType);
+                }
                 var response = new BranchDebtResponse
                 {
                     Id = branchDebt.Id,
@@ -123,7 +128,7 @@ namespace Chibest.Service.Services
                     RemainingDebt = branchDebt.RemainingDebt,
                     LastTransactionDate = branchDebt.LastTransactionDate,
                     LastUpdated = branchDebt.LastUpdated,
-                    BranchDebtHistories = branchDebt.BranchDebtHistories
+                    BranchDebtHistories = historiesQuery
                         .OrderByDescending(h => h.TransactionDate)
                         .Select(h => new BranchDebtHistoryResponse
                         {

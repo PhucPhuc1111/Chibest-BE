@@ -286,7 +286,7 @@ CREATE TABLE "PurchaseOrderDetail" (
     "ActualQuantity" INT,
     "ReFee" money not null,
     "UnitPrice" MONEY NOT NULL,
-    "Discount" DECIMAL(5,2) NOT NULL DEFAULT 0,
+    "Discount" MONEY NOT NULL DEFAULT 0,
     "Note" TEXT,
     "PurchaseOrderId" UUID NOT NULL REFERENCES "PurchaseOrder"("Id") ON DELETE CASCADE,
     "ProductId" UUID NOT NULL REFERENCES "Product"("Id") ON DELETE CASCADE
@@ -331,7 +331,7 @@ CREATE TABLE "TransferOrderDetail" (
     "ExtraFee" money not null,
     "CommissionFee" money not null,
     "UnitPrice" MONEY NOT NULL,
-    "Discount" DECIMAL(5,2) NOT NULL DEFAULT 0,
+    "Discount" MONEY NOT NULL DEFAULT 0,
     "Note" TEXT,
     "TransferOrderId" UUID NOT NULL REFERENCES "TransferOrder"("Id") ON DELETE CASCADE,
     "ProductId" UUID NOT NULL REFERENCES "Product"("Id") ON DELETE CASCADE

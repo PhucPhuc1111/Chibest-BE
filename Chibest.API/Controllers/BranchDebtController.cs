@@ -23,7 +23,7 @@ namespace Chibest.API.Controllers
         }
 
         [HttpGet("{id}")]
-        public async Task<IActionResult> GetBranchDebtById(Guid id)
+        public async Task<IActionResult> GetBranchDebtById(Guid id, string transactionType = null)
         {
             var result = await _branchDebtService.GetBranchDebtAsync(id);
             return StatusCode(result.StatusCode, result);
