@@ -226,12 +226,15 @@ CREATE INDEX IX_BranchStock_ProductId ON "BranchStock"("ProductId");
 -- Tracking chi tiết sản phẩm vật lý (RFID/Barcode)
 CREATE TABLE "ProductDetail" (
     "Id" UUID DEFAULT GEN_RANDOM_UUID() PRIMARY KEY,
+    "BarCode" VARCHAR(100) UNIQUE,
     "ChipCode" VARCHAR(100) UNIQUE,
+    "TagId" VARCHAR(100) UNIQUE,
     "ProductId" UUID NOT NULL REFERENCES "Product"("Id") ON DELETE CASCADE,
     "BranchId" UUID NOT NULL REFERENCES "Branch"("Id") ON DELETE CASCADE,
     "WarehouseId" UUID NULL REFERENCES "Warehouse"("Id"),
     
     -- Thông tin nhập hàng
+    "SellingPrice" MONEY NOT NULL DEFAULT 0,
     "PurchasePrice" MONEY NOT NULL DEFAULT 0,
     "ImportDate" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "SupplierId" UUID NULL REFERENCES "Account"("Id"),

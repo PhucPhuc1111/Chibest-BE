@@ -13,8 +13,6 @@ public partial class SupplierDebt
 
     public decimal PaidAmount { get; set; }
 
-    public decimal ReturnAmount { get; set; }
-
     public decimal? RemainingDebt { get; set; }
 
     public DateTime? LastTransactionDate { get; set; }
