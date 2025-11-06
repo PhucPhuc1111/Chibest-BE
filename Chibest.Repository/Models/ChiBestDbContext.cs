@@ -116,7 +116,7 @@ public partial class ChiBestDbContext : DbContext
             entity.Property(e => e.RefreshTokenExpiryTime).HasColumnType("timestamp(3) without time zone");
             entity.Property(e => e.Status)
                 .HasMaxLength(40)
-                .HasDefaultValueSql("'Hoạt Động'::character varying");
+                .HasDefaultValueSql("'Working'::character varying");
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("timestamp(3) without time zone");
@@ -160,8 +160,6 @@ public partial class ChiBestDbContext : DbContext
             entity.HasIndex(e => new { e.BranchId, e.WorkDate }, "ix_attendance_branchid").IsDescending(false, true);
 
             entity.HasIndex(e => new { e.EmployeeId, e.WorkDate }, "ix_attendance_employeeid").IsDescending(false, true);
-
-            entity.HasIndex(e => new { e.EmployeeId, e.WorkDate }, "uq_attendance_employee_date").IsUnique();
 
             entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
             entity.Property(e => e.AttendanceStatus)
@@ -216,7 +214,7 @@ public partial class ChiBestDbContext : DbContext
             entity.Property(e => e.PhoneNumber).HasMaxLength(15);
             entity.Property(e => e.Status)
                 .HasMaxLength(40)
-                .HasDefaultValueSql("'Hoạt Động'::character varying");
+                .HasDefaultValueSql("'Working'::character varying");
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("timestamp(3) without time zone");
@@ -384,7 +382,7 @@ public partial class ChiBestDbContext : DbContext
             entity.Property(e => e.PhoneNumber).HasMaxLength(15);
             entity.Property(e => e.Status)
                 .HasMaxLength(30)
-                .HasDefaultValueSql("'Hoạt Động'::character varying");
+                .HasDefaultValueSql("'Working'::character varying");
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("timestamp(3) without time zone");
@@ -530,7 +528,7 @@ public partial class ChiBestDbContext : DbContext
                 .HasColumnName("SKU");
             entity.Property(e => e.Status)
                 .HasMaxLength(40)
-                .HasDefaultValueSql("'Khả Dụng'::character varying");
+                .HasDefaultValueSql("'Available'::character varying");
             entity.Property(e => e.Style).HasMaxLength(100);
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
@@ -574,7 +572,7 @@ public partial class ChiBestDbContext : DbContext
             entity.Property(e => e.PurchasePrice).HasColumnType("money");
             entity.Property(e => e.Status)
                 .HasMaxLength(50)
-                .HasDefaultValueSql("'Khả Dụng'::character varying");
+                .HasDefaultValueSql("'Available'::character varying");
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("timestamp(3) without time zone");
@@ -690,7 +688,7 @@ public partial class ChiBestDbContext : DbContext
             entity.HasIndex(e => e.ProductId, "ix_transactionorderdetail_productid");
 
             entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
-            entity.Property(e => e.Discount).HasColumnType("money");
+            entity.Property(e => e.Discount).HasPrecision(5, 2);
             entity.Property(e => e.ReFee).HasColumnType("money");
             entity.Property(e => e.UnitPrice).HasColumnType("money");
 
@@ -1163,7 +1161,7 @@ public partial class ChiBestDbContext : DbContext
 
             entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
             entity.Property(e => e.CommissionFee).HasColumnType("money");
-            entity.Property(e => e.Discount).HasColumnType("money");
+            entity.Property(e => e.Discount).HasPrecision(5, 2);
             entity.Property(e => e.ExtraFee).HasColumnType("money");
             entity.Property(e => e.UnitPrice).HasColumnType("money");
 
@@ -1204,7 +1202,7 @@ public partial class ChiBestDbContext : DbContext
             entity.Property(e => e.Name).HasMaxLength(250);
             entity.Property(e => e.Status)
                 .HasMaxLength(40)
-                .HasDefaultValueSql("'Khả Dụng'::character varying");
+                .HasDefaultValueSql("'Available'::character varying");
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("timestamp(3) without time zone");
@@ -1237,7 +1235,7 @@ public partial class ChiBestDbContext : DbContext
             entity.Property(e => e.PhoneNumber).HasMaxLength(15);
             entity.Property(e => e.Status)
                 .HasMaxLength(40)
-                .HasDefaultValueSql("'Hoạt Động'::character varying");
+                .HasDefaultValueSql("'Working'::character varying");
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("timestamp(3) without time zone");
