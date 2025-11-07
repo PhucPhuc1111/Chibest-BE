@@ -36,10 +36,13 @@ public class ProductDetailController : ControllerBase
     }
 
     [Authorize]
-    [HttpGet("chipCode/{chipCode}")]
-    public async Task<IActionResult> GetByProductAndBranch([FromRoute] string chipCode)
+    [HttpGet("code")]
+    public async Task<IActionResult> GetByProductAndBranch(
+        [FromQuery] string? chipCode,
+        [FromQuery] string? barCode,
+        [FromQuery] string? tagId)
     {
-        var result = await _productDetailService.GetByChipCodeAsync(chipCode);
+        var result = await _productDetailService.GetByCodeAsync(chipCode, barCode, tagId);
         return StatusCode(result.StatusCode, result);
     }
 
