@@ -235,8 +235,9 @@ public partial class ChiBestDbContext : DbContext
                 .HasColumnType("timestamp(3) without time zone");
             entity.Property(e => e.PaidAmount).HasColumnType("money");
             entity.Property(e => e.RemainingDebt)
-                .HasComputedColumnSql("(\"TotalDebt\" - \"PaidAmount\")", true)
+                .HasComputedColumnSql("((\"TotalDebt\" - \"PaidAmount\") - \"ReturnAmount\")", true)
                 .HasColumnType("money");
+            entity.Property(e => e.ReturnAmount).HasColumnType("money");
             entity.Property(e => e.TotalDebt).HasColumnType("money");
 
             entity.HasOne(d => d.Branch).WithOne(p => p.BranchDebt)
@@ -1040,8 +1041,9 @@ public partial class ChiBestDbContext : DbContext
                 .HasColumnType("timestamp(3) without time zone");
             entity.Property(e => e.PaidAmount).HasColumnType("money");
             entity.Property(e => e.RemainingDebt)
-                .HasComputedColumnSql("(\"TotalDebt\" - \"PaidAmount\")", true)
+                .HasComputedColumnSql("((\"TotalDebt\" - \"PaidAmount\") - \"ReturnAmount\")", true)
                 .HasColumnType("money");
+            entity.Property(e => e.ReturnAmount).HasColumnType("money");
             entity.Property(e => e.TotalDebt).HasColumnType("money");
 
             entity.HasOne(d => d.Supplier).WithOne(p => p.SupplierDebt)

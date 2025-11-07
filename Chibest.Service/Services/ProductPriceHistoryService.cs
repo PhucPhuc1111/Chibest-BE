@@ -10,6 +10,7 @@ using Chibest.Service.Utilities;
 using Mapster;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
+using System.Linq;
 using System.Linq.Expressions;
 using System.Text.Json;
 
@@ -84,7 +85,8 @@ public class ProductPriceHistoryService : IProductPriceHistoryService
 
         if (!string.IsNullOrEmpty(query.Note))
         {
-            predicate = predicate.And(p => p.Note.Contains(query.Note));
+            var noteTerm = query.Note;
+            predicate = predicate.And(p => p.Note != null && p.Note.Contains(noteTerm));
         }
 
         Func<IQueryable<ProductPriceHistory>, IOrderedQueryable<ProductPriceHistory>>? orderBy = null;
@@ -107,11 +109,12 @@ public class ProductPriceHistoryService : IProductPriceHistoryService
             query.PageNumber,
             query.PageSize,
             predicate,
-            orderBy
+            orderBy,
+            include: q => q.Include(p => p.Product)
         );
 
         var totalCount = await _unitOfWork.ProductPriceHistoryRepository.GetByWhere(predicate).CountAsync();
-        var response = priceHistories.Adapt<List<ProductPriceHistoryResponse>>();
+        var response = priceHistories.Select(MapToResponse).ToList();
 
         var pagedResult = new PagedResult<ProductPriceHistoryResponse>
         {
@@ -126,11 +129,14 @@ public class ProductPriceHistoryService : IProductPriceHistoryService
 
     public async Task<IBusinessResult> GetByIdAsync(Guid id)
     {
-        var priceHistory = await _unitOfWork.ProductPriceHistoryRepository.GetByIdAsync(id);
+        var priceHistory = await _unitOfWork.ProductPriceHistoryRepository.GetByWhere(p => p.Id == id)
+            .Include(p => p.Product)
+            .AsNoTracking()
+            .FirstOrDefaultAsync();
         if (priceHistory == null)
             return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, Const.FAIL_READ_MSG);
 
-        var response = priceHistory.Adapt<ProductPriceHistoryResponse>();
+        var response = MapToResponse(priceHistory);
         return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_READ_MSG, response);
     }
 
@@ -152,23 +158,27 @@ public class ProductPriceHistoryService : IProductPriceHistoryService
         }
 
         // Get the latest price for each product
-        var currentPrices = await _unitOfWork.ProductPriceHistoryRepository.GetByWhere(predicate)
+        var baseQuery = _unitOfWork.ProductPriceHistoryRepository.GetByWhere(predicate)
+            .Include(p => p.Product);
+
+        var currentPrices = await baseQuery
             .GroupBy(p => p.ProductId)
             .Select(g => g.OrderByDescending(p => p.EffectiveDate).ThenByDescending(p => p.CreatedAt).First())
             .ToListAsync();
 
-        var response = currentPrices.Adapt<IEnumerable<ProductPriceHistoryResponse>>();
+        var response = currentPrices.Select(MapToResponse).ToList();
         return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_READ_MSG, response);
     }
 
     public async Task<IBusinessResult> GetByProductIdAsync(Guid productId)
     {
         var priceHistories = await _unitOfWork.ProductPriceHistoryRepository.GetByWhere(p => p.ProductId == productId)
+            .Include(p => p.Product)
             .OrderByDescending(p => p.EffectiveDate)
             .ThenByDescending(p => p.CreatedAt)
             .ToListAsync();
 
-        var response = priceHistories.Adapt<IEnumerable<ProductPriceHistoryResponse>>();
+        var response = priceHistories.Select(MapToResponse).ToList();
         return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_READ_MSG, response);
     }
 
@@ -179,7 +189,7 @@ public class ProductPriceHistoryService : IProductPriceHistoryService
             .ThenByDescending(p => p.CreatedAt)
             .ToListAsync();
 
-        var response = priceHistories.Adapt<IEnumerable<ProductPriceHistoryResponse>>();
+        var response = priceHistories.Select(MapToResponse).ToList();
         return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_READ_MSG, response);
     }
 
@@ -237,7 +247,9 @@ public class ProductPriceHistoryService : IProductPriceHistoryService
         if (request.Id.HasValue == false || request.Id == Guid.Empty)
             return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
 
-        var existing = await _unitOfWork.ProductPriceHistoryRepository.GetByIdAsync(request.Id);
+        var existing = await _unitOfWork.ProductPriceHistoryRepository.GetByWhere(p => p.Id == request.Id)
+            .Include(p => p.Product)
+            .FirstOrDefaultAsync();
         if (existing == null)
             return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, Const.FAIL_READ_MSG);
 
@@ -288,6 +300,24 @@ public class ProductPriceHistoryService : IProductPriceHistoryService
                             $"Xóa lịch sử giá cho sản phẩm {existing.ProductId} - Giá: {existing.SellingPrice}");
 
         return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_DELETE_MSG);
+    }
+
+    private static ProductPriceHistoryResponse MapToResponse(ProductPriceHistory entity)
+    {
+        return new ProductPriceHistoryResponse
+        {
+            Id = entity.Id,
+            SellingPrice = entity.SellingPrice,
+            CostPrice = entity.CostPrice,
+            ProductName = entity.Product?.Name,
+            EffectiveDate = entity.EffectiveDate,
+            ExpiryDate = entity.ExpiryDate,
+            Note = entity.Note,
+            CreatedAt = entity.CreatedAt,
+            CreatedBy = entity.CreatedBy,
+            ProductId = entity.ProductId,
+            BranchId = entity.BranchId
+        };
     }
 
     private async Task LogSystemAction(string action, string entityType, Guid entityId, Guid accountId,

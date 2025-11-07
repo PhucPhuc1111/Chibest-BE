@@ -549,7 +549,8 @@ CREATE TABLE "SupplierDebt" (
     
     "TotalDebt" MONEY NOT NULL DEFAULT 0,
     "PaidAmount" MONEY NOT NULL DEFAULT 0,
-    "RemainingDebt" MONEY GENERATED ALWAYS AS ("TotalDebt" - "PaidAmount") STORED,
+    "ReturnAmount" MONEY NOT NULL DEFAULT 0, 
+    "RemainingDebt" MONEY GENERATED ALWAYS AS ("TotalDebt" - "PaidAmount" - "ReturnAmount") STORED,
     
     "LastTransactionDate" TIMESTAMP(3) NULL,
     "LastUpdated" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -579,8 +580,8 @@ CREATE TABLE "BranchDebt" (
 
     "TotalDebt" MONEY NOT NULL DEFAULT 0,
     "PaidAmount" MONEY NOT NULL DEFAULT 0,
-    "RemainingDebt" MONEY GENERATED ALWAYS AS ("TotalDebt" - "PaidAmount") STORED,
-
+    "ReturnAmount" MONEY NOT NULL DEFAULT 0, 
+    "RemainingDebt" MONEY GENERATED ALWAYS AS ("TotalDebt" - "PaidAmount" - "ReturnAmount") STORED,
     "LastTransactionDate" TIMESTAMP(3) NULL,
     "LastUpdated" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
