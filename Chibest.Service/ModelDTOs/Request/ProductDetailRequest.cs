@@ -2,8 +2,9 @@
 public class ProductDetailRequest
 {
     public Guid? Id { get; set; }
-
+    public string? BarCode { get; set; }
     public string? ChipCode { get; set; }
+    public string? TagId { get; set; }
 
     public Guid ProductId { get; set; }
 
@@ -11,6 +12,7 @@ public class ProductDetailRequest
 
     public Guid? WarehouseId { get; set; }
 
+    public decimal SellingPrice { get; set; }
     public decimal PurchasePrice { get; set; }
 
     public DateTime ImportDate { get; set; }
@@ -22,8 +24,4 @@ public class ProductDetailRequest
     public DateTime? LastTransactionDate { get; set; }
 
     public string? LastTransactionType { get; set; }
-
-    public DateTime CreatedAt { get; set; }
-
-    public DateTime UpdatedAt { get; set; }
 }

@@ -8,7 +8,7 @@ public interface IProductDetailService
 {
     Task<IBusinessResult> GetListAsync(ProductDetailQuery query);
     Task<IBusinessResult> GetByIdAsync(Guid id);
-    Task<IBusinessResult> GetByChipCodeAsync(string chipCode);
+    Task<IBusinessResult> GetByCodeAsync(string? chipCode, string? barcode, string? tagId);
     Task<IBusinessResult> CreateAsync(ProductDetailRequest request, Guid accountId);
     Task<IBusinessResult> UpdateAsync(ProductDetailRequest request, Guid accountId);
     Task<IBusinessResult> UpdateStatusAsync(Guid id, Guid accountId, string status);
