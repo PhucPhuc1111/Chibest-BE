@@ -34,7 +34,7 @@ public class ProductService : IProductService
             predicate = predicate.And(p =>
                 p.Name.ToLower().Contains(query.SearchTerm.ToLower()) ||
                 p.Sku.ToLower().Contains(query.SearchTerm.ToLower()) ||
-                p.Description.ToLower().Contains(query.SearchTerm.ToLower()));
+                p.Description != null && p.Description.ToLower().Contains(query.SearchTerm.ToLower()));
         }
 
         if (!string.IsNullOrEmpty(query.Status))

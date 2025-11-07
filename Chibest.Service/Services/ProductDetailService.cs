@@ -31,16 +31,16 @@ public class ProductDetailService : IProductDetailService
 
         if (!string.IsNullOrEmpty(query.ChipCode))
         {
-            predicate = predicate.And(p => p.ChipCode.ToLower().Contains(query.ChipCode.ToLower()));
+            predicate = predicate.And(p => p.ChipCode != null && p.ChipCode.ToLower().Contains(query.ChipCode.ToLower()));
         }
 
         if (!string.IsNullOrEmpty(query.BarCode))
         {
-            predicate = predicate.And(p => p.BarCode.ToLower().Contains(query.BarCode.ToLower()));
+            predicate = predicate.And(p => p.BarCode != null && p.BarCode.ToLower().Contains(query.BarCode.ToLower()));
         }
         if (!string.IsNullOrEmpty(query.TagId))
         {
-            predicate = predicate.And(p => p.TagId.ToLower().Contains(query.TagId.ToLower()));
+            predicate = predicate.And(p => p.TagId != null && p.TagId.ToLower().Contains(query.TagId.ToLower()));
         }
 
         if (query.ProductId.HasValue)
