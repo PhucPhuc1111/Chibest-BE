@@ -8,6 +8,7 @@ using Chibest.Service.Utilities;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using OfficeOpenXml;
+using System;
 using System.Linq.Expressions;
 using static Chibest.Service.ModelDTOs.Stock.TransferOrder.create;
 using static Chibest.Service.ModelDTOs.Stock.TransferOrder.id;
@@ -28,52 +29,108 @@ namespace Chibest.Service.Services
             if (request == null || request.Destinations == null || !request.Destinations.Any())
                 return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Invalid request");
 
-            var createdOrders = new List<object>();
-
-            try
-            {
-                foreach (var dest in request.Destinations)
+            var destinationSummaries = request.Destinations
+                .Select(dest => new
                 {
-                    var singleRequest = new TransferOrderCreate
-                    {
-                        FromWarehouseId = request.FromWarehouseId,
-                        ToWarehouseId = dest.ToWarehouseId,
-                        EmployeeId = request.EmployeeId,
-                        OrderDate = request.OrderDate,
-                        DiscountAmount = request.DiscountAmount,
-                        SubTotal = request.SubTotal,
-                        Paid = request.Paid,
-                        Note = request.Note,
-                        PayMethod = request.PayMethod,
-                        TransferOrderDetails = dest.Products.Select(p => new TransferOrderDetailCreate
-                        {
-                            ProductId = p.ProductId,
-                            Quantity = p.Quantity,
-                            UnitPrice = p.UnitPrice,
-                            ExtraFee = p.ExtraFee,
-                            CommissionFee = p.CommissionFee,
-                            Discount = p.Discount,
-                            Note = p.Note
-                        }).ToList()
-                    };
+                    Destination = dest,
+                    SubTotal = Math.Round(dest.SubTotal > 0
+                        ? dest.SubTotal
+                        : CalculateBranchSubtotal(dest.Products), 2, MidpointRounding.AwayFromZero)
+                })
+                .ToList();
 
-                    var result = await AddTransferOrder(singleRequest);
+            if (!destinationSummaries.Any())
+                return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Không có chi nhánh hợp lệ để tạo phiếu");
 
-                    if (result.StatusCode != Const.HTTP_STATUS_OK)
+            var totalSubTotal = destinationSummaries.Sum(x => x.SubTotal);
+            var createdOrders = new List<object>();
+            decimal distributedDiscount = 0;
+            decimal distributedPaid = 0;
+
+            for (int index = 0; index < destinationSummaries.Count; index++)
+            {
+                var summary = destinationSummaries[index];
+                var dest = summary.Destination;
+                bool isLast = index == destinationSummaries.Count - 1;
+
+                decimal branchDiscount = 0;
+                decimal branchPaid = 0;
+
+                if (totalSubTotal > 0)
+                {
+                    if (isLast)
                     {
-                        return new BusinessResult(Const.ERROR_EXCEPTION,
-                            $"Error creating order for warehouse {dest.ToWarehouseId}", result.Message);
+                        branchDiscount = request.DiscountAmount - distributedDiscount;
+                        branchPaid = request.Paid - distributedPaid;
                     }
-
-                    createdOrders.Add(result.Data);
+                    else
+                    {
+                        branchDiscount = request.DiscountAmount * summary.SubTotal / totalSubTotal;
+                        branchPaid = request.Paid * summary.SubTotal / totalSubTotal;
+                    }
+                }
+                else if (isLast)
+                {
+                    branchDiscount = request.DiscountAmount - distributedDiscount;
+                    branchPaid = request.Paid - distributedPaid;
                 }
 
-                return new BusinessResult(Const.HTTP_STATUS_OK, "All transfer orders created successfully", createdOrders);
+                branchDiscount = Math.Round(branchDiscount, 2, MidpointRounding.AwayFromZero);
+                branchPaid = Math.Round(branchPaid, 2, MidpointRounding.AwayFromZero);
+
+                distributedDiscount += branchDiscount;
+                distributedPaid += branchPaid;
+
+                var detailRequests = (dest.Products ?? new List<BranchProductTransfer>()).Select(p => new TransferOrderDetailCreate
+                {
+                    ProductId = p.ProductId,
+                    Quantity = p.Quantity,
+                    UnitPrice = p.UnitPrice,
+                    ExtraFee = p.ExtraFee,
+                    CommissionFee = p.CommissionFee,
+                    Discount = p.Discount,
+                    Note = p.Note
+                }).ToList();
+
+                var singleRequest = new TransferOrderCreate
+                {
+                    FromWarehouseId = request.FromWarehouseId,
+                    ToWarehouseId = dest.ToWarehouseId,
+                    EmployeeId = request.EmployeeId,
+                    OrderDate = request.OrderDate,
+                    DiscountAmount = branchDiscount,
+                    SubTotal = summary.SubTotal,
+                    Paid = branchPaid,
+                    Note = request.Note,
+                    PayMethod = request.PayMethod,
+                    TransferOrderDetails = detailRequests
+                };
+
+                var result = await AddTransferOrder(singleRequest);
+
+                if (result.StatusCode != Const.HTTP_STATUS_OK)
+                {
+                    return new BusinessResult(Const.ERROR_EXCEPTION,
+                        $"Error creating order for warehouse {dest.ToWarehouseId}", result.Message ?? string.Empty);
+                }
+
+                if (result is BusinessResult orderResult && orderResult.Data != null)
+                {
+                    createdOrders.Add(orderResult.Data);
+                }
+                else
+                {
+                    createdOrders.Add(new
+                    {
+                        WarehouseId = dest.ToWarehouseId,
+                        singleRequest.SubTotal,
+                        singleRequest.DiscountAmount,
+                        singleRequest.Paid
+                    });
+                }
             }
-            catch (Exception ex)
-            {
-                return new BusinessResult(Const.ERROR_EXCEPTION, "Error creating multi transfer orders", ex.Message);
-            }
+
+            return new BusinessResult(Const.HTTP_STATUS_OK, "All transfer orders created successfully", createdOrders);
         }
 
         public async Task<IBusinessResult> UpdateTransferOrderAsync(Guid id, TransferOrderUpdate request)
@@ -179,6 +236,31 @@ namespace Chibest.Service.Services
             if (request == null)
                 return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Invalid request");
 
+            if (request.TransferOrderDetails == null || !request.TransferOrderDetails.Any())
+                return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Transfer order must contain at least one product");
+
+            var orderSubTotal = request.SubTotal > 0
+                ? Math.Round(request.SubTotal, 2, MidpointRounding.AwayFromZero)
+                : Math.Round(CalculateTransferOrderSubtotal(request.TransferOrderDetails), 2, MidpointRounding.AwayFromZero);
+
+            var orderDiscountAmount = Math.Round(request.DiscountAmount, 2, MidpointRounding.AwayFromZero);
+            var orderPaid = Math.Round(request.Paid, 2, MidpointRounding.AwayFromZero);
+
+            orderSubTotal = Math.Max(orderSubTotal, 0m);
+            orderDiscountAmount = Math.Max(orderDiscountAmount, 0m);
+            orderPaid = Math.Max(orderPaid, 0m);
+
+            if (orderDiscountAmount > orderSubTotal)
+            {
+                orderDiscountAmount = orderSubTotal;
+            }
+
+            var maxPayable = orderSubTotal - orderDiscountAmount;
+            if (orderPaid > maxPayable)
+            {
+                orderPaid = maxPayable;
+            }
+
             string invoiceCode = request.InvoiceCode;
             if (invoiceCode == null)
                 invoiceCode = await GenerateInvoiceCodeAsync();
@@ -188,9 +270,9 @@ namespace Chibest.Service.Services
                 Id = Guid.NewGuid(),
                 InvoiceCode = invoiceCode,
                 OrderDate = request.OrderDate,
-                DiscountAmount = request.DiscountAmount,
-                SubTotal = request.SubTotal,
-                Paid = request.Paid,
+                DiscountAmount = orderDiscountAmount,
+                SubTotal = orderSubTotal,
+                Paid = orderPaid,
                 Note = request.Note,
                 PayMethod = request.PayMethod,
                 FromWarehouseId = request.FromWarehouseId,
@@ -235,6 +317,42 @@ namespace Chibest.Service.Services
 
                 return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_CREATE_MSG, new { transferOrder.InvoiceCode });
             
+        }
+
+        private decimal CalculateBranchSubtotal(IEnumerable<BranchProductTransfer> products)
+        {
+            if (products == null)
+                return 0m;
+
+            decimal total = 0m;
+
+            foreach (var product in products)
+            {
+                total += CalculateLineSubtotal(product.Quantity, product.UnitPrice, product.ExtraFee, product.CommissionFee, product.Discount);
+            }
+
+            return total;
+        }
+
+        private decimal CalculateTransferOrderSubtotal(IEnumerable<TransferOrderDetailCreate> details)
+        {
+            if (details == null)
+                return 0m;
+
+            decimal total = 0m;
+
+            foreach (var detail in details)
+            {
+                total += CalculateLineSubtotal(detail.Quantity, detail.UnitPrice, detail.ExtraFee, detail.CommissionFee, detail.Discount);
+            }
+
+            return total;
+        }
+
+        private decimal CalculateLineSubtotal(int quantity, decimal unitPrice, decimal extraFee, decimal commissionFee, decimal discount)
+        {
+            var lineTotal = ((unitPrice + extraFee + commissionFee) * quantity) - discount;
+            return Math.Max(lineTotal, 0m);
         }
 
         public async Task<IBusinessResult> GetTransferOrderList(

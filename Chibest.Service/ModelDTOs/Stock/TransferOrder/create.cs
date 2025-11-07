@@ -57,7 +57,6 @@ namespace Chibest.Service.ModelDTOs.Stock.TransferOrder
             public string? Note { get; set; }
             public string? PayMethod { get; set; }
             public decimal DiscountAmount { get; set; }
-            public decimal SubTotal { get; set; }
             public decimal Paid { get; set; }
 
             // Danh sách chuyển hàng đến nhiều chi nhánh
@@ -70,6 +69,7 @@ namespace Chibest.Service.ModelDTOs.Stock.TransferOrder
         public class BranchTransferInfo
         {
             public Guid ToWarehouseId { get; set; }
+            public decimal SubTotal { get; set; }
 
             // Danh sách sản phẩm + phí riêng của chi nhánh đó
             public List<BranchProductTransfer> Products { get; set; } = new();
