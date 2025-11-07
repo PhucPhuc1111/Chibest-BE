@@ -4,7 +4,6 @@ public class ProductPriceHistoryResponse
     public Guid Id { get; set; }
 
     public decimal SellingPrice { get; set; }
-    public decimal CostPrice { get; set; }
 
     public decimal CostPrice { get; set; }
 
