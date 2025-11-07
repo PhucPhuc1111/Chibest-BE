@@ -181,7 +181,7 @@ public class FileService : IFileService
         return Path.Combine(relativePath, finalFileName);
     }
 
-    public (Stream FileStream, string ContentType) GetImageFileAsync(string relativePath)
+    public (Stream FileStream, string ContentType) GetImageFile(string relativePath)
     {
         // relativePath VD: /images/avatars/file.png
         var physicalFilePath = Path.Combine(_privateStoragePath, relativePath);
@@ -266,7 +266,7 @@ public class FileService : IFileService
                         try
                         {
                             // Gọi hàm helper của bạn để lấy stream
-                            var (fileStream, contentType) = GetImageFileAsync(item.AvatarUrl);
+                            var (fileStream, contentType) = GetImageFile(item.AvatarUrl);
 
                             using (fileStream)
                             {

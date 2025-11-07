@@ -33,12 +33,12 @@ public class FileController : ControllerBase
 
     [Authorize]
     [HttpGet("image")]
-    public async Task<IActionResult> GetImage([FromQuery] string urlPath)
+    public IActionResult GetImage([FromQuery] string urlPath)
     {
         if (string.IsNullOrEmpty(urlPath))
             return BadRequest("Đường dẫn file là bắt buộc.");
 
-        var (fileStream, contentType) = _fileService.GetImageFileAsync(urlPath);
+        var (fileStream, contentType) = _fileService.GetImageFile(urlPath);
 
         // Trả về file stream, trình duyệt sẽ tự hiển thị
         return File(fileStream, contentType);
