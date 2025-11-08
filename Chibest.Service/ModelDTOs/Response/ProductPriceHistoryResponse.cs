@@ -7,8 +7,6 @@ public class ProductPriceHistoryResponse
 
     public decimal CostPrice { get; set; }
 
-    public string? ProductName { get; set; }
-
     public DateTime EffectiveDate { get; set; }
 
     public DateTime? ExpiryDate { get; set; }

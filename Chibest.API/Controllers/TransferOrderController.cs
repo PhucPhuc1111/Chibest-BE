@@ -2,6 +2,7 @@
 using Chibest.Common.BusinessResult;
 using Chibest.Service.Interface;
 using Chibest.Service.ModelDTOs.Stock.PurchaseOrder;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OfficeOpenXml;
 using static Chibest.Service.ModelDTOs.Stock.TransferOrder.create;
@@ -11,6 +12,7 @@ namespace Chibest.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class TransferOrder : ControllerBase
     {
         private readonly ITransferOrderService _transferOrderService;
@@ -37,6 +39,7 @@ namespace Chibest.API.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> CreateTransferOrder([FromBody] TransferOrderCreate request)
         {
             var result = await _transferOrderService.AddTransferOrder(request);
@@ -44,6 +47,7 @@ namespace Chibest.API.Controllers
         }
 
         [HttpPost("multiple")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> CreateMultipleTransferOrder([FromBody] TransferMultiOrderCreate request)
         {
             var result = await _transferOrderService.AddMultiTransferOrder(request);
@@ -51,18 +55,21 @@ namespace Chibest.API.Controllers
         }
 
         [HttpPut("{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> UpdateTransferOrder(Guid id, [FromBody] TransferOrderUpdate request)
         {
             var result = await _transferOrderService.UpdateTransferOrderAsync(id, request);
             return StatusCode(result.StatusCode, result);
         }
         [HttpPost("import")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> TransferOrderfile(IFormFile file)
         {
             var result = await _transferOrderService.ReadTransferDetailFromExcel(file);
             return StatusCode(result.StatusCode, result);
         }
         [HttpDelete("{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteTransferOrder(Guid id)
         {
             var result = await _transferOrderService.DeleteTransferOrder(id);

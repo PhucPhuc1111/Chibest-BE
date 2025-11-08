@@ -30,12 +30,18 @@ namespace Chibest.Service.Services
                 return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Invalid request");
 
             var destinationSummaries = request.Destinations
-                .Select(dest => new
+                .Select(dest =>
                 {
-                    Destination = dest,
-                    SubTotal = Math.Round(dest.SubTotal > 0
-                        ? dest.SubTotal
-                        : CalculateBranchSubtotal(dest.Products), 2, MidpointRounding.AwayFromZero)
+                    var products = dest.Products ?? new List<BranchProductTransfer>();
+                    var calculatedSubtotal = CalculateBranchSubtotal(products);
+                    var roundedSubtotal = Math.Round(calculatedSubtotal, 2, MidpointRounding.AwayFromZero);
+
+                    return new
+                    {
+                        Destination = dest,
+                        Products = products,
+                        SubTotal = roundedSubtotal
+                    };
                 })
                 .ToList();
 
@@ -81,7 +87,7 @@ namespace Chibest.Service.Services
                 distributedDiscount += branchDiscount;
                 distributedPaid += branchPaid;
 
-                var detailRequests = (dest.Products ?? new List<BranchProductTransfer>()).Select(p => new TransferOrderDetailCreate
+                var detailRequests = summary.Products.Select(p => new TransferOrderDetailCreate
                 {
                     ProductId = p.ProductId,
                     Quantity = p.Quantity,
@@ -239,9 +245,7 @@ namespace Chibest.Service.Services
             if (request.TransferOrderDetails == null || !request.TransferOrderDetails.Any())
                 return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Transfer order must contain at least one product");
 
-            var orderSubTotal = request.SubTotal > 0
-                ? Math.Round(request.SubTotal, 2, MidpointRounding.AwayFromZero)
-                : Math.Round(CalculateTransferOrderSubtotal(request.TransferOrderDetails), 2, MidpointRounding.AwayFromZero);
+            var orderSubTotal = Math.Round(CalculateTransferOrderSubtotal(request.TransferOrderDetails), 2, MidpointRounding.AwayFromZero);
 
             var orderDiscountAmount = Math.Round(request.DiscountAmount, 2, MidpointRounding.AwayFromZero);
             var orderPaid = Math.Round(request.Paid, 2, MidpointRounding.AwayFromZero);

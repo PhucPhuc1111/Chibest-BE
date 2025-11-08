@@ -6,7 +6,7 @@ namespace Chibest.Service.Interface;
 
 public interface IProductPriceHistoryService
 {
-    Task<IBusinessResult> GetListAsync(ProductPriceHistoryQuery query);
+    Task<IBusinessResult> GetListAsync(ProductPriceHistoryQuery query, string? productName = null);
     Task<IBusinessResult> GetByIdAsync(Guid id);
     Task<IBusinessResult> GetCurrentPricesAsync(Guid? branchId = null);
     Task<IBusinessResult> GetByProductIdAsync(Guid productId);

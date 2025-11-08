@@ -1,10 +1,14 @@
-﻿namespace Chibest.Service.ModelDTOs.Request.Query;
+﻿using System;
+
+namespace Chibest.Service.ModelDTOs.Request.Query;
 
 public class ProductPriceHistoryQuery : BaseQuery
 {
     public Guid? ProductId { get; set; }
     public Guid? BranchId { get; set; }
     public Guid? CreatedBy { get; set; }
+    public string? ProductName { get; set; }
+    public string? ListCategory { get; set; }
     public DateTime? EffectiveDateFrom { get; set; }
     public DateTime? EffectiveDateTo { get; set; }
     public DateTime? ExpiryDateFrom { get; set; }
