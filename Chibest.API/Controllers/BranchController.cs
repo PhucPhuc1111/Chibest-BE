@@ -1,11 +1,13 @@
 ﻿using Chibest.Service.Interface;
 using Chibest.Service.ModelDTOs.Request;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Chibest.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class BranchController : ControllerBase
     {
         private readonly IBranchService _branchService;
@@ -33,6 +35,7 @@ namespace Chibest.API.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> CreateBranch([FromBody] BranchRequest request)
         {
             var result = await _branchService.CreateBranch(request);
@@ -40,6 +43,7 @@ namespace Chibest.API.Controllers
         }
 
         [HttpPut("{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> UpdateBranch(Guid id, [FromBody] BranchRequest request)
         {
             var result = await _branchService.UpdateBranch(id, request);
@@ -47,6 +51,7 @@ namespace Chibest.API.Controllers
         }
 
         [HttpDelete("{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteBranch(Guid id)
         {
             var result = await _branchService.DeleteBranch(id);

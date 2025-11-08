@@ -23,7 +23,7 @@ public class ProductPriceHistoryController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetList([FromQuery] ProductPriceHistoryQuery query)
     {
-        var result = await _priceHistoryService.GetListAsync(query);
+        var result = await _priceHistoryService.GetListAsync(query, query.ProductName);
         return StatusCode(result.StatusCode, result);
     }
 

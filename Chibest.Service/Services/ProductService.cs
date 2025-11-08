@@ -10,6 +10,7 @@ using Chibest.Service.Utilities;
 using Mapster;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Collections.Generic;
 using System.Linq.Expressions;
 using System.Text.Json;
 
@@ -82,9 +83,7 @@ public class ProductService : IProductService
 
         var response = products.Select(product =>
         {
-            var latestPrice = product.ProductPriceHistories?
-                .OrderByDescending(h => h.CreatedAt)
-                .FirstOrDefault();
+            var latestPrice = GetLatestPriceHistory(product.ProductPriceHistories, query.BranchId);
 
             var branchStock = query.BranchId.HasValue
                 ? product.BranchStocks?.FirstOrDefault(bs => bs.BranchId == query.BranchId.Value)
@@ -143,9 +142,7 @@ public class ProductService : IProductService
         if (product == null)
             return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, Const.FAIL_READ_MSG);
 
-        var latestPrice = product.ProductPriceHistories
-            .OrderByDescending(h => h.CreatedAt)
-            .FirstOrDefault();
+        var latestPrice = GetLatestPriceHistory(product.ProductPriceHistories, branchId);
 
         var response = new ProductResponse
         {
@@ -189,9 +186,7 @@ public class ProductService : IProductService
         if (product == null)
             return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, Const.FAIL_READ_MSG);
 
-        var latestPrice = product.ProductPriceHistories?
-            .OrderByDescending(h => h.CreatedAt)
-            .FirstOrDefault();
+        var latestPrice = GetLatestPriceHistory(product.ProductPriceHistories, branchId);
 
         var response = new ProductResponse
         {
@@ -355,5 +350,36 @@ public class ProductService : IProductService
         };
 
         await _systemLogService.CreateAsync(logRequest);
+    }
+
+    private static ProductPriceHistory? GetLatestPriceHistory(IEnumerable<ProductPriceHistory>? priceHistories, Guid? branchId)
+    {
+        if (priceHistories == null)
+            return null;
+
+        ProductPriceHistory? SelectLatest(IEnumerable<ProductPriceHistory> source) =>
+            source
+                .OrderByDescending(h => h.EffectiveDate)
+                .ThenByDescending(h => h.CreatedAt)
+                .FirstOrDefault();
+
+        if (branchId.HasValue)
+        {
+            var branchMatch = SelectLatest(priceHistories.Where(h => h.BranchId == branchId));
+            if (branchMatch != null)
+                return branchMatch;
+
+            var globalMatch = SelectLatest(priceHistories.Where(h => h.BranchId == null));
+            if (globalMatch != null)
+                return globalMatch;
+        }
+        else
+        {
+            var globalMatch = SelectLatest(priceHistories.Where(h => h.BranchId == null));
+            if (globalMatch != null)
+                return globalMatch;
+        }
+
+        return SelectLatest(priceHistories);
     }
 }

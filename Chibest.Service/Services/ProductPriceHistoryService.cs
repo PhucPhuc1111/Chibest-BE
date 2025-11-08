@@ -29,7 +29,7 @@ public class ProductPriceHistoryService : IProductPriceHistoryService
         _systemLogService = systemLogService;
     }
 
-    public async Task<IBusinessResult> GetListAsync(ProductPriceHistoryQuery query)
+    public async Task<IBusinessResult> GetListAsync(ProductPriceHistoryQuery query, string? productName = null)
     {
         Expression<Func<ProductPriceHistory, bool>> predicate = p => true;
 
@@ -40,7 +40,41 @@ public class ProductPriceHistoryService : IProductPriceHistoryService
 
         if (query.BranchId.HasValue)
         {
-            predicate = predicate.And(p => p.BranchId == query.BranchId.Value);
+            var branchId = query.BranchId.Value;
+            predicate = predicate.And(p => p.BranchId == null || p.BranchId == branchId);
+        }
+        else
+        {
+            predicate = predicate.And(p => p.BranchId == null);
+        }
+
+        var productNameFilter = string.IsNullOrWhiteSpace(productName) ? query.ProductName : productName;
+
+        if (!string.IsNullOrWhiteSpace(productNameFilter))
+        {
+            var loweredProductName = productNameFilter.ToLower();
+            predicate = predicate.And(p =>
+                p.Product != null &&
+                p.Product.Name != null &&
+                p.Product.Name.ToLower().Contains(loweredProductName) || p.Product.Sku.ToLower().Contains(loweredProductName));
+        }
+
+        if (!string.IsNullOrWhiteSpace(query.ListCategory))
+        {
+            var categoryIds = query.ListCategory
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Select(value => Guid.TryParse(value, out var parsed) ? parsed : (Guid?)null)
+                .Where(parsed => parsed.HasValue && parsed.Value != Guid.Empty)
+                .Select(parsed => parsed!.Value)
+                .Distinct()
+                .ToList();
+
+            if (categoryIds.Count > 0)
+            {
+                predicate = predicate.And(p =>
+                    p.Product != null &&
+                    categoryIds.Contains(p.Product.CategoryId));
+            }
         }
 
         if (query.CreatedBy.HasValue)
@@ -396,24 +430,6 @@ public class ProductPriceHistoryService : IProductPriceHistoryService
                             $"Xóa lịch sử giá cho sản phẩm {existing.ProductId} - Giá: {existing.SellingPrice}");
 
         return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_DELETE_MSG);
-    }
-
-    private static ProductPriceHistoryResponse MapToResponse(ProductPriceHistory entity)
-    {
-        return new ProductPriceHistoryResponse
-        {
-            Id = entity.Id,
-            SellingPrice = entity.SellingPrice,
-            CostPrice = entity.CostPrice,
-            ProductName = entity.Product?.Name,
-            EffectiveDate = entity.EffectiveDate,
-            ExpiryDate = entity.ExpiryDate,
-            Note = entity.Note,
-            CreatedAt = entity.CreatedAt,
-            CreatedBy = entity.CreatedBy,
-            ProductId = entity.ProductId,
-            BranchId = entity.BranchId
-        };
     }
 
     private async Task LogSystemAction(string action, string entityType, Guid entityId, Guid accountId,

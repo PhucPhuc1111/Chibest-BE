@@ -7,6 +7,7 @@ namespace Chibest.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class WarehouseController : ControllerBase
     {
         private readonly IWarehouseService _warehouseService;
@@ -34,6 +35,7 @@ namespace Chibest.API.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> CreateWarehouse([FromBody] WarehouseRequest request)
         {
             var result = await _warehouseService.CreateWarehouse(request);
@@ -41,6 +43,7 @@ namespace Chibest.API.Controllers
         }
 
         [HttpPut("{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> UpdateWarehouse(Guid id, [FromBody] WarehouseRequest request)
         {
             var result = await _warehouseService.UpdateWarehouse(id, request);
@@ -48,6 +51,7 @@ namespace Chibest.API.Controllers
         }
 
         [HttpDelete("{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteWarehouse(Guid id)
         {
             var result = await _warehouseService.DeleteWarehouse(id);
