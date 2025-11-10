@@ -28,9 +28,13 @@ namespace Chibest.API.Controllers
         public async Task<IActionResult> GetStockAdjustmentList(
             [FromQuery] int pageIndex = 1,
             [FromQuery] int pageSize = 10,
-            [FromQuery] string? search = null, DateTime? fromDate = null, DateTime? toDate = null, string? status = null)
+            [FromQuery] string? search = null,
+            DateTime? fromDate = null,
+            DateTime? toDate = null,
+            string? status = null,
+            Guid? branchId = null)
         {
-            var result = await _stockAdjusmentService.GetStockAdjustmentList(pageIndex, pageSize, search, fromDate, toDate, status);
+            var result = await _stockAdjusmentService.GetStockAdjustmentList(pageIndex, pageSize, search, fromDate, toDate, status, branchId: branchId);
             return StatusCode(result.StatusCode, result);
         }
 

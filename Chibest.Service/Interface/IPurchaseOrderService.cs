@@ -12,8 +12,8 @@ namespace Chibest.Service.Interface
     public interface IPurchaseOrderService
     {
         Task<IBusinessResult> AddPurchaseOrder(PurchaseOrderCreate request);
-        Task<IBusinessResult> GetPurchaseOrderList(int pageIndex, int pageSize, string search,
-    DateTime? fromDate = null, DateTime? toDate = null, string status = null);
+        Task<IBusinessResult> GetPurchaseOrderList(int pageIndex, int pageSize, string? search = null,
+    DateTime? fromDate = null, DateTime? toDate = null, string? status = null, Guid? branchId = null);
         Task<IBusinessResult> UpdateAsync(Guid id, PurchaseOrderUpdate request);
         Task<IBusinessResult> GetPurchaseOrderById(Guid id);
         Task<IBusinessResult> ReadPurchaseOrderFromExcel(IFormFile file);

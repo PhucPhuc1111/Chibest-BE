@@ -17,10 +17,11 @@ namespace Chibest.Service.Interface
         Task<IBusinessResult> GetPurchaseReturnList(
             int pageIndex,
             int pageSize,
-            string search,
+            string? search = null,
             DateTime? fromDate = null,
             DateTime? toDate = null,
-            string status = null);
+            string? status = null,
+            Guid? branchId = null);
         Task<IBusinessResult> UpdatePurchaseReturnAsync(Guid id, OrderStatus status);
         Task<IBusinessResult> ReadPurchaseReturnFromExcel(IFormFile file);
         Task<IBusinessResult> DeletePurchaseReturn(Guid id);

@@ -173,7 +173,8 @@ namespace Chibest.Service.Services
     DateTime? fromDate = null,
     DateTime? toDate = null,
     string? status = null,
-    string? adjustmentType = null)
+    string? adjustmentType = null,
+    Guid? branchId = null)
         {
             Expression<Func<StockAdjustment, bool>> filter = x => true;
 
@@ -214,6 +215,15 @@ namespace Chibest.Service.Services
                 Expression<Func<StockAdjustment, bool>> toDateFilter =
                     x => x.AdjustmentDate <= endDate;
                 filter = filter.And(toDateFilter);
+            }
+
+            if (branchId.HasValue && branchId.Value != Guid.Empty)
+            {
+                Guid branchIdValue = branchId.Value;
+                Expression<Func<StockAdjustment, bool>> branchFilter =
+                    x => x.BranchId == branchIdValue
+                      || (x.Warehouse != null && x.Warehouse.BranchId == branchIdValue);
+                filter = filter.And(branchFilter);
             }
 
             var adjustments = await _unitOfWork.StockAdjusmentRepository.GetPagedAsync(

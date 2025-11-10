@@ -27,9 +27,13 @@ namespace Chibest.API.Controllers
         public async Task<IActionResult> GetPurchaseOrderList(
             [FromQuery] int pageIndex = 1,
             [FromQuery] int pageSize = 10,
-            [FromQuery] string? search = null, DateTime? fromDate = null, DateTime? toDate = null, string status = null)
+            [FromQuery] string? search = null,
+            DateTime? fromDate = null,
+            DateTime? toDate = null,
+            string status = null,
+            Guid? branchId = null)
         {
-            var result = await _purchaseOrderService.GetPurchaseOrderList(pageIndex, pageSize, search, fromDate,toDate,status);
+            var result = await _purchaseOrderService.GetPurchaseOrderList(pageIndex, pageSize, search, fromDate,toDate,status, branchId);
             return StatusCode(result.StatusCode, result);
         }
         [HttpPost]

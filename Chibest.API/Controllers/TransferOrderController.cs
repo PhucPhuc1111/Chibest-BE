@@ -31,10 +31,15 @@ namespace Chibest.API.Controllers
         public async Task<IActionResult> GetTransferOrderList(
             [FromQuery] int pageIndex = 1,
             [FromQuery] int pageSize = 10,
-            [FromQuery] string? search = null, DateTime? fromDate = null, DateTime? toDate = null, string status = null, Guid? fromWarehouseId = null,    // Thêm tham số filter kho chuyển (Guid)
-    Guid? toWarehouseId = null)
+            [FromQuery] string? search = null,
+            DateTime? fromDate = null,
+            DateTime? toDate = null,
+            string? status = null,
+            Guid? fromWarehouseId = null,
+            Guid? toWarehouseId = null,
+            Guid? branchId = null)
         {
-            var result = await _transferOrderService.GetTransferOrderList(pageIndex, pageSize, search, fromDate, toDate, status,fromWarehouseId,toWarehouseId);
+            var result = await _transferOrderService.GetTransferOrderList(pageIndex, pageSize, search, fromDate, toDate, status, fromWarehouseId, toWarehouseId, branchId);
             return StatusCode(result.StatusCode, result);
         }
 
