@@ -362,12 +362,13 @@ namespace Chibest.Service.Services
         public async Task<IBusinessResult> GetTransferOrderList(
     int pageIndex,
     int pageSize,
-    string search,
+    string? search = null,
     DateTime? fromDate = null,
     DateTime? toDate = null,
-    string status = null,
-    Guid? fromWarehouseId = null,    
-    Guid? toWarehouseId = null)     
+    string? status = null,
+    Guid? fromWarehouseId = null,
+    Guid? toWarehouseId = null,
+    Guid? branchId = null)
         {
             Expression<Func<TransferOrder, bool>> filter = x => true;
 
@@ -413,6 +414,15 @@ namespace Chibest.Service.Services
                 Expression<Func<TransferOrder, bool>> toWarehouseFilter =
                     x => x.ToWarehouse != null && x.ToWarehouse.Id == toWarehouseId.Value;
                 filter = filter.And(toWarehouseFilter);
+            }
+
+            if (branchId.HasValue && branchId.Value != Guid.Empty)
+            {
+                Guid branchIdValue = branchId.Value;
+                Expression<Func<TransferOrder, bool>> branchFilter =
+                    x => (x.FromWarehouse != null && x.FromWarehouse.BranchId == branchIdValue)
+                      || (x.ToWarehouse != null && x.ToWarehouse.BranchId == branchIdValue);
+                filter = filter.And(branchFilter);
             }
 
             var transferOrders = await _unitOfWork.TransferOrderRepository

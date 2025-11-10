@@ -107,10 +107,11 @@ namespace Chibest.Service.Services
         public async Task<IBusinessResult> GetPurchaseReturnList(
     int pageIndex,
     int pageSize,
-    string search,
+    string? search = null,
     DateTime? fromDate = null,
     DateTime? toDate = null,
-    string status = null)
+    string? status = null,
+    Guid? branchId = null)
         {
             Expression<Func<PurchaseReturn, bool>> filter = x => true;
 
@@ -139,6 +140,14 @@ namespace Chibest.Service.Services
                 DateTime endDate = toDate.Value.AddDays(1).AddSeconds(-1);
                 Expression<Func<PurchaseReturn, bool>> toDateFilter = x => x.OrderDate <= endDate;
                 filter = filter.And(toDateFilter);
+            }
+
+            if (branchId.HasValue)
+            {
+                Guid branchIdValue = branchId.Value;
+                Expression<Func<PurchaseReturn, bool>> branchFilter =
+                    x => x.Warehouse != null && x.Warehouse.BranchId == branchIdValue;
+                filter = filter.And(branchFilter);
             }
 
             var purchaseReturns = await _unitOfWork.PurchaseReturnRepository.GetPagedAsync(

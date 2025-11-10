@@ -19,7 +19,8 @@ namespace Chibest.Service.Interface
     DateTime? fromDate = null,
     DateTime? toDate = null,
     string? status = null,
-    string? adjustmentType = null);
+    string? adjustmentType = null,
+    Guid? branchId = null);
         Task<IBusinessResult> AddStockAdjustment(StockAdjustmentCreate request);
         Task<IBusinessResult> UpdateStockAdjustment(Guid id, StockAdjustmentUpdate request);
         Task<IBusinessResult> DeleteStockAdjustment(Guid id);

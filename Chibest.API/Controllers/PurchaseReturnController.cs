@@ -39,12 +39,13 @@ namespace Chibest.API.Controllers
         public async Task<IActionResult> GetList(
             int pageIndex = 1,
             int pageSize = 10,
-            string search = "",
+            string? search = null,
             DateTime? fromDate = null,
             DateTime? toDate = null,
-            string status = null)
+            string? status = null,
+            Guid? branchId = null)
         {
-            var result = await _purchaseReturnService.GetPurchaseReturnList(pageIndex, pageSize, search, fromDate, toDate, status);
+            var result = await _purchaseReturnService.GetPurchaseReturnList(pageIndex, pageSize, search, fromDate, toDate, status, branchId);
             return StatusCode(result.StatusCode, result);
         }
 
