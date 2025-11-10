@@ -3,7 +3,9 @@ using Chibest.Service.Interface;
 using Chibest.Service.ModelDTOs.Request;
 using Chibest.Service.ModelDTOs.Request.Query;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System;
 using System.Security.Claims;
 
 namespace Chibest.API.Controllers;
@@ -24,6 +26,21 @@ public class ProductController : ControllerBase
     public async Task<IActionResult> GetList([FromQuery] ProductQuery query)
     {
         var result = await _productService.GetListAsync(query);
+        return StatusCode(result.StatusCode, result);
+    }
+
+    [Authorize(Roles = Const.Roles.Admin)]
+    [HttpPost("import")]
+    public async Task<IActionResult> ImportProducts( IFormFile file)
+    {
+        if (file == null)
+            return StatusCode(Const.HTTP_STATUS_BAD_REQUEST, "File không hợp lệ.");
+
+        var accountId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(accountId) || accountId == Guid.Empty.ToString())
+            return StatusCode(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
+
+        var result = await _productService.ImportProductsFromExcelAsync(file, Guid.Parse(accountId));
         return StatusCode(result.StatusCode, result);
     }
 

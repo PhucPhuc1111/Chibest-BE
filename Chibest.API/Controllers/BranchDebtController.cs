@@ -3,6 +3,8 @@ using Chibest.Service.ModelDTOs.Request;
 using Chibest.Service.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System;
+using System.Net.Mime;
 
 namespace Chibest.API.Controllers
 {
@@ -67,6 +69,15 @@ namespace Chibest.API.Controllers
         {
             var result = await _branchDebtService.DeleteBranchDebtHistoryAsync(branchdebtId, historyId);
             return StatusCode(result.StatusCode, result);
+        }
+
+        [HttpGet("export")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> ExportBranchDebt()
+        {
+            var fileBytes = await _branchDebtService.ExportBranchDebtToExcelAsync();
+            var fileName = $"BranchDebts_{DateTime.Now:yyyyMMddHHmmss}.xlsx";
+            return File(fileBytes, MediaTypeNames.Application.Octet, fileName);
         }
 
     }

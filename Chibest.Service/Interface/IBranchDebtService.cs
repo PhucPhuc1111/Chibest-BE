@@ -23,5 +23,6 @@ namespace Chibest.Service.Interface
     decimal? debtFrom = null,
     decimal? debtTo = null);
         Task<IBusinessResult> DeleteBranchDebtHistoryAsync(Guid branchDebtId, Guid historyId);
+        Task<byte[]> ExportBranchDebtToExcelAsync();
     }
 }

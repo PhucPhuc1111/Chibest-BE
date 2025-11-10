@@ -7,6 +7,9 @@ using Chibest.Service.ModelDTOs.Request;
 using Chibest.Service.ModelDTOs.Response;
 using Chibest.Service.Utilities;
 using Microsoft.EntityFrameworkCore;
+using ClosedXML.Excel;
+using System.IO;
+using System.Linq;
 
 namespace Chibest.Service.Services
 {
@@ -211,7 +214,197 @@ namespace Chibest.Service.Services
             }
 
 
-    public async Task<IBusinessResult> DeleteBranchDebtHistoryAsync(Guid branchDebtId, Guid historyId)
+        public async Task<byte[]> ExportBranchDebtToExcelAsync()
+        {
+            var branchDebts = await _unitOfWork.BranchDebtRepository
+                .GetAll()
+                .Include(x => x.Branch)
+                .Include(x => x.BranchDebtHistories)
+                .OrderByDescending(x => x.TotalDebt)
+                .ToListAsync();
+
+            using (var workbook = new XLWorkbook())
+            {
+                var worksheet = workbook.Worksheets.Add("BranchDebts");
+                var headers = new[] { "STT", "Đại Lý", "Nợ Trong Kỳ", "Có", "Hàng Lỗi/Trả", "Nợ Phải Thu" };
+
+                for (int i = 0; i < headers.Length; i++)
+                {
+                    var headerCell = worksheet.Cell(1, i + 1);
+                    headerCell.Value = headers[i];
+                    headerCell.Style.Font.Bold = true;
+                    headerCell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+                    headerCell.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
+                    headerCell.Style.Fill.BackgroundColor = XLColor.FromHtml("#A9D08E");
+                }
+
+                worksheet.Row(1).Height = 25;
+                worksheet.SheetView.FreezeRows(1);
+
+                worksheet.Column(1).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+                worksheet.Column(1).Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
+                worksheet.Columns(3, 6).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Right;
+                worksheet.Columns(3, 6).Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
+
+                decimal totalDebt = 0m;
+                decimal totalPaid = 0m;
+                decimal totalReturn = 0m;
+                decimal totalRemaining = 0m;
+
+                for (int index = 0; index < branchDebts.Count; index++)
+                {
+                    var rowNumber = index + 2;
+                    var branchDebt = branchDebts[index];
+
+                    var branchName = branchDebt.Branch?.Name ?? "Unknown";
+                    var debt = branchDebt.TotalDebt;
+                    var paid = branchDebt.PaidAmount;
+                    var returnAmount = branchDebt.ReturnAmount;
+                    var remaining = branchDebt.RemainingDebt ?? 0m;
+
+                    worksheet.Cell(rowNumber, 1).Value = index + 1;
+                    worksheet.Cell(rowNumber, 2).Value = branchName;
+                    worksheet.Cell(rowNumber, 3).Value = debt;
+                    worksheet.Cell(rowNumber, 4).Value = paid;
+                    worksheet.Cell(rowNumber, 5).Value = returnAmount;
+                    worksheet.Cell(rowNumber, 6).Value = remaining;
+
+                    HighlightBranchDebtCell(worksheet.Cell(rowNumber, 3), debt);
+                    HighlightBranchDebtCell(worksheet.Cell(rowNumber, 4), paid);
+                    HighlightBranchDebtCell(worksheet.Cell(rowNumber, 5), returnAmount);
+                    HighlightBranchDebtCell(worksheet.Cell(rowNumber, 6), remaining, isRemainingColumn: true);
+
+                    totalDebt += debt;
+                    totalPaid += paid;
+                    totalReturn += returnAmount;
+                    totalRemaining += remaining;
+                }
+
+                var totalRow = branchDebts.Count + 2;
+                worksheet.Range(totalRow, 1, totalRow, 2).Merge();
+
+                var totalTitleCell = worksheet.Cell(totalRow, 1);
+                totalTitleCell.Value = "Tổng cộng";
+                totalTitleCell.Style.Font.Bold = true;
+                totalTitleCell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+                totalTitleCell.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
+                totalTitleCell.Style.Fill.BackgroundColor = XLColor.FromHtml("#E2EFDA");
+
+                worksheet.Cell(totalRow, 3).Value = totalDebt;
+                worksheet.Cell(totalRow, 4).Value = totalPaid;
+                worksheet.Cell(totalRow, 5).Value = totalReturn;
+                worksheet.Cell(totalRow, 6).Value = totalRemaining;
+
+                var totalRange = worksheet.Range(totalRow, 3, totalRow, 6);
+                totalRange.Style.Font.Bold = true;
+                totalRange.Style.Fill.BackgroundColor = XLColor.FromHtml("#E2EFDA");
+                totalRange.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Right;
+                totalRange.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
+
+                HighlightBranchDebtCell(worksheet.Cell(totalRow, 3), totalDebt);
+                HighlightBranchDebtCell(worksheet.Cell(totalRow, 4), totalPaid);
+                HighlightBranchDebtCell(worksheet.Cell(totalRow, 5), totalReturn);
+                HighlightBranchDebtCell(worksheet.Cell(totalRow, 6), totalRemaining, isRemainingColumn: true);
+
+                var lastRow = Math.Max(totalRow, 2);
+                var tableRange = worksheet.Range(1, 1, lastRow, headers.Length);
+                tableRange.Style.Border.TopBorder = XLBorderStyleValues.Thin;
+                tableRange.Style.Border.BottomBorder = XLBorderStyleValues.Thin;
+                tableRange.Style.Border.LeftBorder = XLBorderStyleValues.Thin;
+                tableRange.Style.Border.RightBorder = XLBorderStyleValues.Thin;
+
+                worksheet.Columns(3, 6).Style.NumberFormat.Format = "\"₫\" #,##0;\"₫\" -#,##0;\"₫\" 0";
+                worksheet.Column(1).AdjustToContents();
+                worksheet.Column(2).AdjustToContents();
+                worksheet.Columns(3, 6).AdjustToContents();
+
+                var branchDebtHistories = branchDebts
+                    .SelectMany(b => (b.BranchDebtHistories ?? Enumerable.Empty<BranchDebtHistory>())
+                        .Select(h => new
+                        {
+                            BranchName = b.Branch?.Name ?? "Unknown",
+                            History = h
+                        }))
+                    .OrderBy(h => h.History.TransactionDate)
+                    .ThenBy(h => h.History.CreatedAt)
+                    .ToList();
+
+                var historySheet = workbook.Worksheets.Add("BranchDebtHistories");
+                var historyHeaders = new[] { "Ngày", "Chi Nhánh", "Số Tiền", "Ghi Chú" };
+
+                for (int i = 0; i < historyHeaders.Length; i++)
+                {
+                    var headerCell = historySheet.Cell(1, i + 1);
+                    headerCell.Value = historyHeaders[i];
+                    headerCell.Style.Font.Bold = true;
+                    headerCell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+                    headerCell.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
+                    headerCell.Style.Fill.BackgroundColor = XLColor.FromHtml("#A9D08E");
+                }
+
+                historySheet.Row(1).Height = 25;
+                historySheet.SheetView.FreezeRows(1);
+
+                for (int index = 0; index < branchDebtHistories.Count; index++)
+                {
+                    var rowNumber = index + 2;
+                    var entry = branchDebtHistories[index];
+                    var history = entry.History;
+
+                    var dateCell = historySheet.Cell(rowNumber, 1);
+                    dateCell.Value = history.TransactionDate;
+                    dateCell.Style.DateFormat.Format = "dd/MM/yyyy";
+
+                    historySheet.Cell(rowNumber, 2).Value = entry.BranchName;
+
+                    var amountCell = historySheet.Cell(rowNumber, 3);
+                    amountCell.Value = history.Amount;
+                    HighlightBranchDebtCell(amountCell, history.Amount);
+
+                    historySheet.Cell(rowNumber, 4).Value = history.Note ?? string.Empty;
+                }
+
+                historySheet.Column(1).Width = 15;
+                historySheet.Column(2).AdjustToContents();
+                historySheet.Column(3).Style.NumberFormat.Format = "\"₫\" #,##0;\"₫\" -#,##0;\"₫\" 0";
+                historySheet.Column(3).AdjustToContents();
+                historySheet.Column(4).AdjustToContents();
+
+                var historyLastRow = Math.Max(branchDebtHistories.Count + 1, 2);
+                var historyRange = historySheet.Range(1, 1, historyLastRow, historyHeaders.Length);
+                historyRange.Style.Border.TopBorder = XLBorderStyleValues.Thin;
+                historyRange.Style.Border.BottomBorder = XLBorderStyleValues.Thin;
+                historyRange.Style.Border.LeftBorder = XLBorderStyleValues.Thin;
+                historyRange.Style.Border.RightBorder = XLBorderStyleValues.Thin;
+
+                using (var stream = new MemoryStream())
+                {
+                    workbook.SaveAs(stream);
+                    return stream.ToArray();
+                }
+            }
+        }
+
+        private static void HighlightBranchDebtCell(IXLCell cell, decimal value, bool isRemainingColumn = false)
+        {
+            if (value > 0)
+            {
+                cell.Style.Font.FontColor = isRemainingColumn
+                    ? XLColor.FromHtml("#1F4E78")
+                    : XLColor.FromHtml("#C00000");
+            }
+            else if (value < 0)
+            {
+                cell.Style.Font.FontColor = XLColor.FromHtml("#548235");
+            }
+            else
+            {
+                cell.Style.Font.FontColor = XLColor.Black;
+            }
+        }
+
+
+        public async Task<IBusinessResult> DeleteBranchDebtHistoryAsync(Guid branchDebtId, Guid historyId)
         {
             try
             {
