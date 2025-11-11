@@ -77,11 +77,11 @@ public class AccountService : IAccountService
             AccessToken = accessToken,
             RefreshToken = refreshToken,
             ExpiresIn = expireTimes.accessMinute * 60,//convert to seconds
-            AccountId = existAccount.Id,
             Email = existAccount.Email,
             UserName = existAccount.Name,
             Role = existAccRole.Role.Name,
             BranchId = existAccRole.BranchId,
+            Avatar = existAccount?.AvatarUrl
         };
         return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_LOGIN_MSG, authResponse);
     }
@@ -129,7 +129,6 @@ public class AccountService : IAccountService
             AccessToken = newAccessToken,
             RefreshToken = newRefreshToken,
             ExpiresIn = expireTimes.accessMinute * 60,//convert to seconds
-            AccountId = existAccount.Id,
             Email = existAccount.Email,
             UserName = existAccount.Name,
             Role = existAccRole.Role.Name,
@@ -354,6 +353,24 @@ public class AccountService : IAccountService
         await _unitOfWork.SaveChangesAsync();
 
         return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_UPDATE_MSG);
+    }
+
+    public async Task<IBusinessResult> UpdateAvatarAsync(Guid accountId, string avatarUrl)
+    {
+        if (accountId == Guid.Empty)
+            return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
+
+        var account = await _unitOfWork.AccountRepository.GetByIdAsync(accountId);
+        if (account == null)
+            return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, Const.FAIL_READ_MSG);
+
+        account.AvatarUrl = string.IsNullOrWhiteSpace(avatarUrl) ? null : avatarUrl;
+        account.UpdatedAt = DateTime.Now;
+
+        _unitOfWork.AccountRepository.Update(account);
+        await _unitOfWork.SaveChangesAsync();
+
+        return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_UPDATE_MSG, new { account.AvatarUrl });
     }
 
     public async Task<IBusinessResult> DeleteAccountAsync(Guid id)

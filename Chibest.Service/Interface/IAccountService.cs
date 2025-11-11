@@ -15,6 +15,7 @@ public interface IAccountService
     Task<IBusinessResult> UpdateAccountAsync(AccountRequest newData);
     Task<IBusinessResult> ChangeAccountStatusAsync(Guid accountId, string status, Guid makerId);
     Task<IBusinessResult> ChangeAccountPasswordAsync(Guid accountId, string newPassword);
+    Task<IBusinessResult> UpdateAvatarAsync(Guid accountId, string avatarUrl);
     Task<IBusinessResult> DeleteAccountAsync(Guid id);
     Task<IBusinessResult> GetSupplierAccountsAsync();
 }
