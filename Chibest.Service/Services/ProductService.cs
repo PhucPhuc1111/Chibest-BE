@@ -268,7 +268,6 @@ public class ProductService : IProductService
         return new BusinessResult(Const.HTTP_STATUS_CREATED, Const.SUCCESS_CREATE_MSG, response);
     }
 
-
     public async Task<IBusinessResult> UpdateAsync(ProductRequest request, Guid accountId)
     {
         if (request.Id.HasValue == false || request.Id == Guid.Empty)
@@ -608,30 +607,45 @@ public class ProductService : IProductService
         if (priceHistories == null)
             return null;
 
+        var now = DateTime.Now;
+
         ProductPriceHistory? SelectLatest(IEnumerable<ProductPriceHistory> source) =>
             source
                 .OrderByDescending(h => h.EffectiveDate)
                 .ThenByDescending(h => h.CreatedAt)
                 .FirstOrDefault();
 
+        ProductPriceHistory? SelectLatestActive(IEnumerable<ProductPriceHistory> source) =>
+            SelectLatest(source.Where(h => h.EffectiveDate <= now &&
+                                            (h.ExpiryDate == null || h.ExpiryDate > now)));
+
         if (branchId.HasValue)
         {
-            var branchMatch = SelectLatest(priceHistories.Where(h => h.BranchId == branchId));
-            if (branchMatch != null)
-                return branchMatch;
+            var branchSpecificActive = SelectLatestActive(priceHistories.Where(h => h.BranchId == branchId.Value));
+            if (branchSpecificActive != null)
+                return branchSpecificActive;
 
-            var globalMatch = SelectLatest(priceHistories.Where(h => h.BranchId == null));
-            if (globalMatch != null)
-                return globalMatch;
+            var globalActive = SelectLatestActive(priceHistories.Where(h => h.BranchId == null));
+            if (globalActive != null)
+                return globalActive;
+
+            var branchSpecific = SelectLatest(priceHistories.Where(h => h.BranchId == branchId.Value));
+            if (branchSpecific != null)
+                return branchSpecific;
         }
-        else
+
+        var latestGlobalActive = SelectLatestActive(priceHistories.Where(h => h.BranchId == null));
+        if (latestGlobalActive != null)
+            return latestGlobalActive;
+
+        if (branchId.HasValue)
         {
-            var globalMatch = SelectLatest(priceHistories.Where(h => h.BranchId == null));
-            if (globalMatch != null)
-                return globalMatch;
+            var branchFallback = SelectLatest(priceHistories.Where(h => h.BranchId == branchId.Value));
+            if (branchFallback != null)
+                return branchFallback;
         }
 
-        return SelectLatest(priceHistories);
+        return SelectLatest(priceHistories.Where(h => h.BranchId == null));
     }
 
     private static string NormalizeHeader(string header)

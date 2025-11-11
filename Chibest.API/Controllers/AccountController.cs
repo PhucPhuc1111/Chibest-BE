@@ -100,6 +100,18 @@ public class AccountController : ControllerBase
     }
 
     [Authorize]
+    [HttpPatch("avatar")]
+    public async Task<IActionResult> UpdateAvatar([FromForm] string avatarUrl)
+    {
+        var accountId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (accountId == null || accountId.Equals(Guid.Empty.ToString()))
+            return StatusCode(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
+
+        var result = await _accountService.UpdateAvatarAsync(Guid.Parse(accountId), avatarUrl);
+        return StatusCode(result.StatusCode, result);
+    }
+
+    [Authorize]
     [HttpDelete("temporary")]
     public async Task<IActionResult> Delete()
     {
