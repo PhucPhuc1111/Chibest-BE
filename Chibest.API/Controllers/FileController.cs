@@ -31,7 +31,6 @@ public class FileController : ControllerBase
         return Ok(relativePath);
     }
 
-    [Authorize]
     [HttpGet("image")]
     public IActionResult GetImage([FromQuery] string urlPath)
     {
