@@ -340,7 +340,6 @@ namespace Chibest.Service.Services
                                 ProductName = product.Name,
                                 Sku = product.Sku,
                                 UnitPrice = unitPrice,
-                                Discount = discount,
                                 ReFee = reFee,
                                 Quantity = quantity
                             });

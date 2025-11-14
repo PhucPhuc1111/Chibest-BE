@@ -34,14 +34,12 @@ namespace Chibest.Service.ModelDTOs.Stock.StockAdjustment
 
             public string Status { get; set; } = null!;
 
-            public string? Reason { get; set; }
 
             public string? Note { get; set; }
 
             public DateTime CreatedAt { get; set; }
 
             public DateTime UpdatedAt { get; set; }
-            public DateTime? ApprovedAt { get; set; }
             public virtual ICollection<StockAdjustmentDetailResponse> StockAdjustmentDetails { get; set; } = new List<StockAdjustmentDetailResponse>();
         }
         public class StockAdjustmentDetailResponse
@@ -58,7 +56,6 @@ namespace Chibest.Service.ModelDTOs.Stock.StockAdjustment
 
             public decimal? TotalValueChange { get; set; }
 
-            public string? Reason { get; set; }
 
             public string? Note { get; set; }
 

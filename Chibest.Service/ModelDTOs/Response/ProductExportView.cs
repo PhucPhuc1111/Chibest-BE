@@ -40,9 +40,7 @@ public class ProductExportView
 
 
     // --- Category Info ---
-    public string? Type { get; set; }
     public string? CategoryName { get; set; }
-    public Guid? ParentCategoryId { get; set; }
 
 
     // --- Product Price ---

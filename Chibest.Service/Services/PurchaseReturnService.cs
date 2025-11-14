@@ -338,7 +338,6 @@ namespace Chibest.Service.Services
                                 ProductName = product.Name,
                                 Quantity = quantity,
                                 UnitPrice = unitPrice,
-                                ReturnPrice = returnPrice,
                                 Note = $"Giảm giá trả lại: {discount}"
                             });
                         }

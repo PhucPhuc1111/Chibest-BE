@@ -22,10 +22,6 @@ namespace Chibest.Service.ModelDTOs.Stock.TransferOrder
 
             public decimal SubTotal { get; set; }
 
-            public decimal DiscountAmount { get; set; }
-
-            public decimal Paid { get; set; }
-
             public string? Note { get; set; }
 
             public string Status { get; set; } = null!;
@@ -53,7 +49,6 @@ namespace Chibest.Service.ModelDTOs.Stock.TransferOrder
 
             public decimal UnitPrice { get; set; }
 
-            public decimal Discount { get; set; }
 
             public string? Note { get; set; }
 

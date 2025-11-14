@@ -21,11 +21,6 @@ namespace Chibest.Service.ModelDTOs.Response
 
         public decimal? RemainingDebt { get; set; }
 
-        public DateTime? LastTransactionDate { get; set; }
-
-        public DateTime LastUpdated { get; set; }
-
-
         public virtual ICollection<SupplierDebtHistoryResponse> SupplierDebtHistories { get; set; } = new List<SupplierDebtHistoryResponse>();
     }
     public class SupplierDebtHistoryResponse
@@ -37,9 +32,6 @@ namespace Chibest.Service.ModelDTOs.Response
 
         public decimal Amount { get; set; }
 
-        public decimal BalanceBefore { get; set; }
-
-        public decimal BalanceAfter { get; set; }
 
         public string? Note { get; set; }
 

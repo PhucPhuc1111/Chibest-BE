@@ -98,9 +98,7 @@ public class FileService : IFileService
 
 
             // Category Info columns
-            { "Type", p => p.Type },
             { "CategoryName", p => p.CategoryName },
-            { "ParentCategoryName", p => p.ParentCategoryId }
         };
     }
 

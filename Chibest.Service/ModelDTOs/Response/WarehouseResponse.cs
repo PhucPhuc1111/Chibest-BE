@@ -19,8 +19,6 @@ namespace Chibest.Service.ModelDTOs.Response
 
         public string? BranchName {  get; set; }
 
-        public bool IsMainWarehouse { get; set; }
-
         public string Status { get; set; } = null!;
 
         public DateTime CreatedAt { get; set; }

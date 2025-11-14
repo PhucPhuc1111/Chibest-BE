@@ -37,10 +37,6 @@ namespace Chibest.Service.ModelDTOs.Response
 
         public decimal Amount { get; set; }
 
-        public decimal BalanceBefore { get; set; }
-
-        public decimal BalanceAfter { get; set; }
-
         public string? Note { get; set; }
 
         public DateTime CreatedAt { get; set; }

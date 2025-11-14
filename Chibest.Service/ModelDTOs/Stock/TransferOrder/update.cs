@@ -11,11 +11,8 @@ namespace Chibest.Service.ModelDTOs.Stock.TransferOrder
     {
         public class TransferOrderUpdate
         {
-            public string? PayMethod { get; set; }
             public decimal SubTotal { get; set; }
 
-            public decimal DiscountAmount { get; set; } = 0;
-            public decimal Paid { get; set; } = 0;
             public OrderStatus Status { get; set; } 
             public virtual ICollection<TransferOrderDetailUpdate> TransferOrderDetails { get; set; } = new List<TransferOrderDetailUpdate>();
         }

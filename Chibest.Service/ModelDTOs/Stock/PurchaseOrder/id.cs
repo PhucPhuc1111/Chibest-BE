@@ -12,7 +12,6 @@ namespace Chibest.Service.ModelDTOs.Stock.PurchaseOrder
         public Guid Id { get; set; }
 
         public string InvoiceCode { get; set; } = null!;
-        public string? PayMethod { get; set; }
 
         public DateTime OrderDate { get; set; }
 
@@ -22,9 +21,6 @@ namespace Chibest.Service.ModelDTOs.Stock.PurchaseOrder
 
         public decimal SubTotal { get; set; }
 
-        public decimal DiscountAmount { get; set; }
-
-        public decimal Paid { get; set; }
 
         public string? Note { get; set; }
 
@@ -48,8 +44,6 @@ namespace Chibest.Service.ModelDTOs.Stock.PurchaseOrder
         public int? ActualQuantity { get; set; }
 
         public decimal UnitPrice { get; set; }
-
-        public decimal Discount { get; set; }
 
         public decimal ReFee { get; set; }
 

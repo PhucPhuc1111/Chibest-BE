@@ -9,9 +9,6 @@ public class AccountRequest
     public string? Password { get; set; }
     public string? Name { get; set; }
     public string? PhoneNumber { get; set; }
-    public string? Address { get; set; }
-    public string? Cccd { get; set; }
-    public string? FaxNumber { get; set; }
     public string? Status { get; set; }
 
     //Optional when create account

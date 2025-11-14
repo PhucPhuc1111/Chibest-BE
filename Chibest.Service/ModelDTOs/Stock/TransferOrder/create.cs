@@ -14,13 +14,9 @@ namespace Chibest.Service.ModelDTOs.Stock.TransferOrder
             public string? InvoiceCode { get; set; }
             public DateTime OrderDate { get; set; }
 
-            public string? PayMethod { get; set; }
 
             public decimal SubTotal { get; set; }
 
-            public decimal DiscountAmount { get; set; }
-
-            public decimal Paid { get; set; }
 
             public string? Note { get; set; }
 
@@ -42,7 +38,6 @@ namespace Chibest.Service.ModelDTOs.Stock.TransferOrder
 
             public decimal CommissionFee { get; set; }
 
-            public decimal Discount { get; set; }
 
             public string? Note { get; set; }
 
@@ -85,7 +80,6 @@ namespace Chibest.Service.ModelDTOs.Stock.TransferOrder
             public decimal UnitPrice { get; set; }
             public decimal ExtraFee { get; set; }
             public decimal CommissionFee { get; set; }
-            public decimal Discount { get; set; }
             public string? Note { get; set; }
         }
 

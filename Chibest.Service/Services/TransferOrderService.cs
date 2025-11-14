@@ -8,7 +8,6 @@ using Chibest.Service.Utilities;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using OfficeOpenXml;
-using System;
 using System.Linq.Expressions;
 using static Chibest.Service.ModelDTOs.Stock.TransferOrder.create;
 using static Chibest.Service.ModelDTOs.Stock.TransferOrder.id;
@@ -94,7 +93,6 @@ namespace Chibest.Service.Services
                     UnitPrice = p.UnitPrice,
                     ExtraFee = p.ExtraFee,
                     CommissionFee = p.CommissionFee,
-                    Discount = p.Discount,
                     Note = p.Note
                 }).ToList();
 
@@ -104,11 +102,8 @@ namespace Chibest.Service.Services
                     ToWarehouseId = dest.ToWarehouseId,
                     EmployeeId = request.EmployeeId,
                     OrderDate = request.OrderDate,
-                    DiscountAmount = branchDiscount,
                     SubTotal = summary.SubTotal,
-                    Paid = branchPaid,
                     Note = request.Note,
-                    PayMethod = request.PayMethod,
                     TransferOrderDetails = detailRequests
                 };
 
@@ -130,8 +125,6 @@ namespace Chibest.Service.Services
                     {
                         WarehouseId = dest.ToWarehouseId,
                         singleRequest.SubTotal,
-                        singleRequest.DiscountAmount,
-                        singleRequest.Paid
                     });
                 }
             }
@@ -244,23 +237,7 @@ namespace Chibest.Service.Services
 
             var orderSubTotal = Math.Round(CalculateTransferOrderSubtotal(request.TransferOrderDetails), 2, MidpointRounding.AwayFromZero);
 
-            var orderDiscountAmount = Math.Round(request.DiscountAmount, 2, MidpointRounding.AwayFromZero);
-            var orderPaid = Math.Round(request.Paid, 2, MidpointRounding.AwayFromZero);
-
             orderSubTotal = Math.Max(orderSubTotal, 0m);
-            orderDiscountAmount = Math.Max(orderDiscountAmount, 0m);
-            orderPaid = Math.Max(orderPaid, 0m);
-
-            if (orderDiscountAmount > orderSubTotal)
-            {
-                orderDiscountAmount = orderSubTotal;
-            }
-
-            var maxPayable = orderSubTotal - orderDiscountAmount;
-            if (orderPaid > maxPayable)
-            {
-                orderPaid = maxPayable;
-            }
 
             string invoiceCode = request.InvoiceCode;
             if (invoiceCode == null)
@@ -325,7 +302,7 @@ namespace Chibest.Service.Services
 
             foreach (var product in products)
             {
-                total += CalculateLineSubtotal(product.Quantity, product.UnitPrice, product.ExtraFee, product.CommissionFee, product.Discount);
+                total += CalculateLineSubtotal(product.Quantity, product.UnitPrice, product.ExtraFee, product.CommissionFee);
             }
 
             return total;
@@ -340,15 +317,15 @@ namespace Chibest.Service.Services
 
             foreach (var detail in details)
             {
-                total += CalculateLineSubtotal(detail.Quantity, detail.UnitPrice, detail.ExtraFee, detail.CommissionFee, detail.Discount);
+                total += CalculateLineSubtotal(detail.Quantity, detail.UnitPrice, detail.ExtraFee, detail.CommissionFee);
             }
 
             return total;
         }
 
-        private decimal CalculateLineSubtotal(int quantity, decimal unitPrice, decimal extraFee, decimal commissionFee, decimal discount)
+        private decimal CalculateLineSubtotal(int quantity, decimal unitPrice, decimal extraFee, decimal commissionFee)
         {
-            var lineTotal = ((unitPrice + extraFee + commissionFee) * quantity) - discount;
+            var lineTotal = ((unitPrice + extraFee + commissionFee) * quantity);
             return Math.Max(lineTotal, 0m);
         }
 

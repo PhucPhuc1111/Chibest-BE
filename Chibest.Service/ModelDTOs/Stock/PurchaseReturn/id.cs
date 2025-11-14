@@ -44,8 +44,6 @@ namespace Chibest.Service.ModelDTOs.Stock.PurchaseReturn
 
             public decimal UnitPrice { get; set; }
 
-            public decimal ReturnPrice { get; set; }
-
             public string? Note { get; set; }
 
             public string? ProductName { get; set; }

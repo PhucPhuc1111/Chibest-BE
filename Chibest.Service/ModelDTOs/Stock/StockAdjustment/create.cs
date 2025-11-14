@@ -29,7 +29,6 @@ namespace Chibest.Service.ModelDTOs.Stock.StockAdjustment
 
             public int ActualQty { get; set; }
 
-            public int? DifferenceQty { get; set; }
 
             public decimal UnitCost { get; set; }
 
