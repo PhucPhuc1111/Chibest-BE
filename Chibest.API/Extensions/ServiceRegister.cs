@@ -12,30 +12,23 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Newtonsoft.Json.Serialization;
-using System.Configuration;
 using System.Text;
 using System.Text.Json.Serialization;
+
 namespace Chibest.API.Extensions;
 
 public static class ServiceRegister
 {
     public static void RegisterServices(IServiceCollection services, IConfiguration configuration)
     {
-        //var connectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING");
-
-        //services.AddDbContext<ChiBestDbContext>(options =>
-        //{
-        //    options.UseSqlServer(connectionString);
-        //    options.EnableSensitiveDataLogging();
-        //});
         var connectionString = Environment.GetEnvironmentVariable("DB_PG_CONNECTION_STRING");
         services.AddDbContext<ChiBestDbContext>(options => options.UseNpgsql(connectionString));
 
-
         services.AddAuthorizeService(configuration);
-        AddCorsToThisWeb(services);
+        AddCorsToThisWeb(services);          // <-- CORS policy
         AddEnum(services);
         ConfigKebabCase(services);
+
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<ITokenService, TokenService>();
         services.AddScoped<IFileService, FileService>();
@@ -71,7 +64,6 @@ public static class ServiceRegister
             RefreshTokenExpirationDays = int.TryParse(configuration["Jwt_RefreshTokenExpirationDays"] ?? Environment.GetEnvironmentVariable("Jwt_RefreshTokenExpirationDays"), out var d) ? d : 7
         };
 
-        //Register JwtSettings as a singleton
         services.AddSingleton(jwtOps);
 
         services.AddAuthentication(options =>
@@ -91,7 +83,7 @@ public static class ServiceRegister
                 ValidIssuer = jwtOps.Issuer,
                 ValidAudience = jwtOps.Audience,
                 IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOps.Key)),
-                ClockSkew = TimeSpan.Zero // Không cho phép độ trễ
+                ClockSkew = TimeSpan.Zero
             };
 
             options.Events = new JwtBearerEvents
@@ -107,7 +99,7 @@ public static class ServiceRegister
             };
         });
 
-        // Config Bearer Auth in swagger
+        // Swagger Bearer auth
         services.AddSwaggerGen(c =>
         {
             c.SwaggerDoc("v1", new OpenApiInfo
@@ -119,8 +111,8 @@ public static class ServiceRegister
 
             c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
             {
-                Name = "JWT Authentication",
-                Description = "Enter your JWT token in this field",
+                Name = "Authorization",
+                Description = "Input JWT with Bearer scheme. Example: \"Bearer {token}\"",
                 In = ParameterLocation.Header,
                 Type = SecuritySchemeType.Http,
                 Scheme = "bearer",
@@ -129,39 +121,46 @@ public static class ServiceRegister
 
             c.AddSecurityRequirement(new OpenApiSecurityRequirement
             {
+                {
+                    new OpenApiSecurityScheme
                     {
-                        new OpenApiSecurityScheme
+                        Reference = new OpenApiReference
                         {
-                            Reference = new OpenApiReference
-                            {
-                                Type = ReferenceType.SecurityScheme,
-                                Id = "Bearer"
-                            }
-                        },
-                        Array.Empty<string>()
-                    }
+                            Type = ReferenceType.SecurityScheme,
+                            Id = "Bearer"
+                        }
+                    },
+                    Array.Empty<string>()
+                }
             });
-
         });
 
         return services;
     }
 
+    // ==== CORS: CHỈNH SỬA Ở ĐÂY ====
     private static void AddCorsToThisWeb(IServiceCollection services)
     {
+        var allowedOrigins = new[]
+        {
+            "http://45.125.238.52:5000",
+            "http://localhost:3000",
+            "https://chibest-fe.vercel.app", // <-- BỎ dấu "/" cuối!
+            "https://srpm.id.vn",
+            "http://srpm.id.vn"
+        };
+
         services.AddCors(options =>
         {
-            options.AddPolicy("AllowAll", builder =>
+            options.AddPolicy("FrontendCors", builder =>
             {
-                builder.WithOrigins(
-                    "http://45.125.238.52:5000",
-                    "http://localhost:3000",
-                    "https://chibest-fe.vercel.app/",
-                    "https://srpm.id.vn",
-                    "http://srpm.id.vn"
-                )
-                .AllowAnyHeader()
-                .AllowAnyMethod();
+                builder
+                    .WithOrigins(allowedOrigins)
+                    .AllowAnyMethod()
+                    .AllowAnyHeader()
+                    // BẬT nếu bạn dùng cookie (session) hoặc fetch với credentials:
+                    // .AllowCredentials()
+                    ;
             });
         });
     }
@@ -180,14 +179,13 @@ public static class ServiceRegister
         {
             options.Conventions.Add(new RouteTokenTransformerConvention(new KebabParameterTransformer()));
         }).AddNewtonsoftJson(options =>
-        {//If using NewtonSoft in project then must orride default Naming rule of System.text
+        {
             options.SerializerSettings.ContractResolver = new DefaultContractResolver
             {
                 NamingStrategy = new KebabCaseNamingStrategy()
             };
         });
 
-        //Config Swagger to use KebabCase
         services.AddSwaggerGen(c => { c.SchemaFilter<KebabSwaggerSchema>(); });
     }
 }

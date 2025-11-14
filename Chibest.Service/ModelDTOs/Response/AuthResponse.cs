@@ -9,4 +9,5 @@ public class AuthResponse
     public string Role { get; set; } = "";
     public string? Avatar { get; set; }
     public Guid? BranchId { get; set; }
+    public Guid? AccountId { get; set; }
 }

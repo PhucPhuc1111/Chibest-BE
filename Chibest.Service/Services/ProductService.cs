@@ -246,10 +246,10 @@ public class ProductService : IProductService
             {
                 Id = Guid.NewGuid(),
                 ProductId = product.Id,
-                BranchId = request.BranchId,
+                BranchId = null,
                 SellingPrice = request.SellingPrice.Value,
                 CostPrice = request.CostPrice.Value,
-                EffectiveDate = request.EffectiveDate ?? DateTime.Now,
+                EffectiveDate = request.EffectiveDate ?? DateTime.Now.AddDays(-1),
                 ExpiryDate = request.ExpiryDate,
                 CreatedAt = DateTime.Now,
                 CreatedBy = accountId,
