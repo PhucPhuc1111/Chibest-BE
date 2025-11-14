@@ -23,5 +23,4 @@ public class ProductRequest
     public decimal? CostPrice { get; set; }
     public DateTime? EffectiveDate { get; set; }
     public DateTime? ExpiryDate { get; set; }
-    public Guid? BranchId { get; set; }
 }
