@@ -17,12 +17,10 @@ namespace Chibest.Service.Services;
 public class ProductDetailService : IProductDetailService
 {
     private readonly IUnitOfWork _unitOfWork;
-    private readonly ISystemLogService _systemLogService;
 
-    public ProductDetailService(IUnitOfWork unitOfWork, ISystemLogService systemLogService)
+    public ProductDetailService(IUnitOfWork unitOfWork)
     {
         _unitOfWork = unitOfWork;
-        _systemLogService = systemLogService;
     }
 
     public async Task<IBusinessResult> GetListAsync(ProductDetailQuery query)
@@ -242,10 +240,6 @@ public class ProductDetailService : IProductDetailService
         await _unitOfWork.ProductDetailRepository.AddAsync(productDetail);
         await _unitOfWork.SaveChangesAsync();
 
-        await LogSystemAction("Create", "ProductDetail", productDetail.Id, accountId,
-                            null, JsonSerializer.Serialize(productDetail),
-                            $"Tạo mới chi tiết sản phẩm: {productDetail.ChipCode}");
-
         var response = productDetail.Adapt<ProductDetailResponse>();
         return new BusinessResult(Const.HTTP_STATUS_CREATED, Const.SUCCESS_CREATE_MSG, response);
     }
@@ -300,9 +294,6 @@ public class ProductDetailService : IProductDetailService
         _unitOfWork.ProductDetailRepository.Update(existing);
         await _unitOfWork.SaveChangesAsync();
 
-        await LogSystemAction("Update", "ProductDetail", request.Id.Value, accountId,
-                            oldValue, JsonSerializer.Serialize(existing),
-                            $"Cập nhật chi tiết sản phẩm: {existing.ChipCode}");
 
         var response = existing.Adapt<ProductDetailResponse>();
 
@@ -332,9 +323,6 @@ public class ProductDetailService : IProductDetailService
         _unitOfWork.ProductDetailRepository.Update(existing);
         await _unitOfWork.SaveChangesAsync();
 
-        await LogSystemAction("UpdateStatus", "ProductDetail", id, accountId,
-                            oldStatus, status,
-                            $"Thay đổi trạng thái chi tiết sản phẩm: {oldStatus} → {status}");
 
         var response = existing.Adapt<ProductDetailResponse>();
 
@@ -362,33 +350,7 @@ public class ProductDetailService : IProductDetailService
         _unitOfWork.ProductDetailRepository.Delete(existing);
         await _unitOfWork.SaveChangesAsync();
 
-        await LogSystemAction("Delete", "ProductDetail", id, accountId,
-                            oldValue, null,
-                            $"Xóa chi tiết sản phẩm: {existing.ChipCode}");
-
         return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_DELETE_MSG);
     }
 
-    private async Task LogSystemAction(string action, string entityType, Guid entityId, Guid accountId,
-                                     string? oldValue, string? newValue, string description)
-    {
-        var account = await _unitOfWork.AccountRepository
-            .GetByWhere(acc => acc.Id == accountId)
-            .AsNoTracking().FirstOrDefaultAsync();
-        var logRequest = new SystemLogRequest
-        {
-            Action = action,
-            EntityType = entityType,
-            EntityId = entityId,
-            OldValue = oldValue,
-            NewValue = newValue,
-            Description = description,
-            AccountId = accountId,
-            AccountName = account != null ? account.Name : null,
-            Module = "ProductDetail",
-            LogLevel = "INFO"
-        };
-
-        await _systemLogService.CreateAsync(logRequest);
-    }
 }

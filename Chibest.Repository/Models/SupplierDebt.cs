@@ -17,10 +17,6 @@ public partial class SupplierDebt
 
     public decimal? RemainingDebt { get; set; }
 
-    public DateTime? LastTransactionDate { get; set; }
-
-    public DateTime LastUpdated { get; set; }
-
     public virtual Account Supplier { get; set; } = null!;
 
     public virtual ICollection<SupplierDebtHistory> SupplierDebtHistories { get; set; } = new List<SupplierDebtHistory>();

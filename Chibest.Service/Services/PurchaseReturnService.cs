@@ -53,7 +53,6 @@ namespace Chibest.Service.Services
                 ProductId = detailReq.ProductId,
                 Quantity = detailReq.Quantity,
                 UnitPrice = detailReq.UnitPrice,
-                ReturnPrice = detailReq.ReturnPrice,
                 Note = detailReq.Note
             }).ToList();
 
@@ -90,7 +89,6 @@ namespace Chibest.Service.Services
                         Id = d.Id,
                         Quantity = d.Quantity,
                         UnitPrice = d.UnitPrice,
-                        ReturnPrice = d.ReturnPrice,
                         Note = d.Note,
                         ProductName = d.Product != null ? d.Product.Name : null,
                         Sku = d.Product != null ? d.Product.Sku : string.Empty

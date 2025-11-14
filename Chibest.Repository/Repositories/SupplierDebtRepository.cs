@@ -33,8 +33,6 @@ namespace Chibest.Repository.Repositories
                         PaidAmount = 0,
                         ReturnAmount = 0,
                         RemainingDebt = 0,
-                        LastTransactionDate = DateTime.Now,
-                        LastUpdated = DateTime.Now
                     };
                     await _context.SupplierDebts.AddAsync(supplierDebt);
                     await _context.SaveChangesAsync();
@@ -73,8 +71,6 @@ namespace Chibest.Repository.Repositories
                 }
 
                 supplierDebt.RemainingDebt = Math.Max(0, balanceAfter);
-                supplierDebt.LastTransactionDate = DateTime.Now;
-                supplierDebt.LastUpdated = DateTime.Now;
 
                 _context.SupplierDebts.Update(supplierDebt);
                 await _context.SaveChangesAsync();
@@ -86,8 +82,6 @@ namespace Chibest.Repository.Repositories
                     TransactionType = transactionType,
                     TransactionDate = DateTime.Now,
                     Amount = amount,
-                    BalanceBefore = balanceBefore,
-                    BalanceAfter = balanceAfter,
                     CreatedAt = DateTime.Now
                 };
 

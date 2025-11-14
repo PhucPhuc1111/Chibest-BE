@@ -80,8 +80,6 @@ namespace Chibest.Service.Services
                     TransactionType = t.TransactionType,
                     TransactionDate = t.TransactionDate,
                     Amount = t.Amount,
-                    BalanceBefore = balanceBefore,
-                    BalanceAfter = balanceAfter,
                     Note = t.Note,
                     CreatedAt = DateTime.Now
                 });
@@ -139,8 +137,6 @@ namespace Chibest.Service.Services
                             TransactionType = h.TransactionType,
                             TransactionDate = h.TransactionDate,
                             Amount = h.Amount,
-                            BalanceBefore = h.BalanceBefore,
-                            BalanceAfter = h.BalanceAfter,
                             Note = h.Note,
                             CreatedAt = h.CreatedAt
                         })

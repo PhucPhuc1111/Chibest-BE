@@ -15,10 +15,6 @@ public partial class Warehouse
 
     public string? PhoneNumber { get; set; }
 
-    public bool IsMainWarehouse { get; set; }
-
-    public bool IsOnlineWarehouse { get; set; }
-
     public string Status { get; set; } = null!;
 
     public DateTime CreatedAt { get; set; }
@@ -28,8 +24,6 @@ public partial class Warehouse
     public Guid? BranchId { get; set; }
 
     public virtual Branch? Branch { get; set; }
-
-    public virtual ICollection<BranchStock> BranchStocks { get; set; } = new List<BranchStock>();
 
     public virtual ICollection<ProductDetail> ProductDetails { get; set; } = new List<ProductDetail>();
 

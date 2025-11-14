@@ -170,11 +170,8 @@ namespace Chibest.Service.Services
                     detail.Note = detailReq.Note;
                 }
             }
-            transferOrder.PayMethod = request.PayMethod;
             transferOrder.Status = request.Status.ToString();
             transferOrder.SubTotal = request.SubTotal;
-            transferOrder.DiscountAmount = request.DiscountAmount;
-            transferOrder.Paid = request.Paid;
             transferOrder.UpdatedAt = DateTime.Now;
 
                 _unitOfWork.TransferOrderRepository.Update(transferOrder);
@@ -182,7 +179,7 @@ namespace Chibest.Service.Services
 
                 if (request.Status == OrderStatus.Received && oldStatus != OrderStatus.Received.ToString())
                 {
-                    var debt = transferOrder.SubTotal - transferOrder.Paid;
+                    var debt = transferOrder.SubTotal;
                     var note = $"Công nợ từ phiếu chuyển kho #{transferOrder.InvoiceCode}";
 
                     if (fromBranch.IsFranchise && !toBranch.IsFranchise)
@@ -274,11 +271,8 @@ namespace Chibest.Service.Services
                 Id = Guid.NewGuid(),
                 InvoiceCode = invoiceCode,
                 OrderDate = request.OrderDate,
-                DiscountAmount = orderDiscountAmount,
                 SubTotal = orderSubTotal,
-                Paid = orderPaid,
                 Note = request.Note,
-                PayMethod = request.PayMethod,
                 FromWarehouseId = request.FromWarehouseId,
                 ToWarehouseId = request.ToWarehouseId,
                 EmployeeId = request.EmployeeId,
@@ -296,7 +290,6 @@ namespace Chibest.Service.Services
                 UnitPrice = detailReq.UnitPrice,
                 ExtraFee = detailReq.ExtraFee,
                 CommissionFee = detailReq.CommissionFee,
-                Discount = detailReq.Discount,
                 Note = detailReq.Note
             }).ToList();
 
@@ -462,8 +455,6 @@ namespace Chibest.Service.Services
                     CreatedAt = x.CreatedAt,
                     UpdatedAt = x.UpdatedAt,
                     SubTotal = x.SubTotal,
-                    DiscountAmount = x.DiscountAmount,
-                    Paid = x.Paid,
                     Note = x.Note,
                     Status = x.Status,
                     FromWarehouseName = x.FromWarehouse != null ? x.FromWarehouse.Name : null,
@@ -476,7 +467,6 @@ namespace Chibest.Service.Services
                         CommissionFee = d.CommissionFee,
                         ExtraFee = d.ExtraFee,
                         UnitPrice = d.UnitPrice,
-                        Discount = d.Discount,
                         Note = d.Note,
                         ProductName = d.Product != null ? d.Product.Name : null,
                         Sku = d.Product != null ? d.Product.Sku : string.Empty

@@ -79,15 +79,11 @@ namespace Chibest.Service.Services
                         TransactionType = t.TransactionType,
                         TransactionDate = t.TransactionDate,
                         Amount = t.Amount,
-                        BalanceBefore = balanceBefore,
-                        BalanceAfter = balanceAfter,
                         Note = t.Note,
                         CreatedAt = DateTime.Now
                     });
                 }
 
-                supplierDebt.LastTransactionDate = DateTime.Now;
-                supplierDebt.LastUpdated = DateTime.Now;
                 _unitOfWork.SupplierDebtRepository.Update(supplierDebt);
 
                 await _unitOfWork.SupplierDebtHistoryRepository.AddRangeAsync(historyEntities);
@@ -137,8 +133,6 @@ namespace Chibest.Service.Services
                     PaidAmount = supplierDebt.PaidAmount,
                     ReturnAmount = supplierDebt.ReturnAmount,
                     RemainingDebt = supplierDebt.RemainingDebt,
-                    LastTransactionDate = supplierDebt.LastTransactionDate,
-                    LastUpdated = supplierDebt.LastUpdated,
                     SupplierDebtHistories = historiesQuery
                         .OrderByDescending(h => h.TransactionDate)
                         .Select(h => new SupplierDebtHistoryResponse
@@ -147,8 +141,6 @@ namespace Chibest.Service.Services
                             TransactionType = h.TransactionType,
                             TransactionDate = h.TransactionDate,
                             Amount = h.Amount,
-                            BalanceBefore = h.BalanceBefore,
-                            BalanceAfter = h.BalanceAfter,
                             Note = h.Note,
                             CreatedAt = h.CreatedAt
                         })
@@ -385,11 +377,7 @@ namespace Chibest.Service.Services
 
                     // Debt filter
                     && (!debtFrom.HasValue || x.RemainingDebt >= debtFrom.Value)
-                    && (!debtTo.HasValue || x.RemainingDebt <= debtTo.Value)
-
-                    // Date filter (lọc theo ngày giao dịch cuối/ gần nhất)
-                    && (!startDate.HasValue || x.LastTransactionDate >= startDate.Value)
-                    && (!endDate.HasValue || x.LastTransactionDate < endDate.Value),
+                    && (!debtTo.HasValue || x.RemainingDebt <= debtTo.Value),
 
                 include: q => q.Include(x => x.Supplier).OrderByDescending(x => x.TotalDebt)
             );
@@ -406,7 +394,6 @@ namespace Chibest.Service.Services
                 PaidAmount = x.PaidAmount,
                 ReturnAmount = x.ReturnAmount,
                 RemainingDebt = x.RemainingDebt,
-                LastTransactionDate = x.LastTransactionDate,
             }).ToList();
 
             return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_READ_MSG, responseList);
@@ -494,8 +481,6 @@ namespace Chibest.Service.Services
                 supplierDebt.PaidAmount = paidAmount;
                 supplierDebt.ReturnAmount = returnAmount;
                 supplierDebt.RemainingDebt = Math.Max(0, currentBalance);
-                supplierDebt.LastTransactionDate = lastTransactionDate;
-                supplierDebt.LastUpdated = DateTime.Now;
 
                 _unitOfWork.SupplierDebtRepository.Update(supplierDebt);
                 await _unitOfWork.SaveChangesAsync();

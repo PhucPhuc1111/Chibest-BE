@@ -17,12 +17,6 @@ public partial class Account
 
     public string? PhoneNumber { get; set; }
 
-    public string? Address { get; set; }
-
-    public string? Cccd { get; set; }
-
-    public string? FaxNumber { get; set; }
-
     public string? AvatarUrl { get; set; }
 
     public string? FcmToken { get; set; }
@@ -68,8 +62,6 @@ public partial class Account
     public virtual ICollection<StockAdjustment> StockAdjustmentEmployees { get; set; } = new List<StockAdjustment>();
 
     public virtual SupplierDebt? SupplierDebt { get; set; }
-
-    public virtual ICollection<SystemLog> SystemLogs { get; set; } = new List<SystemLog>();
 
     public virtual ICollection<TransferOrder> TransferOrders { get; set; } = new List<TransferOrder>();
 }

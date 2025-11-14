@@ -18,12 +18,10 @@ public class BranchStockService : IBranchStockService
 {
     private readonly IUnitOfWork _unitOfWork;
 
-    private readonly ISystemLogService _systemLogService;
 
-    public BranchStockService(IUnitOfWork unitOfWork, ISystemLogService systemLogService)
+    public BranchStockService(IUnitOfWork unitOfWork)
     {
         _unitOfWork = unitOfWork;
-        _systemLogService = systemLogService;
     }
 
     public async Task<IBusinessResult> GetByIdAsync(Guid id)
@@ -53,10 +51,6 @@ public class BranchStockService : IBranchStockService
             predicate = predicate.And(s => s.BranchId == query.BranchId.Value);
         }
 
-        if (query.WarehouseId.HasValue)
-        {
-            predicate = predicate.And(s => s.WarehouseId == query.WarehouseId.Value);
-        }
 
         if (query.MinAvailableQty.HasValue)
         {
@@ -92,12 +86,8 @@ public class BranchStockService : IBranchStockService
                     q.OrderByDescending(s => s.AvailableQty) : q.OrderBy(s => s.AvailableQty),
                 "productname" => q => query.SortDescending ?
                     q.OrderByDescending(s => s.Product.Name) : q.OrderBy(s => s.Product.Name),
-                "lastupdated" => q => query.SortDescending ?
-                    q.OrderByDescending(s => s.LastUpdated) : q.OrderBy(s => s.LastUpdated),
                 "reorderpoint" => q => query.SortDescending ?
-                    q.OrderByDescending(s => s.ReorderPoint) : q.OrderBy(s => s.ReorderPoint),
-                _ => q => query.SortDescending ?
-                    q.OrderByDescending(s => s.LastUpdated) : q.OrderBy(s => s.LastUpdated)
+                    q.OrderByDescending(s => s.ReorderPoint) : q.OrderBy(s => s.ReorderPoint)
             };
         }
 
@@ -122,15 +112,11 @@ public class BranchStockService : IBranchStockService
         return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_READ_MSG, pagedResult);
     }
 
-    public async Task<IBusinessResult> GetByProductAndBranchAsync(Guid productId, Guid branchId, Guid? warehouseId = null)
+    public async Task<IBusinessResult> GetByProductAndBranchAsync(Guid productId, Guid branchId)
     {
         Expression<Func<BranchStock, bool>> predicate = s =>
             s.ProductId == productId && s.BranchId == branchId;
 
-        if (warehouseId.HasValue)
-        {
-            predicate = predicate.And(s => s.WarehouseId == warehouseId.Value);
-        }
 
         var branchStock = await _unitOfWork.BranchStockRepository.GetByWhere(predicate)
             .FirstOrDefaultAsync();
@@ -185,8 +171,7 @@ public class BranchStockService : IBranchStockService
         // Check if stock record already exists for product, branch, and warehouse
         var existingStock = await _unitOfWork.BranchStockRepository.GetByWhere(s =>
             s.ProductId == request.ProductId &&
-            s.BranchId == request.BranchId &&
-            s.WarehouseId == request.WarehouseId)
+            s.BranchId == request.BranchId)
             .FirstOrDefaultAsync();
 
         if (existingStock != null)
@@ -194,14 +179,9 @@ public class BranchStockService : IBranchStockService
 
         var branchStock = request.Adapt<BranchStock>();
         branchStock.Id = Guid.NewGuid();
-        branchStock.LastUpdated = DateTime.Now;
 
         await _unitOfWork.BranchStockRepository.AddAsync(branchStock);
         await _unitOfWork.SaveChangesAsync();
-
-        await LogSystemAction("Create", "BranchStock", branchStock.Id, accountId,
-                            null, JsonSerializer.Serialize(branchStock),
-                            $"Tạo mới tồn kho - Sản phẩm: {request.ProductId}, Chi nhánh: {request.BranchId}, Kho: {request.WarehouseId}");
 
         return new BusinessResult(Const.HTTP_STATUS_CREATED, Const.SUCCESS_CREATE_MSG);
     }
@@ -218,11 +198,7 @@ public class BranchStockService : IBranchStockService
         var oldValue = JsonSerializer.Serialize(branchStock);
 
         request.Adapt(branchStock);
-        branchStock.LastUpdated = DateTime.Now;
 
-        await LogSystemAction("Update", "BranchStock", request.Id.Value, accountId,
-                                oldValue, JsonSerializer.Serialize(branchStock),
-                                $"Cập nhật tồn kho - Sản phẩm: {request.ProductId}, Chi nhánh: {request.BranchId}");
 
         _unitOfWork.BranchStockRepository.Update(branchStock);
         await _unitOfWork.SaveChangesAsync();
@@ -245,34 +221,9 @@ public class BranchStockService : IBranchStockService
         _unitOfWork.BranchStockRepository.Delete(branchStock);
         await _unitOfWork.SaveChangesAsync();
 
-        //Create systemLog
-        await LogSystemAction("Delete", "BranchStock", id, accountId,
-                               oldValue, null,
-                               $"Xóa tồn kho - Sản phẩm: {branchStock.ProductId}, Chi nhánh: {branchStock.BranchId}");
 
         return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_DELETE_MSG);
     }
 
-    private async Task LogSystemAction(string action, string entityType, Guid entityId, Guid accountId,
-                                     string? oldValue, string? newValue, string description)
-    {
-        var account = await _unitOfWork.AccountRepository
-            .GetByWhere(acc => acc.Id == accountId)
-            .AsNoTracking().FirstOrDefaultAsync();
-        var logRequest = new SystemLogRequest
-        {
-            Action = action,
-            EntityType = entityType,
-            EntityId = entityId,
-            OldValue = oldValue,
-            NewValue = newValue,
-            Description = description,
-            AccountId = accountId,
-            AccountName = account != null ? account.Name : null,
-            Module = "Product",
-            LogLevel = "INFO"
-        };
-
-        await _systemLogService.CreateAsync(logRequest);
-    }
+   
 }

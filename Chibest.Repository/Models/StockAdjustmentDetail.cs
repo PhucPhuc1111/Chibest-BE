@@ -21,8 +21,6 @@ public partial class StockAdjustmentDetail
 
     public decimal? TotalValueChange { get; set; }
 
-    public string? Reason { get; set; }
-
     public string? Note { get; set; }
 
     public virtual Product Product { get; set; } = null!;

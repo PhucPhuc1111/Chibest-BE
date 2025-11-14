@@ -37,10 +37,9 @@ public class BranchStockController : ControllerBase
 
     [Authorize]
     [HttpGet("product/{productId}/branch/{branchId}")]
-    public async Task<IActionResult> GetByProductAndBranch([FromRoute] Guid productId, [FromRoute] Guid branchId,
-        [FromQuery] Guid? warehouseId = null)
+    public async Task<IActionResult> GetByProductAndBranch([FromRoute] Guid productId, [FromRoute] Guid branchId)
     {
-        var result = await _branchStockService.GetByProductAndBranchAsync(productId, branchId, warehouseId);
+        var result = await _branchStockService.GetByProductAndBranchAsync(productId, branchId);
         return StatusCode(result.StatusCode, result);
     }
 

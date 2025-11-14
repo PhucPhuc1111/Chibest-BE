@@ -16,12 +16,10 @@ namespace Chibest.Service.Services;
 public class RoleService : IRoleService
 {
     private readonly IUnitOfWork _unitOfWork;
-    private readonly ISystemLogService _systemLogService;
 
-    public RoleService(IUnitOfWork unitOfWork, ISystemLogService systemLogService)
+    public RoleService(IUnitOfWork unitOfWork)
     {
         _unitOfWork = unitOfWork;
-        _systemLogService = systemLogService;
     }
 
     public async Task<IBusinessResult> GetByIdAsync(Guid id)
@@ -54,8 +52,7 @@ public class RoleService : IRoleService
 
         if (!string.IsNullOrWhiteSpace(search))
         {
-            predicate = x => x.Name.Contains(search) ||
-                            x.Description.Contains(search);
+            predicate = x => x.Name.Contains(search);
         }
 
         Func<IQueryable<Role>, IOrderedQueryable<Role>> orderBy =
@@ -154,9 +151,6 @@ public class RoleService : IRoleService
         await _unitOfWork.RoleRepository.AddAsync(role);
         await _unitOfWork.SaveChangesAsync();
 
-        await LogSystemAction("Create", "Product", role.Id, accountId,
-                            null, JsonSerializer.Serialize(role),
-                            $"Tạo vai trò mới: {role.Name}");
 
         var response = role.Adapt<RoleResponse>();
         response.AccountCount = 0;
@@ -207,9 +201,6 @@ public class RoleService : IRoleService
         await _unitOfWork.AccountRoleRepository.AddAsync(accRole);
         await _unitOfWork.SaveChangesAsync();
 
-        await LogSystemAction("Create", "AccountRole", account.Id, makerId,
-                            null, JsonSerializer.Serialize(accRole),
-                            $"Tạo vai trò mới: {role.Name}");
 
         return new BusinessResult(Const.HTTP_STATUS_CREATED, Const.SUCCESS_CREATE_MSG);
     }
@@ -240,15 +231,10 @@ public class RoleService : IRoleService
         if (!string.IsNullOrEmpty(request.Name))
             existingRole.Name = request.Name;
 
-        if (request.Description != null)
-            existingRole.Description = request.Description;
 
         _unitOfWork.RoleRepository.Update(existingRole);
         await _unitOfWork.SaveChangesAsync();
 
-        await LogSystemAction("Update", "Role", request.Id.Value, accountId,
-                            oldValue, JsonSerializer.Serialize(existingRole),
-                            $"Cập nhật vai trò: {oldName} → {existingRole.Name}");
 
         var response = existingRole.Adapt<RoleResponse>();
 
@@ -297,9 +283,6 @@ public class RoleService : IRoleService
         // Save all changes
         await _unitOfWork.SaveChangesAsync();
 
-        await LogSystemAction("ChangeRoleAccount", "Account", request.AccountId, whoMakeId,
-                            oldData, JsonSerializer.Serialize(currentAccountRole),
-                            $"Thay đổi vai trò tài khoản: {oldRoleId} → {request.RoleId}");
 
         return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_UPDATE_MSG);
     }
@@ -317,9 +300,6 @@ public class RoleService : IRoleService
         _unitOfWork.RoleRepository.Delete(role);
         await _unitOfWork.SaveChangesAsync();
 
-        await LogSystemAction("Delete", "Role", id, accountId,
-                            oldValue, null,
-                            $"Xóa vai trò: {role.Name}");
 
         return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_DELETE_MSG);
     }
@@ -344,33 +324,9 @@ public class RoleService : IRoleService
         _unitOfWork.AccountRoleRepository.Delete(accRole);
         await _unitOfWork.SaveChangesAsync();
 
-        await LogSystemAction("Delete", "AccountRole", accountId, makerId,
-                            oldValue, null,
-                            $"Xóa vai trò của tài khoản: {accountId}");
 
         return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_DELETE_MSG);
     }
 
-    private async Task LogSystemAction(string action, string entityType, Guid entityId, Guid accountId,
-                                     string? oldValue, string? newValue, string description)
-    {
-        var account = await _unitOfWork.AccountRepository
-            .GetByWhere(acc => acc.Id == accountId)
-            .AsNoTracking().FirstOrDefaultAsync();
-        var logRequest = new SystemLogRequest
-        {
-            Action = action,
-            EntityType = entityType,
-            EntityId = entityId,
-            OldValue = oldValue,
-            NewValue = newValue,
-            Description = description,
-            AccountId = accountId,
-            AccountName = account != null ? account.Name : null,
-            Module = "ProductDetail",
-            LogLevel = "INFO"
-        };
-
-        await _systemLogService.CreateAsync(logRequest);
-    }
+    
 }

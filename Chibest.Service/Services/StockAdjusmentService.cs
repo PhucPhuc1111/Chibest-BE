@@ -62,7 +62,6 @@ namespace Chibest.Service.Services
                     SystemQty = detailReq.SystemQty,
                     ActualQty = detailReq.ActualQty,
                     UnitCost = detailReq.UnitCost,
-                    Reason = null,
                     Note = null
                 });
             }
@@ -114,7 +113,6 @@ namespace Chibest.Service.Services
                     detail.SystemQty = detailReq.SystemQty;
                     detail.ActualQty = detailReq.ActualQty;
                     detail.UnitCost = detailReq.UnitCost;
-                    detail.Reason = detailReq.Reason ?? detail.Reason;
                     detail.Note = detailReq.Note ?? detail.Note;
 
                     int diffQty = detail.ActualQty - detail.SystemQty;
@@ -153,7 +151,6 @@ namespace Chibest.Service.Services
                         }
                     }
                     stockAdjustment.ApprovedBy = request.ApprovebyId;
-                    stockAdjustment.ApprovedAt = DateTime.Now;
                     await _unitOfWork.SaveChangesAsync();
                 }
 
@@ -265,10 +262,8 @@ namespace Chibest.Service.Services
                     WarehouseName = x.Warehouse != null ? x.Warehouse.Name : null,
                     EmployeeName = x.Employee != null ? x.Employee.Name : null,
                     ApproveName = x.ApprovedByNavigation != null ? x.ApprovedByNavigation.Name : null,
-                    ApprovedAt = x.ApprovedAt,
                     TotalValueChange = x.TotalValueChange,
                     Status = x.Status,
-                    Reason = x.Reason,
                     Note = x.Note,
                     CreatedAt = x.CreatedAt,
                     UpdatedAt = x.UpdatedAt,
@@ -281,7 +276,6 @@ namespace Chibest.Service.Services
                         DifferenceQty = d.DifferenceQty,
                         UnitCost = d.UnitCost,
                         TotalValueChange = d.TotalValueChange,
-                        Reason = d.Reason,
                         Note = d.Note,
                         ProductName = d.Product != null ? d.Product.Name : null,
                         Sku = d.Product != null ? d.Product.Sku : string.Empty

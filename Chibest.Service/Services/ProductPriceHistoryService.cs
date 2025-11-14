@@ -19,14 +19,11 @@ namespace Chibest.Service.Services;
 public class ProductPriceHistoryService : IProductPriceHistoryService
 {
     private readonly IUnitOfWork _unitOfWork;
-    private readonly ISystemLogService _systemLogService;
 
     public ProductPriceHistoryService(
-        IUnitOfWork unitOfWork,
-        ISystemLogService systemLogService)
+        IUnitOfWork unitOfWork)
     {
         _unitOfWork = unitOfWork;
-        _systemLogService = systemLogService;
     }
 
     public async Task<IBusinessResult> GetListAsync(ProductPriceHistoryQuery query, string? productName = null)
@@ -353,9 +350,6 @@ public class ProductPriceHistoryService : IProductPriceHistoryService
         await _unitOfWork.ProductPriceHistoryRepository.AddAsync(newPrice);
         await _unitOfWork.SaveChangesAsync();
 
-        await LogSystemAction("Create", "ProductPriceHistory", newPrice.Id, accountId,
-                            null, JsonSerializer.Serialize(newPrice),
-                            $"Tạo mới lịch sử giá cho sản phẩm {request.ProductId} - Giá bán: {request.SellingPrice}");
 
         return new BusinessResult(Const.HTTP_STATUS_CREATED, Const.SUCCESS_CREATE_MSG);
     }
@@ -407,9 +401,6 @@ public class ProductPriceHistoryService : IProductPriceHistoryService
         //_unitOfWork.ProductPriceHistoryRepository.Update(existing);
         await _unitOfWork.SaveChangesAsync();
 
-        await LogSystemAction("Update", "ProductPriceHistory", request.Id.Value, accountId,
-                            oldValue, JsonSerializer.Serialize(existing),
-                            "Cập nhât Lịch Sử Giá Hàng");
 
         return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_UPDATE_MSG);
     }
@@ -425,33 +416,7 @@ public class ProductPriceHistoryService : IProductPriceHistoryService
         _unitOfWork.ProductPriceHistoryRepository.Delete(existing);
         await _unitOfWork.SaveChangesAsync();
 
-        await LogSystemAction("Delete", "ProductPriceHistory", id, accountId,
-                            oldValue, null,
-                            $"Xóa lịch sử giá cho sản phẩm {existing.ProductId} - Giá: {existing.SellingPrice}");
 
         return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_DELETE_MSG);
-    }
-
-    private async Task LogSystemAction(string action, string entityType, Guid entityId, Guid accountId,
-                                     string? oldValue, string? newValue, string description)
-    {
-        var account = await _unitOfWork.AccountRepository
-            .GetByWhere(acc => acc.Id == accountId)
-            .AsNoTracking().FirstOrDefaultAsync();
-        var logRequest = new SystemLogRequest
-        {
-            Action = action,
-            EntityType = entityType,
-            EntityId = entityId,
-            OldValue = oldValue,
-            NewValue = newValue,
-            Description = description,
-            AccountId = accountId,
-            AccountName = account != null ? account.Name : null,
-            Module = "ProductPriceHistory",
-            LogLevel = "INFO"
-        };
-
-        await _systemLogService.CreateAsync(logRequest);
     }
 }

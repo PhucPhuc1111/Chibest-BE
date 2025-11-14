@@ -35,12 +35,9 @@ namespace Chibest.Service.Services
                 Id = Guid.NewGuid(),
                 InvoiceCode = invoiceCode,
                 OrderDate = request.OrderDate,
-                DiscountAmount = request.DiscountAmount,
                 SupplierId = request.SupplierId,
                 SubTotal = request.SubTotal,
                 Note = request.Note,
-                PayMethod = request.PayMethod,
-                Paid = request.Paid,
                 WarehouseId = request.WarehouseId,
                 EmployeeId = request.EmployeeId,
                 Status = OrderStatus.Draft.ToString(),
@@ -55,7 +52,6 @@ namespace Chibest.Service.Services
                 ProductId = detailReq.ProductId,
                 Quantity = detailReq.Quantity,
                 UnitPrice = detailReq.UnitPrice,
-                Discount = detailReq.Discount,
                 ReFee = detailReq.ReFee,
                 Note = detailReq.Note,
             }).ToList();
@@ -79,11 +75,8 @@ namespace Chibest.Service.Services
                     CreatedAt = x.CreatedAt,
                     UpdatedAt = x.UpdatedAt,
                     SubTotal = x.SubTotal,
-                    DiscountAmount = x.DiscountAmount,
-                    Paid = x.Paid,
                     Note = x.Note,
                     Status = x.Status,
-                    PayMethod = x.PayMethod,
                     WarehouseName = x.Warehouse != null ? x.Warehouse.Name : null,
                     EmployeeName = x.Employee != null ? x.Employee.Name : null,
                     SupplierName = x.Supplier != null ? x.Supplier.Name : null,
@@ -95,7 +88,6 @@ namespace Chibest.Service.Services
                         ActualQuantity = d.ActualQuantity,
                         ReFee = d.ReFee,
                         UnitPrice = d.UnitPrice,
-                        Discount = d.Discount,
                         Note = d.Note,
                         ProductName = d.Product != null ? d.Product.Name : null,
                         Sku = d.Product != null ? d.Product.Sku : string.Empty
@@ -200,14 +192,10 @@ namespace Chibest.Service.Services
                     detail.ActualQuantity = detailReq.ActualQuantity ?? detail.ActualQuantity;
                     detail.ReFee = detailReq.ReFee;
                     detail.UnitPrice = detailReq.UnitPrice;
-                    detail.Discount = detailReq.Discount;
                     detail.Note = detailReq.Note;
                 }
             }
             purchaseOrder.SubTotal = request.SubTotal;
-            purchaseOrder.PayMethod = request.PayMethod;
-            purchaseOrder.DiscountAmount = request.DiscountAmount;
-            purchaseOrder.Paid = request.Paid;
             purchaseOrder.Status = request.Status.ToString();
             purchaseOrder.UpdatedAt = DateTime.Now;
 
@@ -234,14 +222,12 @@ namespace Chibest.Service.Services
                         }
                     }
                     decimal subtotal = purchaseOrder.SubTotal;
-                    decimal paid = purchaseOrder.Paid;
-                    decimal debtAmount = subtotal - paid;
-                    if (debtAmount != 0 && purchaseOrder.SupplierId != null)
+                    if (subtotal != 0 && purchaseOrder.SupplierId != null)
                     {
                         var debtResult = await _unitOfWork.SupplierDebtRepository.AddSupplierTransactionAsync(
                             supplierId: (Guid)purchaseOrder.SupplierId,
                             transactionType: "Purchase",
-                            amount: debtAmount,
+                            amount: subtotal,
                             note: $"Công nợ từ phiếu nhập #{purchaseOrder.InvoiceCode}"
                         );
 

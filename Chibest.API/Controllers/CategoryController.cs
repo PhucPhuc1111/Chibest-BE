@@ -35,29 +35,6 @@ public class CategoryController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [Authorize]
-    [HttpGet("type/{type}")]
-    public async Task<IActionResult> GetByType(string type)
-    {
-        var result = await _categoryService.GetByTypeAsync(type);
-        return StatusCode(result.StatusCode, result);
-    }
-
-    [Authorize]
-    [HttpGet("hierarchy")]
-    public async Task<IActionResult> GetHierarchy()
-    {
-        var result = await _categoryService.GetHierarchyAsync();
-        return StatusCode(result.StatusCode, result);
-    }
-
-    [Authorize]
-    [HttpGet("parent/{parentId}/children")]
-    public async Task<IActionResult> GetChildren(Guid parentId)
-    {
-        var result = await _categoryService.GetChildrenAsync(parentId);
-        return StatusCode(result.StatusCode, result);
-    }
 
     [Authorize]
     [HttpPost]

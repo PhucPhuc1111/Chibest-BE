@@ -15,6 +15,8 @@ public partial class Product
 
     public string? AvatarUrl { get; set; }
 
+    public string? VideoUrl { get; set; }
+
     public string? Color { get; set; }
 
     public string? Size { get; set; }
@@ -34,6 +36,10 @@ public partial class Product
     public DateTime CreatedAt { get; set; }
 
     public DateTime UpdatedAt { get; set; }
+
+    public string HandleStatus { get; set; } = null!;
+
+    public string? Note { get; set; }
 
     public Guid CategoryId { get; set; }
 

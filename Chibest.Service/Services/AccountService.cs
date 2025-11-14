@@ -21,13 +21,11 @@ public class AccountService : IAccountService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly ITokenService _tokenService;
-    private readonly ISystemLogService _systemLogService;
 
-    public AccountService(IUnitOfWork unitOfWork, ITokenService tokenService, ISystemLogService systemLogService)
+    public AccountService(IUnitOfWork unitOfWork, ITokenService tokenService)
     {
         _unitOfWork = unitOfWork;
         _tokenService = tokenService;
-        _systemLogService = systemLogService;
     }
 
     //=================================================================================================
@@ -259,8 +257,6 @@ public class AccountService : IAccountService
                                 TotalDebt = 0,
                                 PaidAmount = 0,
                                 ReturnAmount = 0,
-                                LastTransactionDate = DateTime.Now,
-                                LastUpdated = DateTime.Now
                             };
                             await _unitOfWork.SupplierDebtRepository.AddAsync(supplierDebt);
                         }
@@ -327,10 +323,6 @@ public class AccountService : IAccountService
         _unitOfWork.AccountRepository.Update(account);
         await _unitOfWork.SaveChangesAsync();
 
-        if (status.Equals("Waiting Delete", StringComparison.OrdinalIgnoreCase))
-            await LogSystemAction("Waiting Delete", "Account", account.Id, makerId,
-                                oldValue, null,
-                                $"{account.Name} muốn xóa tài khoản của họ, Id: {account.Id}");
 
         return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_UPDATE_MSG);
     }
@@ -420,9 +412,6 @@ public class AccountService : IAccountService
             Email = account.Email,
             Name = account.Name,
             PhoneNumber = account.PhoneNumber,
-            Address = account.Address,
-            Cccd = account.Cccd,
-            FaxNumber = account.FaxNumber,
             CreatedAt = account.CreatedAt,
             UpdatedAt = account.UpdatedAt,
             Status = account.Status
@@ -431,26 +420,4 @@ public class AccountService : IAccountService
         return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_READ_MSG, response);
     }
 
-    private async Task LogSystemAction(string action, string entityType, Guid entityId, Guid accountId,
-                                     string? oldValue, string? newValue, string description)
-    {
-        var account = await _unitOfWork.AccountRepository
-            .GetByWhere(acc => acc.Id == accountId)
-            .AsNoTracking().FirstOrDefaultAsync();
-        var logRequest = new SystemLogRequest
-        {
-            Action = action,
-            EntityType = entityType,
-            EntityId = entityId,
-            OldValue = oldValue,
-            NewValue = newValue,
-            Description = description,
-            AccountId = accountId,
-            AccountName = account != null ? account.Name : null,
-            Module = "Account",
-            LogLevel = "INFO"
-        };
-
-        await _systemLogService.CreateAsync(logRequest);
-    }
 }

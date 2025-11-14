@@ -24,12 +24,10 @@ namespace Chibest.Service.Services;
 public class ProductService : IProductService
 {
     private readonly IUnitOfWork _unitOfWork;
-    private readonly ISystemLogService _systemLogService;
 
-    public ProductService(IUnitOfWork unitOfWork, ISystemLogService systemLogService)
+    public ProductService(IUnitOfWork unitOfWork)
     {
         _unitOfWork = unitOfWork;
-        _systemLogService = systemLogService;
     }
     public async Task<IBusinessResult> GetListAsync(ProductQuery query)
     {
@@ -261,9 +259,6 @@ public class ProductService : IProductService
         }
 
         var productLog = product.Adapt<ProductRequest>(); // hoặc ProductResponse
-        await LogSystemAction("Create", "Product", product.Id, accountId,
-            null, JsonSerializer.Serialize(productLog),
-            $"Tạo mới sản phẩm: {product.Name} (SKU: {product.Sku})");
         var response = product.Adapt<ProductResponse>();
         return new BusinessResult(Const.HTTP_STATUS_CREATED, Const.SUCCESS_CREATE_MSG, response);
     }
@@ -286,9 +281,6 @@ public class ProductService : IProductService
         _unitOfWork.ProductRepository.Update(existing);
         await _unitOfWork.SaveChangesAsync();
 
-        await LogSystemAction("Update", "Product", request.Id.Value, accountId,
-                            oldValue, JsonSerializer.Serialize(existing),
-                            $"Cập nhật sản phẩm: {oldName} → {existing.Name}");
 
         var response = existing.Adapt<ProductResponse>();
         return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_UPDATE_MSG, response);
@@ -307,9 +299,6 @@ public class ProductService : IProductService
         _unitOfWork.ProductRepository.Update(existing);
         await _unitOfWork.SaveChangesAsync();
 
-        await LogSystemAction("UpdateStatus", "Product", id, accountId,
-                            oldStatus, status,
-                            $"Thay đổi trạng thái sản phẩm: {oldStatus} → {status}");
 
         var response = existing.Adapt<ProductResponse>();
         return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_UPDATE_MSG, response);
@@ -325,10 +314,6 @@ public class ProductService : IProductService
 
         _unitOfWork.ProductRepository.Delete(existing);
         await _unitOfWork.SaveChangesAsync();
-
-        await LogSystemAction("Delete", "Product", id, accountId,
-                            oldValue, null,
-                            $"Xóa sản phẩm: {existing.Name} (SKU: {existing.Sku})");
 
         return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_DELETE_MSG);
     }
@@ -504,10 +489,6 @@ public class ProductService : IProductService
                 }
 
                 updated++;
-                await LogSystemAction("ImportUpdate", "Product", existingProduct.Id, accountId,
-                    JsonSerializer.Serialize(oldSnapshot),
-                    JsonSerializer.Serialize(CreateProductLogPayload(existingProduct)),
-                    $"Cập nhật sản phẩm từ import: {existingProduct.Name} (SKU: {existingProduct.Sku})");
             }
             else
             {
@@ -552,10 +533,6 @@ public class ProductService : IProductService
                 }
 
                 created++;
-                await LogSystemAction("ImportCreate", "Product", newProduct.Id, accountId,
-                    null,
-                    JsonSerializer.Serialize(CreateProductLogPayload(newProduct)),
-                    $"Import sản phẩm: {newProduct.Name} (SKU: {newProduct.Sku})");
             }
         }
 
@@ -579,28 +556,6 @@ public class ProductService : IProductService
         return new BusinessResult(Const.HTTP_STATUS_OK, message, resultPayload);
     }
 
-    private async Task LogSystemAction(string action, string entityType, Guid entityId, Guid accountId,
-                                     string? oldValue, string? newValue, string description)
-    {
-        var account = await _unitOfWork.AccountRepository
-            .GetByWhere(acc => acc.Id == accountId)
-            .AsNoTracking().FirstOrDefaultAsync();
-        var logRequest = new SystemLogRequest
-        {
-            Action = action,
-            EntityType = entityType,
-            EntityId = entityId,
-            OldValue = oldValue,
-            NewValue = newValue,
-            Description = description,
-            AccountId = accountId,
-            AccountName = account != null ? account.Name : null,
-            Module = "Product",
-            LogLevel = "INFO"
-        };
-
-        await _systemLogService.CreateAsync(logRequest);
-    }
 
     private static ProductPriceHistory? GetLatestPriceHistory(IEnumerable<ProductPriceHistory>? priceHistories, Guid? branchId)
     {

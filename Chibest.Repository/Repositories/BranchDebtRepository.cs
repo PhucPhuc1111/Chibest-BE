@@ -76,8 +76,6 @@ namespace Chibest.Repository.Repositories
                     TransactionType = transactionType,
                     TransactionDate = DateTime.Now,
                     Amount = amount,
-                    BalanceBefore = balanceBefore,
-                    BalanceAfter = balanceAfter,
                     Note = note,
                     CreatedAt = DateTime.Now
                 };

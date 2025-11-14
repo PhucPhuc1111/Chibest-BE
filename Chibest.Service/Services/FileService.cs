@@ -383,12 +383,8 @@ public class FileService : IFileService
                 que.ProductPrice.BranchId : null,
 
             // Map trường Product Category (dùng sub-query)
-            Type = que.ProductCategory != null ?
-                que.ProductCategory.Type : null,
             CategoryName = que.ProductCategory != null ?
                 que.ProductCategory.Name : null,
-            ParentCategoryId = que.ProductCategory != null && que.ProductCategory.Parent != null ?
-                que.ProductCategory.Parent.Id : null,
         });
 
         return await flatQuery.ToListAsync();

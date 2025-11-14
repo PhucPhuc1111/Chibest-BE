@@ -17,8 +17,6 @@ public partial class TransferOrderDetail
 
     public decimal UnitPrice { get; set; }
 
-    public decimal Discount { get; set; }
-
     public string? Note { get; set; }
 
     public Guid TransferOrderId { get; set; }

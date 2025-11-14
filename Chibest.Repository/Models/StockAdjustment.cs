@@ -23,8 +23,6 @@ public partial class StockAdjustment
 
     public string Status { get; set; } = null!;
 
-    public string? Reason { get; set; }
-
     public string? Note { get; set; }
 
     public DateTime CreatedAt { get; set; }
@@ -32,8 +30,6 @@ public partial class StockAdjustment
     public DateTime UpdatedAt { get; set; }
 
     public Guid? ApprovedBy { get; set; }
-
-    public DateTime? ApprovedAt { get; set; }
 
     public virtual Account? ApprovedByNavigation { get; set; }
 

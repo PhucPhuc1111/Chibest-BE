@@ -11,8 +11,6 @@ public partial class PurchaseReturnDetail
 
     public decimal UnitPrice { get; set; }
 
-    public decimal ReturnPrice { get; set; }
-
     public string? Note { get; set; }
 
     public Guid PurchaseReturnId { get; set; }

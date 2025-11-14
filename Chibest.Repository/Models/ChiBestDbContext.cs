@@ -71,8 +71,6 @@ public partial class ChiBestDbContext : DbContext
 
     public virtual DbSet<SupplierDebtHistory> SupplierDebtHistories { get; set; }
 
-    public virtual DbSet<SystemLog> SystemLogs { get; set; }
-
     public virtual DbSet<TransferOrder> TransferOrders { get; set; }
 
     public virtual DbSet<TransferOrderDetail> TransferOrderDetails { get; set; }
@@ -101,22 +99,18 @@ public partial class ChiBestDbContext : DbContext
 
             entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
             entity.Property(e => e.AvatarUrl).HasColumnName("AvatarURL");
-            entity.Property(e => e.Cccd)
-                .HasMaxLength(20)
-                .HasColumnName("CCCD");
             entity.Property(e => e.Code).HasMaxLength(100);
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("timestamp(3) without time zone");
             entity.Property(e => e.Email).HasMaxLength(100);
-            entity.Property(e => e.FaxNumber).HasMaxLength(15);
             entity.Property(e => e.FcmToken).HasMaxLength(255);
             entity.Property(e => e.Name).HasMaxLength(250);
             entity.Property(e => e.PhoneNumber).HasMaxLength(15);
             entity.Property(e => e.RefreshTokenExpiryTime).HasColumnType("timestamp(3) without time zone");
             entity.Property(e => e.Status)
                 .HasMaxLength(40)
-                .HasDefaultValueSql("'Working'::character varying");
+                .HasDefaultValueSql("'Active'::character varying");
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("timestamp(3) without time zone");
@@ -214,7 +208,7 @@ public partial class ChiBestDbContext : DbContext
             entity.Property(e => e.PhoneNumber).HasMaxLength(15);
             entity.Property(e => e.Status)
                 .HasMaxLength(40)
-                .HasDefaultValueSql("'Working'::character varying");
+                .HasDefaultValueSql("'Active'::character varying");
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("timestamp(3) without time zone");
@@ -255,8 +249,6 @@ public partial class ChiBestDbContext : DbContext
 
             entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
             entity.Property(e => e.Amount).HasColumnType("money");
-            entity.Property(e => e.BalanceAfter).HasColumnType("money");
-            entity.Property(e => e.BalanceBefore).HasColumnType("money");
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("timestamp(3) without time zone");
@@ -280,22 +272,14 @@ public partial class ChiBestDbContext : DbContext
 
             entity.HasIndex(e => e.ProductId, "ix_branchstock_productid");
 
-            entity.HasIndex(e => new { e.ProductId, e.BranchId, e.WarehouseId }, "uq_branchstock_product_branch").IsUnique();
+            entity.HasIndex(e => new { e.ProductId, e.BranchId }, "uq_branchstock_product_branch").IsUnique();
 
             entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
             entity.Property(e => e.AvailableQty).HasDefaultValue(0);
-            entity.Property(e => e.CurrentSellingPrice).HasColumnType("money");
-            entity.Property(e => e.DefectiveQty).HasDefaultValue(0);
-            entity.Property(e => e.InTransitQty).HasDefaultValue(0);
-            entity.Property(e => e.LastUpdated)
-                .HasDefaultValueSql("CURRENT_TIMESTAMP")
-                .HasColumnType("timestamp(3) without time zone");
             entity.Property(e => e.MaximumStock).HasDefaultValue(0);
             entity.Property(e => e.MinimumStock).HasDefaultValue(0);
             entity.Property(e => e.ReorderPoint).HasDefaultValue(0);
             entity.Property(e => e.ReorderQty).HasDefaultValue(0);
-            entity.Property(e => e.ReservedQty).HasDefaultValue(0);
-            entity.Property(e => e.TotalQty).HasComputedColumnSql("(((\"AvailableQty\" + \"ReservedQty\") + \"InTransitQty\") + \"DefectiveQty\")", true);
 
             entity.HasOne(d => d.Branch).WithMany(p => p.BranchStocks)
                 .HasForeignKey(d => d.BranchId)
@@ -304,10 +288,6 @@ public partial class ChiBestDbContext : DbContext
             entity.HasOne(d => d.Product).WithMany(p => p.BranchStocks)
                 .HasForeignKey(d => d.ProductId)
                 .HasConstraintName("BranchStock_ProductId_fkey");
-
-            entity.HasOne(d => d.Warehouse).WithMany(p => p.BranchStocks)
-                .HasForeignKey(d => d.WarehouseId)
-                .HasConstraintName("BranchStock_WarehouseId_fkey");
         });
 
         modelBuilder.Entity<Category>(entity =>
@@ -316,17 +296,10 @@ public partial class ChiBestDbContext : DbContext
 
             entity.ToTable("Category");
 
-            entity.HasIndex(e => e.ParentId, "ix_category_parentid");
-
-            entity.HasIndex(e => new { e.Type, e.Name }, "ix_category_type_name");
+            entity.HasIndex(e => e.Name, "ix_category_type_name");
 
             entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
             entity.Property(e => e.Name).HasMaxLength(150);
-            entity.Property(e => e.Type).HasMaxLength(50);
-
-            entity.HasOne(d => d.Parent).WithMany(p => p.InverseParent)
-                .HasForeignKey(d => d.ParentId)
-                .HasConstraintName("Category_ParentId_fkey");
         });
 
         modelBuilder.Entity<Commission>(entity =>
@@ -516,9 +489,13 @@ public partial class ChiBestDbContext : DbContext
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("timestamp(3) without time zone");
+            entity.Property(e => e.HandleStatus)
+                .HasMaxLength(40)
+                .HasDefaultValueSql("'Draft'::character varying");
             entity.Property(e => e.IsMaster).HasDefaultValue(true);
             entity.Property(e => e.Material).HasMaxLength(100);
             entity.Property(e => e.Name).HasMaxLength(250);
+            entity.Property(e => e.Note).HasMaxLength(200);
             entity.Property(e => e.ParentSku)
                 .HasMaxLength(50)
                 .HasColumnName("ParentSKU");
@@ -533,6 +510,7 @@ public partial class ChiBestDbContext : DbContext
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("timestamp(3) without time zone");
+            entity.Property(e => e.VideoUrl).HasColumnName("VideoURL");
             entity.Property(e => e.Weight).HasDefaultValue(0);
 
             entity.HasOne(d => d.Category).WithMany(p => p.Products)
@@ -652,18 +630,13 @@ public partial class ChiBestDbContext : DbContext
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("timestamp(3) without time zone");
-            entity.Property(e => e.DiscountAmount).HasColumnType("money");
             entity.Property(e => e.InvoiceCode).HasMaxLength(100);
             entity.Property(e => e.OrderDate)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("timestamp(3) without time zone");
-            entity.Property(e => e.Paid).HasColumnType("money");
-            entity.Property(e => e.PayMethod)
-                .HasMaxLength(40)
-                .HasDefaultValueSql("'Tiền Mặt'::character varying");
             entity.Property(e => e.Status)
                 .HasMaxLength(40)
-                .HasDefaultValueSql("'Chờ Xử Lý'::character varying");
+                .HasDefaultValueSql("'Draft'::character varying");
             entity.Property(e => e.SubTotal).HasColumnType("money");
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
@@ -695,7 +668,6 @@ public partial class ChiBestDbContext : DbContext
             entity.HasIndex(e => e.ProductId, "ix_transactionorderdetail_productid");
 
             entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
-            entity.Property(e => e.Discount).HasColumnType("money");
             entity.Property(e => e.ReFee).HasColumnType("money");
             entity.Property(e => e.UnitPrice).HasColumnType("money");
 
@@ -730,7 +702,7 @@ public partial class ChiBestDbContext : DbContext
                 .HasColumnType("timestamp(3) without time zone");
             entity.Property(e => e.Status)
                 .HasMaxLength(40)
-                .HasDefaultValueSql("'Chờ Xử Lý'::character varying");
+                .HasDefaultValueSql("'Draft'::character varying");
             entity.Property(e => e.SubTotal).HasColumnType("money");
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
@@ -760,7 +732,6 @@ public partial class ChiBestDbContext : DbContext
             entity.HasIndex(e => e.ProductId, "ix_purchasereturndetail_productid");
 
             entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
-            entity.Property(e => e.ReturnPrice).HasColumnType("money");
             entity.Property(e => e.UnitPrice).HasColumnType("money");
 
             entity.HasOne(d => d.Product).WithMany(p => p.PurchaseReturnDetails)
@@ -967,13 +938,12 @@ public partial class ChiBestDbContext : DbContext
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("timestamp(3) without time zone");
             entity.Property(e => e.AdjustmentType).HasMaxLength(50);
-            entity.Property(e => e.ApprovedAt).HasColumnType("timestamp(3) without time zone");
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("timestamp(3) without time zone");
             entity.Property(e => e.Status)
                 .HasMaxLength(40)
-                .HasDefaultValueSql("'Lưu tạm'::character varying");
+                .HasDefaultValueSql("'Draft'::character varying");
             entity.Property(e => e.TotalValueChange).HasColumnType("money");
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
@@ -1035,10 +1005,6 @@ public partial class ChiBestDbContext : DbContext
             entity.HasIndex(e => e.SupplierId, "uq_supplierdebt_supplier").IsUnique();
 
             entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
-            entity.Property(e => e.LastTransactionDate).HasColumnType("timestamp(3) without time zone");
-            entity.Property(e => e.LastUpdated)
-                .HasDefaultValueSql("CURRENT_TIMESTAMP")
-                .HasColumnType("timestamp(3) without time zone");
             entity.Property(e => e.PaidAmount).HasColumnType("money");
             entity.Property(e => e.RemainingDebt)
                 .HasComputedColumnSql("((\"TotalDebt\" - \"PaidAmount\") - \"ReturnAmount\")", true)
@@ -1061,8 +1027,6 @@ public partial class ChiBestDbContext : DbContext
 
             entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
             entity.Property(e => e.Amount).HasColumnType("money");
-            entity.Property(e => e.BalanceAfter).HasColumnType("money");
-            entity.Property(e => e.BalanceBefore).HasColumnType("money");
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("timestamp(3) without time zone");
@@ -1074,39 +1038,6 @@ public partial class ChiBestDbContext : DbContext
             entity.HasOne(d => d.SupplierDebt).WithMany(p => p.SupplierDebtHistories)
                 .HasForeignKey(d => d.SupplierDebtId)
                 .HasConstraintName("SupplierDebtHistory_SupplierDebtId_fkey");
-        });
-
-        modelBuilder.Entity<SystemLog>(entity =>
-        {
-            entity.HasKey(e => e.Id).HasName("SystemLog_pkey");
-
-            entity.ToTable("SystemLog");
-
-            entity.HasIndex(e => new { e.AccountId, e.CreatedAt }, "ix_systemlog_accountid").IsDescending(false, true);
-
-            entity.HasIndex(e => e.CreatedAt, "ix_systemlog_createdat").IsDescending();
-
-            entity.HasIndex(e => new { e.EntityType, e.EntityId, e.CreatedAt }, "ix_systemlog_entitytype").IsDescending(false, false, true);
-
-            entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
-            entity.Property(e => e.AccountName).HasMaxLength(250);
-            entity.Property(e => e.Action).HasMaxLength(50);
-            entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("CURRENT_TIMESTAMP")
-                .HasColumnType("timestamp(3) without time zone");
-            entity.Property(e => e.EntityType).HasMaxLength(100);
-            entity.Property(e => e.Ipaddress)
-                .HasMaxLength(50)
-                .HasColumnName("IPAddress");
-            entity.Property(e => e.LogLevel)
-                .HasMaxLength(20)
-                .HasDefaultValueSql("'INFO'::character varying");
-            entity.Property(e => e.Module).HasMaxLength(100);
-            entity.Property(e => e.UserAgent).HasMaxLength(500);
-
-            entity.HasOne(d => d.Account).WithMany(p => p.SystemLogs)
-                .HasForeignKey(d => d.AccountId)
-                .HasConstraintName("SystemLog_AccountId_fkey");
         });
 
         modelBuilder.Entity<TransferOrder>(entity =>
@@ -1125,19 +1056,13 @@ public partial class ChiBestDbContext : DbContext
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("timestamp(3) without time zone");
-            entity.Property(e => e.DiscountAmount).HasColumnType("money");
             entity.Property(e => e.InvoiceCode).HasMaxLength(100);
             entity.Property(e => e.OrderDate)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("timestamp(3) without time zone");
-            entity.Property(e => e.Paid).HasColumnType("money");
-            entity.Property(e => e.PayMethod)
-                .HasMaxLength(40)
-                .HasDefaultValueSql("'Tiền Mặt'::character varying");
-            entity.Property(e => e.ReceivedDate).HasColumnType("timestamp(3) without time zone");
             entity.Property(e => e.Status)
                 .HasMaxLength(40)
-                .HasDefaultValueSql("'Chờ Xử Lý'::character varying");
+                .HasDefaultValueSql("'Draft'::character varying");
             entity.Property(e => e.SubTotal).HasColumnType("money");
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
@@ -1168,7 +1093,6 @@ public partial class ChiBestDbContext : DbContext
 
             entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
             entity.Property(e => e.CommissionFee).HasColumnType("money");
-            entity.Property(e => e.Discount).HasColumnType("money");
             entity.Property(e => e.ExtraFee).HasColumnType("money");
             entity.Property(e => e.UnitPrice).HasColumnType("money");
 
@@ -1236,13 +1160,11 @@ public partial class ChiBestDbContext : DbContext
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("timestamp(3) without time zone");
-            entity.Property(e => e.IsMainWarehouse).HasDefaultValue(false);
-            entity.Property(e => e.IsOnlineWarehouse).HasDefaultValue(false);
             entity.Property(e => e.Name).HasMaxLength(255);
             entity.Property(e => e.PhoneNumber).HasMaxLength(15);
             entity.Property(e => e.Status)
                 .HasMaxLength(40)
-                .HasDefaultValueSql("'Working'::character varying");
+                .HasDefaultValueSql("'Active'::character varying");
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("timestamp(3) without time zone");
