@@ -15,4 +15,10 @@ public interface IRoleService
     Task<IBusinessResult> ChangeRoleAccountAsync(AccountRoleRequest request, Guid whoMakeId);
     Task<IBusinessResult> DeleteAsync(Guid id, Guid accountId);
     Task<IBusinessResult> DeleteAccountRoleAsync(Guid accountId, Guid roleId, Guid makerId);
+    
+    // Permission management methods
+    Task<IBusinessResult> GetRolePermissionsAsync(Guid roleId);
+    Task<IBusinessResult> AssignPermissionsToRoleAsync(RolePermissionRequest request, Guid accountId);
+    Task<IBusinessResult> RemovePermissionFromRoleAsync(Guid roleId, Guid permissionId, Guid accountId);
+    Task<IBusinessResult> UpdateRolePermissionsAsync(RolePermissionRequest request, Guid accountId);
 }

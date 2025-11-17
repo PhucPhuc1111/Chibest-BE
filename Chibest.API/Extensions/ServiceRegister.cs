@@ -32,6 +32,7 @@ public static class ServiceRegister
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<ITokenService, TokenService>();
         services.AddScoped<IFileService, FileService>();
+        services.AddScoped<IPermissionService, PermissionService>();
         services.AddSingleton<IContentTypeProvider, FileExtensionContentTypeProvider>();
         services.AddScoped<IWarehouseService, WarehouseService>();
         services.AddScoped<IAccountService, AccountService>();

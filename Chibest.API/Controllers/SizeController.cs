@@ -1,16 +1,17 @@
 using System;
 using System.Security.Claims;
 using System.Threading.Tasks;
+using Chibest.API.Attributes;
 using Chibest.Common;
 using Chibest.Service.Interface;
 using Chibest.Service.ModelDTOs.Request;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Chibest.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Permission(Const.Permissions.Product)]
 public class SizeController : ControllerBase
 {
     private readonly ISizeService _sizeService;
@@ -20,7 +21,6 @@ public class SizeController : ControllerBase
         _sizeService = sizeService;
     }
 
-    [Authorize]
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
@@ -28,7 +28,6 @@ public class SizeController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [Authorize]
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(Guid id)
     {
@@ -36,7 +35,6 @@ public class SizeController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [Authorize]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] SizeRequest request)
     {
@@ -50,7 +48,6 @@ public class SizeController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [Authorize]
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(Guid id)
     {

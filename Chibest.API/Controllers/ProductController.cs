@@ -1,8 +1,8 @@
-﻿using Chibest.Common;
+﻿using Chibest.API.Attributes;
+using Chibest.Common;
 using Chibest.Service.Interface;
 using Chibest.Service.ModelDTOs.Request;
 using Chibest.Service.ModelDTOs.Request.Query;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System;
@@ -12,6 +12,7 @@ namespace Chibest.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Permission(Const.Permissions.Product)]
 public class ProductController : ControllerBase
 {
     private readonly IProductService _productService;

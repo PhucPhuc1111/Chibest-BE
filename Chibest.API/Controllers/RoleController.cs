@@ -1,7 +1,7 @@
-﻿using Chibest.Common;
+﻿using Chibest.API.Attributes;
+using Chibest.Common;
 using Chibest.Service.Interface;
 using Chibest.Service.ModelDTOs.Request;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
@@ -9,6 +9,7 @@ namespace Chibest.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Permission(Const.Permissions.Role)]
 public class RoleController : ControllerBase
 {
     private readonly IRoleService _roleService;
@@ -18,7 +19,6 @@ public class RoleController : ControllerBase
         _roleService = roleService;
     }
 
-    [Authorize(Roles = Const.Roles.Admin)]
     [HttpGet]
     public async Task<IActionResult> GetPaged([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10,
         [FromQuery] string? search = null)
@@ -27,7 +27,6 @@ public class RoleController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [Authorize(Roles = Const.Roles.Admin)]
     [HttpGet("all")]
     public async Task<IActionResult> GetAll()
     {
@@ -35,7 +34,6 @@ public class RoleController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [Authorize(Roles = Const.Roles.Admin)]
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById([FromRoute] Guid id)
     {
@@ -43,7 +41,6 @@ public class RoleController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [Authorize(Roles = Const.Roles.Admin)]
     [HttpGet("{id}/with-accounts")]
     public async Task<IActionResult> GetWithAccounts([FromRoute] Guid id)
     {
@@ -51,7 +48,6 @@ public class RoleController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [Authorize(Roles = Const.Roles.Admin)]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] RoleRequest request)
     {
@@ -63,7 +59,6 @@ public class RoleController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [Authorize(Roles = Const.Roles.Admin)]
     [HttpPost("account-role")]
     public async Task<IActionResult> CreateAccountRole([FromBody] AccountRoleRequest request)
     {
@@ -75,7 +70,6 @@ public class RoleController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [Authorize(Roles = Const.Roles.Admin)]
     [HttpPut]
     public async Task<IActionResult> Update([FromBody] RoleRequest request)
     {
@@ -87,7 +81,6 @@ public class RoleController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [Authorize(Roles = Const.Roles.Admin)]
     [HttpPatch("account-role")]
     public async Task<IActionResult> ChangeAccountRole([FromBody] AccountRoleRequest request)
     {
@@ -99,7 +92,6 @@ public class RoleController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [Authorize(Roles = Const.Roles.Admin)]
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete([FromRoute] Guid id)
     {
@@ -111,7 +103,6 @@ public class RoleController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [Authorize(Roles = Const.Roles.Admin)]
     [HttpDelete("account-role")]
     public async Task<IActionResult> DeleteAccountRole([FromQuery] Guid accountId, [FromQuery] Guid roleId)
     {
@@ -120,6 +111,68 @@ public class RoleController : ControllerBase
             return StatusCode(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
 
         var result = await _roleService.DeleteAccountRoleAsync(accountId, roleId, Guid.Parse(makerId));
+        return StatusCode(result.StatusCode, result);
+    }
+
+    //============================================================================
+    // Permission Management Endpoints
+    //============================================================================
+
+    [HttpGet("{roleId}/permissions")]
+    public async Task<IActionResult> GetRolePermissions([FromRoute] Guid roleId)
+    {
+        var result = await _roleService.GetRolePermissionsAsync(roleId);
+        return StatusCode(result.StatusCode, result);
+    }
+
+    [HttpPost("{roleId}/permissions/assign")]
+    public async Task<IActionResult> AssignPermissionsToRole(
+        [FromRoute] Guid roleId, 
+        [FromBody] List<Guid> permissionIds)
+    {
+        var accountId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (accountId == null || accountId == Guid.Empty.ToString())
+            return StatusCode(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
+
+        var request = new RolePermissionRequest
+        {
+            RoleId = roleId,
+            PermissionIds = permissionIds
+        };
+
+        var result = await _roleService.AssignPermissionsToRoleAsync(request, Guid.Parse(accountId));
+        return StatusCode(result.StatusCode, result);
+    }
+
+    [HttpPut("{roleId}/permissions")]
+    public async Task<IActionResult> UpdateRolePermissions(
+        [FromRoute] Guid roleId, 
+        [FromBody] List<Guid> permissionIds)
+    {
+        var accountId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (accountId == null || accountId == Guid.Empty.ToString())
+            return StatusCode(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
+
+        var request = new RolePermissionRequest
+        {
+            RoleId = roleId,
+            PermissionIds = permissionIds
+        };
+
+        var result = await _roleService.UpdateRolePermissionsAsync(request, Guid.Parse(accountId));
+        return StatusCode(result.StatusCode, result);
+    }
+
+    [HttpDelete("{roleId}/permissions/{permissionId}")]
+    public async Task<IActionResult> RemovePermissionFromRole(
+        [FromRoute] Guid roleId, 
+        [FromRoute] Guid permissionId)
+    {
+        var accountId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (accountId == null || accountId == Guid.Empty.ToString())
+            return StatusCode(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
+
+        var result = await _roleService.RemovePermissionFromRoleAsync(roleId, permissionId, Guid.Parse(accountId));
         return StatusCode(result.StatusCode, result);
     }
 }

@@ -1,8 +1,8 @@
-﻿using Chibest.Common;
+﻿using Chibest.API.Attributes;
+using Chibest.Common;
 using Chibest.Service.Interface;
 using Chibest.Service.ModelDTOs.Request;
 using Chibest.Service.ModelDTOs.Request.Query;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
@@ -10,6 +10,7 @@ namespace Chibest.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Permission(Const.Permissions.Product)]
 public class ProductDetailController : ControllerBase
 {
     private readonly IProductDetailService _productDetailService;
@@ -19,7 +20,6 @@ public class ProductDetailController : ControllerBase
         _productDetailService = productDetailService;
     }
 
-    [Authorize]
     [HttpGet]
     public async Task<IActionResult> GetList([FromQuery] ProductDetailQuery query)
     {
@@ -27,7 +27,6 @@ public class ProductDetailController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [Authorize]
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById([FromRoute] Guid id)
     {
@@ -35,7 +34,6 @@ public class ProductDetailController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [Authorize]
     [HttpGet("code")]
     public async Task<IActionResult> GetByProductAndBranch(
         [FromQuery] string? chipCode,
@@ -46,7 +44,6 @@ public class ProductDetailController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [Authorize]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] ProductDetailRequest request)
     {
@@ -58,7 +55,6 @@ public class ProductDetailController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [Authorize]
     [HttpPut]
     public async Task<IActionResult> Update([FromBody] ProductDetailRequest request)
     {
@@ -70,7 +66,6 @@ public class ProductDetailController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [Authorize]
     [HttpPatch("{id}/status")]
     public async Task<IActionResult> UpdateStatus([FromRoute] Guid id, [FromBody] string status)
     {
@@ -82,7 +77,6 @@ public class ProductDetailController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [Authorize]
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete([FromRoute] Guid id)
     {

@@ -1,6 +1,7 @@
-﻿using Chibest.Service.Interface;
+﻿using Chibest.API.Attributes;
+using Chibest.Common;
+using Chibest.Service.Interface;
 using Chibest.Service.ModelDTOs.Stock.PurchaseOrder;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using static Chibest.Service.ModelDTOs.Stock.StockAdjustment.create;
 using static Chibest.Service.ModelDTOs.Stock.StockAdjustment.update;
@@ -9,7 +10,7 @@ namespace Chibest.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize]
+    [Permission(Const.Permissions.StockAdjustment)]
     public class StockAdjustment : ControllerBase
     {
         private readonly IStockAdjusmentService _stockAdjusmentService;
@@ -39,21 +40,18 @@ namespace Chibest.API.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> CreateStockAdjustment([FromBody] StockAdjustmentCreate request)
         {
             var result = await _stockAdjusmentService.AddStockAdjustment(request);
             return StatusCode(result.StatusCode, result);
         }
         [HttpPut("{id}")]
-        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> UpdateStockAdjustment(Guid id,[FromBody] StockAdjustmentUpdate request)
         {
             var result = await _stockAdjusmentService.UpdateStockAdjustment(id,request);
             return StatusCode(result.StatusCode, result);
         }
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteStockAdjustment(Guid id)
         {
             var result = await _stockAdjusmentService.DeleteStockAdjustment(id);

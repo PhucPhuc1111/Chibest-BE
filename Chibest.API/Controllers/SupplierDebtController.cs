@@ -1,6 +1,7 @@
-﻿using Chibest.Service.Interface;
+﻿using Chibest.API.Attributes;
+using Chibest.Common;
+using Chibest.Service.Interface;
 using Chibest.Service.ModelDTOs.Request;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Net.Mime;
@@ -9,7 +10,7 @@ namespace Chibest.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize]
+    [Permission(Const.Permissions.SupplierDebt)]
     public class SupplierDebt : ControllerBase
     {
         private readonly ISupplierDebtService _supplierDebtService;
@@ -19,7 +20,6 @@ namespace Chibest.API.Controllers
             _supplierDebtService = supplierDebtService;
         }
         [HttpPost]
-        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> CreateSupplierDebt(Guid supplierDebtId,[FromBody] List<SupplierDebtHistoryRequest> transactions)
         {
             var result = await _supplierDebtService.AddSupplierTransactionAsync(supplierDebtId, transactions);
@@ -63,7 +63,6 @@ namespace Chibest.API.Controllers
         }
 
         [HttpDelete]
-        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteSupplierDebt(Guid supplierdebtId, Guid historyId)
         {
             var result = await _supplierDebtService.DeleteSupplierDebtHistoryAsync(supplierdebtId,historyId);
@@ -71,7 +70,6 @@ namespace Chibest.API.Controllers
         }
 
         [HttpGet("export")]
-        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> ExportSupplierDebt()
         {
             var fileBytes = await _supplierDebtService.ExportSupplierDebtToExcelAsync();

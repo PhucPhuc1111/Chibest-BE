@@ -1,7 +1,7 @@
-﻿using Chibest.Service.Interface;
+﻿using Chibest.API.Attributes;
+using Chibest.Common;
+using Chibest.Service.Interface;
 using Chibest.Service.ModelDTOs.Request;
-using Chibest.Service.Services;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Net.Mime;
@@ -10,7 +10,7 @@ namespace Chibest.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize]
+    [Permission(Const.Permissions.BranchDebt)]
     public class BranchDebt : ControllerBase
     {
         private readonly IBranchDebtService _branchDebtService;
@@ -20,7 +20,6 @@ namespace Chibest.API.Controllers
             _branchDebtService = branchDebtService;
         }
         [HttpPost]
-        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> CreateBranchDebt(Guid branchDebtId, [FromBody] List<BranchDebtHistoryRequest> transactions)
         {
             var result = await _branchDebtService.AddBranchTransactionAsync(branchDebtId, transactions);
@@ -64,7 +63,6 @@ namespace Chibest.API.Controllers
         }
 
         [HttpDelete]
-        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteBranchDebt(Guid branchdebtId, Guid historyId)
         {
             var result = await _branchDebtService.DeleteBranchDebtHistoryAsync(branchdebtId, historyId);
@@ -72,7 +70,6 @@ namespace Chibest.API.Controllers
         }
 
         [HttpGet("export")]
-        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> ExportBranchDebt()
         {
             var fileBytes = await _branchDebtService.ExportBranchDebtToExcelAsync();

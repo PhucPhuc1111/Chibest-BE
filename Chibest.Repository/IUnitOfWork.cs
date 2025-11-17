@@ -10,6 +10,7 @@ public interface IUnitOfWork
     IAccountRepository AccountRepository { get; }
     IAccountRoleRepository AccountRoleRepository { get; }
     IRoleRepository RoleRepository { get; }
+    IPermissionRepository PermissionRepository { get; }
     IBranchRepository BranchRepository { get; }
     IBranchStockRepository BranchStockRepository { get; }
     IProductRepository ProductRepository { get; }

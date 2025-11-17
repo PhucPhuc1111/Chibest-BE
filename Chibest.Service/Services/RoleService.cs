@@ -27,7 +27,11 @@ public class RoleService : IRoleService
         if (id == Guid.Empty)
             return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
 
-        var role = await _unitOfWork.RoleRepository.GetByIdAsync(id);
+        var role = await _unitOfWork.RoleRepository
+            .GetByWhere(x => x.Id == id)
+            .Include(x => x.Permissions)
+            .FirstOrDefaultAsync();
+        
         if (role == null)
             return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, Const.FAIL_READ_MSG);
 
@@ -58,8 +62,11 @@ public class RoleService : IRoleService
         Func<IQueryable<Role>, IOrderedQueryable<Role>> orderBy =
             q => q.OrderBy(x => x.Name);
 
+        Func<IQueryable<Role>, IQueryable<Role>> include =
+            q => q.Include(x => x.Permissions);
+
         var roles = await _unitOfWork.RoleRepository.GetPagedAsync(
-            pageNumber, pageSize, predicate, orderBy);
+            pageNumber, pageSize, predicate, orderBy, include);
 
         var totalCount = await _unitOfWork.RoleRepository.CountAsync();
 
@@ -115,6 +122,7 @@ public class RoleService : IRoleService
     {
         var roles = await _unitOfWork.RoleRepository
             .GetAll()
+            .Include(x => x.Permissions)
             .OrderBy(x => x.Name)
             .ToListAsync();
 
@@ -328,5 +336,121 @@ public class RoleService : IRoleService
         return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_DELETE_MSG);
     }
 
-    
+    public async Task<IBusinessResult> GetRolePermissionsAsync(Guid roleId)
+    {
+        if (roleId == Guid.Empty)
+            return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
+
+        var role = await _unitOfWork.RoleRepository
+            .GetByWhere(x => x.Id == roleId)
+            .Include(x => x.Permissions)
+            .FirstOrDefaultAsync();
+
+        if (role == null)
+            return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, Const.FAIL_READ_MSG + " Role");
+
+        var permissions = role.Permissions.Adapt<List<PermissionResponse>>();
+        return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_READ_MSG, permissions);
+    }
+
+    public async Task<IBusinessResult> AssignPermissionsToRoleAsync(RolePermissionRequest request, Guid accountId)
+    {
+        if (request == null || request.RoleId == Guid.Empty || request.PermissionIds == null || !request.PermissionIds.Any())
+            return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
+
+        // Get role with permissions
+        var role = await _unitOfWork.RoleRepository
+            .GetByWhere(x => x.Id == request.RoleId)
+            .Include(x => x.Permissions)
+            .FirstOrDefaultAsync();
+
+        if (role == null)
+            return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, Const.FAIL_READ_MSG + " Role");
+
+        // Get permissions to assign
+        var permissions = await _unitOfWork.PermissionRepository
+            .GetByWhere(x => request.PermissionIds.Contains(x.Id))
+            .ToListAsync();
+
+        if (permissions.Count != request.PermissionIds.Count)
+            return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, "One or more permissions not found");
+
+        // Add only new permissions (avoid duplicates)
+        foreach (var permission in permissions)
+        {
+            if (!role.Permissions.Any(p => p.Id == permission.Id))
+            {
+                role.Permissions.Add(permission);
+            }
+        }
+
+        _unitOfWork.RoleRepository.Update(role);
+        await _unitOfWork.SaveChangesAsync();
+
+        return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_UPDATE_MSG);
+    }
+
+    public async Task<IBusinessResult> RemovePermissionFromRoleAsync(Guid roleId, Guid permissionId, Guid accountId)
+    {
+        if (roleId == Guid.Empty || permissionId == Guid.Empty)
+            return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
+
+        // Get role with permissions
+        var role = await _unitOfWork.RoleRepository
+            .GetByWhere(x => x.Id == roleId)
+            .Include(x => x.Permissions)
+            .FirstOrDefaultAsync();
+
+        if (role == null)
+            return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, Const.FAIL_READ_MSG + " Role");
+
+        var permission = role.Permissions.FirstOrDefault(p => p.Id == permissionId);
+        if (permission == null)
+            return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, "Permission not found in this role");
+
+        role.Permissions.Remove(permission);
+        _unitOfWork.RoleRepository.Update(role);
+        await _unitOfWork.SaveChangesAsync();
+
+        return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_DELETE_MSG);
+    }
+
+    public async Task<IBusinessResult> UpdateRolePermissionsAsync(RolePermissionRequest request, Guid accountId)
+    {
+        if (request == null || request.RoleId == Guid.Empty || request.PermissionIds == null)
+            return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
+
+        // Get role with current permissions
+        var role = await _unitOfWork.RoleRepository
+            .GetByWhere(x => x.Id == request.RoleId)
+            .Include(x => x.Permissions)
+            .FirstOrDefaultAsync();
+
+        if (role == null)
+            return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, Const.FAIL_READ_MSG + " Role");
+
+        // Get new permissions
+        var newPermissions = new List<Permission>();
+        if (request.PermissionIds.Any())
+        {
+            newPermissions = await _unitOfWork.PermissionRepository
+                .GetByWhere(x => request.PermissionIds.Contains(x.Id))
+                .ToListAsync();
+
+            if (newPermissions.Count != request.PermissionIds.Count)
+                return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, "One or more permissions not found");
+        }
+
+        // Clear existing permissions and add new ones
+        role.Permissions.Clear();
+        foreach (var permission in newPermissions)
+        {
+            role.Permissions.Add(permission);
+        }
+
+        _unitOfWork.RoleRepository.Update(role);
+        await _unitOfWork.SaveChangesAsync();
+
+        return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_UPDATE_MSG);
+    }
 }

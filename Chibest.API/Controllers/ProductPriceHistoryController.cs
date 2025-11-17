@@ -1,8 +1,8 @@
-﻿using Chibest.Common;
+﻿using Chibest.API.Attributes;
+using Chibest.Common;
 using Chibest.Service.Interface;
 using Chibest.Service.ModelDTOs.Request;
 using Chibest.Service.ModelDTOs.Request.Query;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
@@ -10,6 +10,7 @@ namespace Chibest.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Permission(Const.Permissions.Product)]
 public class ProductPriceHistoryController : ControllerBase
 {
     private readonly IProductPriceHistoryService _priceHistoryService;
@@ -19,7 +20,6 @@ public class ProductPriceHistoryController : ControllerBase
         _priceHistoryService = priceHistoryService;
     }
 
-    [Authorize]
     [HttpGet]
     public async Task<IActionResult> GetList([FromQuery] ProductPriceHistoryQuery query)
     {
@@ -27,7 +27,6 @@ public class ProductPriceHistoryController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [Authorize]
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById([FromRoute] Guid id)
     {
@@ -35,7 +34,6 @@ public class ProductPriceHistoryController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [Authorize]
     [HttpGet("current-prices")]
     public async Task<IActionResult> GetCurrentPrices([FromQuery] Guid? branchId = null)
     {
@@ -43,7 +41,6 @@ public class ProductPriceHistoryController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [Authorize]
     [HttpGet("product/{productId}")]
     public async Task<IActionResult> GetByProductId([FromRoute] Guid productId)
     {
@@ -51,7 +48,6 @@ public class ProductPriceHistoryController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [Authorize]
     [HttpGet("branch/{branchId}")]
     public async Task<IActionResult> GetByBranchId([FromRoute] Guid branchId)
     {
@@ -59,7 +55,6 @@ public class ProductPriceHistoryController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [Authorize]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] ProductPriceHistoryRequest request)
     {
@@ -71,7 +66,6 @@ public class ProductPriceHistoryController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [Authorize]
     [HttpPut]
     public async Task<IActionResult> Update([FromBody] ProductPriceHistoryRequest request)
     {
@@ -83,7 +77,6 @@ public class ProductPriceHistoryController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [Authorize]
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(Guid id)
     {

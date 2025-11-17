@@ -1,4 +1,5 @@
-﻿using Chibest.Common;
+﻿using Chibest.API.Attributes;
+using Chibest.Common;
 using Chibest.Service.Interface;
 using Chibest.Service.ModelDTOs.Request;
 using Microsoft.AspNetCore.Authorization;
@@ -9,6 +10,7 @@ namespace Chibest.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Permission(Const.Permissions.Account)]
 public class AccountController : ControllerBase
 {
     private readonly IAccountService _accountService;
@@ -38,7 +40,6 @@ public class AccountController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [Authorize]
     [HttpPost("logout")]
     public async Task<IActionResult> Logout()
     {
@@ -51,8 +52,6 @@ public class AccountController : ControllerBase
     }
     //--------------------------------------------------------------------------------------------------------
 
-    //[Authorize(Roles = "admin,moderator")]
-    [Authorize]
     [HttpGet("{id}")]
     public async Task<IActionResult> ViewAccount([FromRoute] Guid id)
     {
@@ -60,7 +59,6 @@ public class AccountController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [Authorize]
     [HttpGet("list")]
     public async Task<IActionResult> GetListAccount(
         [FromQuery] int pageNumber = 1,
@@ -71,7 +69,6 @@ public class AccountController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [Authorize]
     [HttpPut]
     public async Task<IActionResult> UpdateAccount([FromBody] AccountRequest request)
     {
@@ -87,7 +84,6 @@ public class AccountController : ControllerBase
     //    return Ok();
     //}
 
-    [Authorize]
     [HttpPatch("new-password")]
     public async Task<IActionResult> ChangePassword([FromBody] string newPassword)
     {
@@ -99,7 +95,6 @@ public class AccountController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [Authorize]
     [HttpPatch("avatar")]
     public async Task<IActionResult> UpdateAvatar([FromForm] string avatarUrl)
     {
@@ -111,7 +106,6 @@ public class AccountController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [Authorize]
     [HttpDelete("temporary")]
     public async Task<IActionResult> Delete()
     {
@@ -127,7 +121,6 @@ public class AccountController : ControllerBase
 
     //----------------------------------------------------------------------------
     //==============================[ ADMIN APIs ]================================
-    [Authorize(Roles = Const.Roles.Admin)]
     [HttpPost]
     public async Task<IActionResult> CreateAccount([FromBody] AccountRequest newAccount)
     {
@@ -135,7 +128,6 @@ public class AccountController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [Authorize(Roles = Const.Roles.Admin)]
     [HttpDelete("{accountId}")]
     public async Task<IActionResult> DeleteByAdmin(Guid accountId)
     {

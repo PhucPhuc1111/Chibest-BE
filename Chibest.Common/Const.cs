@@ -13,6 +13,25 @@ public static class Const
     }
     #endregion
 
+    #region System Permissions
+    public static class Permissions
+    {
+        public const string Account = "ACCOUNT";
+        public const string Role = "ROLE";
+        public const string Product = "PRODUCT";
+        public const string Branch = "BRANCH";
+        public const string BranchStock = "BRANCH_STOCK";
+        public const string BranchDebt = "BRANCH_DEBT";
+        public const string SupplierDebt = "SUPPLIER_DEBT";
+        public const string Warehouse = "WAREHOUSE";
+        public const string PurchaseOrder = "PURCHASE_ORDER";
+        public const string PurchaseReturn = "PURCHASE_RETURN";
+        public const string TransferOrder = "TRANSFER_ORDER";
+        public const string StockAdjustment = "STOCK_ADJUSTMENT";
+        public const string File = "FILE";
+    }
+    #endregion
+
     #region General
     public static int ERROR_EXCEPTION = -1;
     public static string ERROR_EXCEPTION_MSG = "An unexpected error occurred.";

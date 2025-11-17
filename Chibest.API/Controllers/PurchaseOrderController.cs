@@ -1,14 +1,15 @@
 ﻿using Azure.Core;
+using Chibest.API.Attributes;
+using Chibest.Common;
 using Chibest.Service.Interface;
 using Chibest.Service.ModelDTOs.Stock.PurchaseOrder;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Chibest.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize]
+    [Permission(Const.Permissions.PurchaseOrder)]
     public class PurchaseOrder : ControllerBase
     {
         private readonly IPurchaseOrderService _purchaseOrderService;
@@ -37,28 +38,24 @@ namespace Chibest.API.Controllers
             return StatusCode(result.StatusCode, result);
         }
         [HttpPost]
-        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> CreatePurchaseOrder([FromBody] PurchaseOrderCreate request)
         {
             var result = await _purchaseOrderService.AddPurchaseOrder(request);
             return StatusCode(result.StatusCode, result);
         }
         [HttpPut("{id}")]
-        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> UpdatePurchaseOrder(Guid id,[FromBody] PurchaseOrderUpdate request)
         {
             var result = await _purchaseOrderService.UpdateAsync(id,request);
             return StatusCode(result.StatusCode, result);
         }
         [HttpPost("import")]
-        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetPurchaseOrderFile(IFormFile file)
         {
             var result = await _purchaseOrderService.ReadPurchaseOrderFromExcel(file);
             return StatusCode(result.StatusCode, result);
         }
         [HttpDelete("id")]
-        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeletePurchaseOrder(Guid id)
         {
             var result = await _purchaseOrderService.DeletePurchaseOrder(id);
