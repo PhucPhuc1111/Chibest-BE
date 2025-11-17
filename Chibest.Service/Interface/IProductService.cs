@@ -16,4 +16,5 @@ public interface IProductService
     Task<IBusinessResult> DeleteAsync(Guid id, Guid accountId);
     Task<IBusinessResult> GetByIdAsync(Guid id, Guid? branchId);
     //Task<IBusinessResult> ImportProductsFromExcelAsync(IFormFile file, Guid accountId);
+    Task<IBusinessResult> GenerateProductBarcodeAsync(Guid productId, Guid? branchId);
 }

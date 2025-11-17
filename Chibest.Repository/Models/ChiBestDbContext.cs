@@ -87,6 +87,10 @@ public partial class ChiBestDbContext : DbContext
 
     public virtual DbSet<WorkShift> WorkShifts { get; set; }
 
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
+        => optionsBuilder.UseNpgsql("Host=localhost;Database=ChiBestDB;Username=postgres;Password=12345;");
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Account>(entity =>
@@ -505,7 +509,11 @@ public partial class ChiBestDbContext : DbContext
 
             entity.ToTable("Product");
 
+            entity.HasIndex(e => e.BarCode, "Product_BarCode_key").IsUnique();
+
             entity.HasIndex(e => e.Sku, "Product_SKU_key").IsUnique();
+
+            entity.HasIndex(e => e.BarCode, "ix_product_barcode");
 
             entity.HasIndex(e => e.CategoryId, "ix_product_categoryid");
 
@@ -519,6 +527,7 @@ public partial class ChiBestDbContext : DbContext
 
             entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
             entity.Property(e => e.AvatarUrl).HasColumnName("AvatarURL");
+            entity.Property(e => e.BarCode).HasMaxLength(100);
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("timestamp(3) without time zone");
@@ -571,54 +580,27 @@ public partial class ChiBestDbContext : DbContext
 
             entity.ToTable("ProductDetail");
 
-            entity.HasIndex(e => e.BarCode, "ProductDetail_BarCode_key").IsUnique();
-
             entity.HasIndex(e => e.ChipCode, "ProductDetail_ChipCode_key").IsUnique();
 
             entity.HasIndex(e => e.TagId, "ProductDetail_TagId_key").IsUnique();
 
-            entity.HasIndex(e => new { e.BranchId, e.WarehouseId }, "ix_productdetail_branchid_warehouseid");
-
             entity.HasIndex(e => e.ChipCode, "ix_productdetail_chipcode");
 
-            entity.HasIndex(e => new { e.ProductId, e.Status }, "ix_productdetail_productid_status");
+            entity.HasIndex(e => e.ProductId, "ix_productdetail_productid");
 
             entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
-            entity.Property(e => e.BarCode).HasMaxLength(100);
             entity.Property(e => e.ChipCode).HasMaxLength(100);
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("timestamp(3) without time zone");
-            entity.Property(e => e.ImportDate)
-                .HasDefaultValueSql("CURRENT_TIMESTAMP")
-                .HasColumnType("timestamp(3) without time zone");
-            entity.Property(e => e.LastTransactionDate).HasColumnType("timestamp(3) without time zone");
-            entity.Property(e => e.LastTransactionType).HasMaxLength(50);
-            entity.Property(e => e.PurchasePrice).HasColumnType("money");
-            entity.Property(e => e.SellingPrice).HasColumnType("money");
-            entity.Property(e => e.Status)
-                .HasMaxLength(50)
-                .HasDefaultValueSql("'Available'::character varying");
             entity.Property(e => e.TagId).HasMaxLength(100);
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("timestamp(3) without time zone");
 
-            entity.HasOne(d => d.Branch).WithMany(p => p.ProductDetails)
-                .HasForeignKey(d => d.BranchId)
-                .HasConstraintName("ProductDetail_BranchId_fkey");
-
             entity.HasOne(d => d.Product).WithMany(p => p.ProductDetails)
                 .HasForeignKey(d => d.ProductId)
                 .HasConstraintName("ProductDetail_ProductId_fkey");
-
-            entity.HasOne(d => d.Supplier).WithMany(p => p.ProductDetails)
-                .HasForeignKey(d => d.SupplierId)
-                .HasConstraintName("ProductDetail_SupplierId_fkey");
-
-            entity.HasOne(d => d.Warehouse).WithMany(p => p.ProductDetails)
-                .HasForeignKey(d => d.WarehouseId)
-                .HasConstraintName("ProductDetail_WarehouseId_fkey");
         });
 
         modelBuilder.Entity<ProductPriceHistory>(entity =>

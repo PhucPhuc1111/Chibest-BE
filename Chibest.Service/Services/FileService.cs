@@ -15,8 +15,10 @@ using OfficeOpenXml;
 using OfficeOpenXml.Style;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Jpeg;
+using SixLabors.ImageSharp.Formats.Png;
 using System.ComponentModel;
 using System.Configuration;
+using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
 
@@ -27,12 +29,22 @@ public class FileService : IFileService
     private readonly IUnitOfWork _unitOfWork;
 
     private readonly long _imageMaxSizeByte;
+    private readonly long _videoMaxSizeByte;
     private readonly int _compressionQuality;
     private readonly string[] _allowedImageExtensions;
+    private readonly string[] _allowedVideoExtensions;
     private readonly IContentTypeProvider _contentTypeProvider;
     private readonly string _privateStoragePath;
     private readonly IConfiguration _configuration;// For excel mapping config
     private readonly Dictionary<string, Func<ProductExportView, object?>> _columnMap;// For excel mapping config
+    private static readonly string[] DefaultImageExtensions = new[]
+    {
+        ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".webp", ".heic", ".heif"
+    };
+    private static readonly string[] DefaultVideoExtensions = new[]
+    {
+        ".mp4", ".mov", ".mkv", ".avi", ".webm", ".m4v", ".wmv", ".flv", ".3gp", ".mpeg", ".mpg"
+    };
 
     public FileService(IUnitOfWork unitOfWork, IConfiguration configuration, IWebHostEnvironment webHostEnvironment, IContentTypeProvider contentTypeProvider)
     {
@@ -41,14 +53,11 @@ public class FileService : IFileService
         _imageMaxSizeByte = (long.TryParse(Environment.GetEnvironmentVariable("Image_Max_Size_MB"), out var MB)
             ? MB : 2) * 1024 * 1024;
         _compressionQuality = int.TryParse(Environment.GetEnvironmentVariable("Image_Compressiom_Quality_Percent"), out var percent) ? percent : 75;
+        _videoMaxSizeByte = (long.TryParse(Environment.GetEnvironmentVariable("Video_Max_Size_MB"), out var videoMB)
+            ? videoMB : 1024) * 1024 * 1024;
 
-        var rawExtensions = Environment.GetEnvironmentVariable("Image_Type") ?? "jpg,png";
-        // Xử lý chuỗi này để đảm bảo mọi phần tử đều có dấu "."
-        _allowedImageExtensions = Regex.Split(rawExtensions, ",")
-            .Select(ext => ext.Trim().ToLowerInvariant()) // 1. Dọn dẹp: cắt khoảng trắng, chuyển chữ thường
-            .Where(ext => !string.IsNullOrWhiteSpace(ext)) // 2. Loại bỏ các chuỗi rỗng (nếu ENV là "png,,jpg")
-            .Select(ext => ext.StartsWith(".") ? ext : "." + ext) // 3. Thêm dấu "." nếu chưa có
-            .ToArray();
+        _allowedImageExtensions = BuildExtensionList(Environment.GetEnvironmentVariable("Image_Type"), DefaultImageExtensions);
+        _allowedVideoExtensions = BuildExtensionList(Environment.GetEnvironmentVariable("Video_Type"), DefaultVideoExtensions);
         _contentTypeProvider = contentTypeProvider;
 
         // Get folder publish
@@ -177,6 +186,80 @@ public class FileService : IFileService
         }
         // if return path error: $"{relativePath}/{finalFileName}";
         return Path.Combine(relativePath, finalFileName);
+    }
+
+    public async Task<string> SaveProductImageAsync(IFormFile imageFile, string sku)
+    {
+        if (imageFile == null || imageFile.Length == 0)
+            throw new Exception("Image null");
+
+        if (string.IsNullOrWhiteSpace(sku))
+            throw new Exception("SKU null");
+
+        if (_allowedImageExtensions.Length == 0 || _allowedImageExtensions.Any(arr => string.IsNullOrWhiteSpace(arr)))
+            throw new Exception("Image types allow is null");
+
+        var fileExtension = Path.GetExtension(imageFile.FileName).ToLowerInvariant();
+        if (string.IsNullOrEmpty(fileExtension) || !_allowedImageExtensions.Contains(fileExtension))
+            throw new Exception("Image type not allow");
+
+        var safeSku = NormalizeFileSegment(sku);
+        var relativeFolder = "ProductImages";
+        var uploadPath = Path.Combine(_privateStoragePath, relativeFolder);
+
+        if (!Directory.Exists(uploadPath))
+            Directory.CreateDirectory(uploadPath);
+
+        var relativePath = Path.Combine(relativeFolder, $"{safeSku}.png");
+        var physicalFilePath = Path.Combine(uploadPath, $"{safeSku}.png");
+
+        using var imageStream = imageFile.OpenReadStream();
+        using var image = await Image.LoadAsync(imageStream);
+
+        var encoder = new PngEncoder
+        {
+            CompressionLevel = PngCompressionLevel.Level6
+        };
+
+        using (var fileStream = new FileStream(physicalFilePath, FileMode.Create))
+        {
+            await image.SaveAsPngAsync(fileStream, encoder);
+        }
+
+        return relativePath;
+    }
+
+    public async Task<string> SaveProductVideoAsync(IFormFile videoFile, string sku)
+    {
+        if (videoFile == null || videoFile.Length == 0)
+            throw new Exception("Video null");
+
+        if (string.IsNullOrWhiteSpace(sku))
+            throw new Exception("SKU null");
+
+        if (videoFile.Length > _videoMaxSizeByte)
+            throw new Exception("Video vượt quá dung lượng cho phép (1GB).");
+
+        var fileExtension = Path.GetExtension(videoFile.FileName).ToLowerInvariant();
+        if (string.IsNullOrEmpty(fileExtension) || !_allowedVideoExtensions.Contains(fileExtension))
+            throw new Exception("Video type not allow");
+
+        var safeSku = NormalizeFileSegment(sku);
+        var relativeFolder = "ProductVideos";
+        var uploadPath = Path.Combine(_privateStoragePath, relativeFolder);
+
+        if (!Directory.Exists(uploadPath))
+            Directory.CreateDirectory(uploadPath);
+
+        var relativePath = Path.Combine(relativeFolder, $"{safeSku}{fileExtension}");
+        var physicalFilePath = Path.Combine(uploadPath, $"{safeSku}{fileExtension}");
+
+        using (var fileStream = new FileStream(physicalFilePath, FileMode.Create))
+        {
+            await videoFile.CopyToAsync(fileStream);
+        }
+
+        return relativePath;
     }
 
     public (Stream FileStream, string ContentType) GetImageFile(string relativePath)
@@ -385,5 +468,33 @@ public class FileService : IFileService
         });
 
         return await flatQuery.ToListAsync();
+    }
+
+    private static string[] BuildExtensionList(string? envValue, string[] defaults)
+    {
+        IEnumerable<string> Parse(string? source) =>
+            string.IsNullOrWhiteSpace(source)
+                ? Array.Empty<string>()
+                : Regex.Split(source, ",")
+                    .Select(ext => ext.Trim().ToLowerInvariant())
+                    .Where(ext => !string.IsNullOrWhiteSpace(ext));
+
+        return defaults
+            .Concat(Parse(envValue))
+            .Select(ext => ext.StartsWith(".") ? ext : "." + ext)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+    }
+
+    private static string NormalizeFileSegment(string value)
+    {
+        var trimmed = value?.Trim();
+        if (string.IsNullOrWhiteSpace(trimmed))
+            throw new Exception("File name contain invalid character");
+
+        if (trimmed.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+            throw new Exception("File name contain invalid character");
+
+        return trimmed;
     }
 }

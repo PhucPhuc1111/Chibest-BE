@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.AspNetCore.Http;
+using System;
 using System.Collections.Generic;
 
 namespace Chibest.Service.ModelDTOs.Request;
@@ -10,6 +11,7 @@ public class ProductRequest
     public string Name { get; set; } = null!;
     public string? Description { get; set; }
     public string? AvatarUrl { get; set; }
+    public string? VideoUrl { get; set; }
     public Guid? ColorId { get; set; }
     public Guid? SizeId { get; set; }
     public List<Guid>? ColorIds { get; set; }
@@ -22,9 +24,13 @@ public class ProductRequest
     public string Status { get; set; } = null!;
     public Guid CategoryId { get; set; }
     public string? ParentSku { get; set; }
+    public IFormFile? AvatarFile { get; set; }
+    public IFormFile? VideoFile { get; set; }
 
     public decimal? SellingPrice { get; set; }
     public decimal? CostPrice { get; set; }
+
+    public string? Note { get; set; }
     public DateTime? EffectiveDate { get; set; }
     public DateTime? ExpiryDate { get; set; }
 }

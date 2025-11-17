@@ -12,22 +12,30 @@ using Mapster;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using SixLabors.ImageSharp.Formats.Png;
+using SixLabors.ImageSharp.PixelFormats;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Text.Json;
+using ZXing;
+using ZXing.Common;
+using ImageSharpImage = SixLabors.ImageSharp.Image;
 
 namespace Chibest.Service.Services;
 
 public class ProductService : IProductService
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IFileService _fileService;
 
-    public ProductService(IUnitOfWork unitOfWork)
+    public ProductService(IUnitOfWork unitOfWork, IFileService fileService)
     {
         _unitOfWork = unitOfWork;
+        _fileService = fileService;
     }
     public async Task<IBusinessResult> GetMasterListAsync(ProductQuery query)
     {
@@ -244,7 +252,42 @@ public class ProductService : IProductService
         return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_READ_MSG, response);
     }
 
+    public async Task<IBusinessResult> GenerateProductBarcodeAsync(Guid productId, Guid? branchId)
+    {
+        if (productId == Guid.Empty)
+            return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Id sản phẩm không hợp lệ.");
 
+        var product = await _unitOfWork.ProductRepository
+            .GetByWhere(p => p.Id == productId)
+            .Include(p => p.ProductPriceHistories)
+            .AsNoTracking()
+            .FirstOrDefaultAsync();
+
+        if (product == null)
+            return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, Const.FAIL_READ_MSG);
+
+        var barcodeValue = !string.IsNullOrWhiteSpace(product.BarCode)
+            ? product.BarCode!
+            : product.Sku;
+
+        if (string.IsNullOrWhiteSpace(barcodeValue))
+            return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Sản phẩm chưa được cấu hình barcode.");
+
+        var latestPrice = GetLatestPriceHistory(product.ProductPriceHistories, branchId);
+
+        var response = new ProductBarcodeResponse
+        {
+            ProductId = product.Id,
+            ProductName = product.Name,
+            Barcode = barcodeValue,
+            BarcodeImageBase64 = GenerateCode128Barcode(barcodeValue),
+            SellingPrice = latestPrice?.SellingPrice,
+            Currency = "VND"
+        };
+
+        return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_READ_MSG, response);
+    }
+    
     public async Task<IBusinessResult> CreateAsync(ProductRequest request, Guid accountId)
     {
         if (request == null)
@@ -255,6 +298,36 @@ public class ProductService : IProductService
 
         var baseSku = request.Sku.Trim();
         var baseName = request.Name.Trim();
+
+        string? avatarUrl = request.AvatarUrl;
+        string? videoUrl = request.VideoUrl;
+
+        if (request.AvatarFile != null)
+        {
+            try
+            {
+                avatarUrl = await _fileService.SaveProductImageAsync(request.AvatarFile, baseSku);
+            }
+            catch (Exception ex)
+            {
+                return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, $"Lưu ảnh sản phẩm thất bại: {ex.Message}");
+            }
+        }
+
+        if (request.VideoFile != null)
+        {
+            try
+            {
+                videoUrl = await _fileService.SaveProductVideoAsync(request.VideoFile, baseSku);
+            }
+            catch (Exception ex)
+            {
+                return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, $"Lưu video sản phẩm thất bại: {ex.Message}");
+            }
+        }
+
+        request.AvatarUrl = avatarUrl;
+        request.VideoUrl = videoUrl;
 
         var variantColorIds = request.ColorIds?
             .Where(id => id != Guid.Empty)
@@ -350,7 +423,10 @@ public class ProductService : IProductService
         var parentProduct = request.Adapt<Product>();
         parentProduct.Id = Guid.NewGuid();
         parentProduct.Sku = baseSku;
+        parentProduct.BarCode = baseSku;
         parentProduct.Name = baseName;
+        parentProduct.AvatarUrl = avatarUrl;
+        parentProduct.VideoUrl = videoUrl;
         parentProduct.CreatedAt = now;
         parentProduct.UpdatedAt = now;
         parentProduct.ParentSku = generateVariants ? null : request.ParentSku;
@@ -369,14 +445,16 @@ public class ProductService : IProductService
         {
             foreach (var (color, size) in variantDefinitions)
             {
+                var variantSku = BuildVariantSku(baseSku, color, size);
                 var variant = new Product
                 {
                     Id = Guid.NewGuid(),
-                    Sku = BuildVariantSku(baseSku, color, size),
+                    Sku = variantSku,
                     Name = BuildVariantName(baseName, color, size),
                     Description = parentProduct.Description,
                     AvatarUrl = parentProduct.AvatarUrl,
                     VideoUrl = parentProduct.VideoUrl,
+                    BarCode = variantSku,
                     ColorId = color?.Id,
                     SizeId = size?.Id,
                     Style = parentProduct.Style,
@@ -731,6 +809,28 @@ public class ProductService : IProductService
     //    return new BusinessResult(Const.HTTP_STATUS_OK, message, resultPayload);
     //}
 
+
+    private static string GenerateCode128Barcode(string content)
+    {
+        var writer = new BarcodeWriterPixelData
+        {
+            Format = BarcodeFormat.CODE_128,
+            Options = new EncodingOptions
+            {
+                Height = 90,
+                Width = Math.Max(content.Length * 18, 260),
+                Margin = 0,
+                PureBarcode = true
+            }
+        };
+
+        var pixelData = writer.Write(content.Trim());
+
+        using var image = ImageSharpImage.LoadPixelData<Rgba32>(pixelData.Pixels, pixelData.Width, pixelData.Height);
+        using var ms = new MemoryStream();
+        image.Save(ms, new PngEncoder());
+        return $"data:image/png;base64,{Convert.ToBase64String(ms.ToArray())}";
+    }
 
     private static ProductPriceHistory? GetLatestPriceHistory(IEnumerable<ProductPriceHistory>? priceHistories, Guid? branchId)
     {

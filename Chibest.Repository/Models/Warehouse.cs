@@ -25,8 +25,6 @@ public partial class Warehouse
 
     public virtual Branch? Branch { get; set; }
 
-    public virtual ICollection<ProductDetail> ProductDetails { get; set; } = new List<ProductDetail>();
-
     public virtual ICollection<PurchaseOrder> PurchaseOrders { get; set; } = new List<PurchaseOrder>();
 
     public virtual ICollection<PurchaseReturn> PurchaseReturns { get; set; } = new List<PurchaseReturn>();

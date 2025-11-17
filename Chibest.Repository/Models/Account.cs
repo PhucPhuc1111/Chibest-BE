@@ -41,8 +41,6 @@ public partial class Account
 
     public virtual ICollection<Payroll> Payrolls { get; set; } = new List<Payroll>();
 
-    public virtual ICollection<ProductDetail> ProductDetails { get; set; } = new List<ProductDetail>();
-
     public virtual ICollection<ProductPriceHistory> ProductPriceHistories { get; set; } = new List<ProductPriceHistory>();
 
     public virtual ICollection<PurchaseOrder> PurchaseOrderEmployees { get; set; } = new List<PurchaseOrder>();

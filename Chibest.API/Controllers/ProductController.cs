@@ -63,8 +63,16 @@ public class ProductController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
+    [HttpGet("{id}/barcode")]
+    public async Task<IActionResult> GetBarcode(Guid id, [FromQuery] Guid? branchId)
+    {
+        var result = await _productService.GenerateProductBarcodeAsync(id, branchId);
+        return StatusCode(result.StatusCode, result);
+    }
+
     [HttpPost]
-    public async Task<IActionResult> Create([FromBody] ProductRequest request)
+    [Consumes("multipart/form-data")]
+    public async Task<IActionResult> Create([FromForm] ProductRequest request)
     {
         var accountId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (accountId == null || accountId == Guid.Empty.ToString())
