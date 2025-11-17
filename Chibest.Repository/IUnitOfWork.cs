@@ -16,6 +16,8 @@ public interface IUnitOfWork
     IProductDetailRepository ProductDetailRepository { get; }
     IProductPriceHistoryRepository ProductPriceHistoryRepository { get; }
     ICategoryRepository CategoryRepository { get; }
+    IColorRepository ColorRepository { get; }
+    ISizeRepository SizeRepository { get; }
     IPurchaseOrderRepository PurchaseOrderRepository { get; }
     ITransferOrderRepository TransferOrderRepository { get; }
     IPurchaseReturnRepository PurchaseReturnRepository { get; }

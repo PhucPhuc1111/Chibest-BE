@@ -344,10 +344,9 @@ public class FileService : IFileService
             Name = que.Product.Name,
             Description = que.Product.Description,
             AvatarUrl = que.Product.AvatarUrl, // Lấy URL (đường dẫn tương đối)
-            Color = que.Product.Color,
-            Size = que.Product.Size,
+            Color = que.Product.Color.Name,
+            Size = que.Product.Size.Code,
             Style = que.Product.Style,
-            Brand = que.Product.Brand,
             Material = que.Product.Material,
             Weight = que.Product.Weight,
             IsMaster = que.Product.IsMaster,

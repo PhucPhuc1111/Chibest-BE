@@ -43,6 +43,8 @@ public static class ServiceRegister
         services.AddScoped<IProductDetailService, ProductDetailService>();
         services.AddScoped<IProductPriceHistoryService, ProductPriceHistoryService>();
         services.AddScoped<IBranchStockService, BranchStockService>();
+        services.AddScoped<IColorService, ColorService>();
+        services.AddScoped<ISizeService, SizeService>();
 
         services.AddScoped<IPurchaseOrderService, PurchaseOrderService>();
         services.AddScoped<ITransferOrderService, TransferOrderService>();

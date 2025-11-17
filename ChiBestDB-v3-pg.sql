@@ -4,7 +4,6 @@ DROP DATABASE IF EXISTS "ChiBestDB";
 -- Sau đó chạy riêng:
 CREATE DATABASE "ChiBestDB";
 
-
 -- =============================================
 -- MODULE 1: ORGANIZATION & LOCATION
 -- Quản lý chi nhánh và kho
@@ -94,6 +93,33 @@ CREATE TABLE "AccountRole" (
 CREATE INDEX IX_AccountRole_AccountId ON "AccountRole"("AccountId", "StartDate" DESC);
 CREATE INDEX IX_AccountRole_BranchId_RoleId ON "AccountRole"("BranchId", "RoleId") INCLUDE ("AccountId");
 
+-- Tạo bảng Permission
+CREATE TABLE "Permission" (
+    "Id" UUID DEFAULT GEN_RANDOM_UUID() PRIMARY KEY,
+    "Code" VARCHAR(100) UNIQUE NOT NULL,
+);
+
+CREATE INDEX IX_Permission_Code ON "Permission"("Code");
+CREATE INDEX IX_Permission_Module ON "Permission"("Module");
+
+-- Tạo bảng RolePermission
+CREATE TABLE "RolePermission" (
+    "RoleId" UUID NOT NULL,
+    "PermissionId" UUID NOT NULL,
+    
+    CONSTRAINT PK_RolePermission PRIMARY KEY ("RoleId", "PermissionId"),
+    
+    CONSTRAINT FK_RolePermission_Role FOREIGN KEY ("RoleId")
+        REFERENCES "Role"("Id")
+        ON DELETE CASCADE,
+        
+    CONSTRAINT FK_RolePermission_Permission FOREIGN KEY ("PermissionId")
+        REFERENCES "Permission"("Id")
+        ON DELETE CASCADE
+);
+
+
+
 -- =============================================
 -- MODULE 3: CUSTOMER MANAGEMENT
 -- Quản lý khách hàng
@@ -133,32 +159,46 @@ CREATE TABLE "Category" (
 
 CREATE INDEX IX_Category_Type_Name ON "Category"("Name");
 
+
+CREATE TABLE "Color" (
+    "Id" UUID DEFAULT GEN_RANDOM_UUID() PRIMARY KEY,
+    "Name" VARCHAR(100) NOT NULL,
+    "Code" VARCHAR(7) NOT NULL
+);
+
+-- Tạo bảng Size
+CREATE TABLE "Size" (
+    "Id" UUID DEFAULT GEN_RANDOM_UUID() PRIMARY KEY,
+    "Code" VARCHAR(20) NOT NULL
+);
+
+-- Sửa đổi bảng Product
 CREATE TABLE "Product" (
     "Id" UUID DEFAULT GEN_RANDOM_UUID() PRIMARY KEY,
     "SKU" VARCHAR(50) UNIQUE NOT NULL,
     "Name" VARCHAR(250) NOT NULL,
     "Description" TEXT,
     "AvatarURL" TEXT,
-	"VideoURL" TEXT,
-    "Color" VARCHAR(100),
-    "Size" VARCHAR(100),
+    "VideoURL" TEXT,
+    "ColorId" UUID NULL REFERENCES "Color"("Id") ON DELETE SET NULL,
+    "SizeId" UUID NULL REFERENCES "Size"("Id") ON DELETE SET NULL,
     "Style" VARCHAR(100),
-    "Brand" VARCHAR(100),
     "Material" VARCHAR(100),
     "Weight" INT NOT NULL DEFAULT 0,
     "IsMaster" BOOLEAN NOT NULL DEFAULT TRUE,
     "Status" VARCHAR(40) NOT NULL DEFAULT 'Available',
     "CreatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "UpdatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-	"HandleStatus" VARCHAR(40) NOT NULL DEFAULT 'Draft', -- Production / Shipped / Received / Canceled
-	"Note" VARCHAR(200),
+    "HandleStatus" VARCHAR(40) NOT NULL DEFAULT 'Draft',
+    "Note" VARCHAR(200),
     "CategoryId" UUID NOT NULL REFERENCES "Category"("Id") ON DELETE CASCADE,
     "ParentSKU" VARCHAR(50) NULL REFERENCES "Product"("SKU")
 );
-
 CREATE INDEX IX_Product_Name ON "Product"("Name");
 CREATE INDEX IX_Product_CategoryId ON "Product"("CategoryId");
 CREATE INDEX IX_Product_ParentSKU ON "Product"("ParentSKU");
+CREATE INDEX IX_Product_ColorId ON "Product"("ColorId");
+CREATE INDEX IX_Product_SizeId ON "Product"("SizeId");
 
 -- =============================================
 -- MODULE 5: PRICING MANAGEMENT

@@ -29,9 +29,11 @@ public class ProductService : IProductService
     {
         _unitOfWork = unitOfWork;
     }
-    public async Task<IBusinessResult> GetListAsync(ProductQuery query)
+    public async Task<IBusinessResult> GetMasterListAsync(ProductQuery query)
     {
         Expression<Func<Product, bool>> predicate = p => true;
+
+        predicate = predicate.And(p => p.IsMaster == true);
 
         if (!string.IsNullOrEmpty(query.SearchTerm))
         {
@@ -51,16 +53,6 @@ public class ProductService : IProductService
             predicate = predicate.And(p => p.CategoryId == query.CategoryId.Value);
         }
 
-        if (query.IsMaster.HasValue)
-        {
-            predicate = predicate.And(p => p.IsMaster == query.IsMaster.Value);
-        }
-
-        if (!string.IsNullOrEmpty(query.Brand))
-        {
-            predicate = predicate.And(p => p.Brand == query.Brand);
-        }
-
         Func<IQueryable<Product>, IOrderedQueryable<Product>>? orderBy = null;
         if (!string.IsNullOrEmpty(query.SortBy))
         {
@@ -73,12 +65,108 @@ public class ProductService : IProductService
             };
         }
 
-        // Include both ProductPriceHistories and BranchStocks
         var products = await _unitOfWork.ProductRepository.GetPagedAsync(
             query.PageNumber,
             query.PageSize,
             predicate,
             orderBy,
+            include: q => q.Include(p => p.ProductPriceHistories)
+                          .Include(p => p.BranchStocks)
+                          .Include(p => p.Category)
+        );
+
+        var masterSkus = products.Select(p => p.Sku).ToList();
+
+        var variantCounts = await _unitOfWork.ProductRepository
+            .GetAllAsync(p => masterSkus.Contains(p.ParentSku) && p.IsMaster == false)
+            .ContinueWith(task => task.Result
+                .GroupBy(p => p.ParentSku)
+                .ToDictionary(g => g.Key, g => g.Count()));
+
+        var response = products.Select(product =>
+        {
+            var latestPrice = GetLatestPriceHistory(product.ProductPriceHistories, query.BranchId);
+
+            var branchStock = query.BranchId.HasValue
+                ? product.BranchStocks?.FirstOrDefault(bs => bs.BranchId == query.BranchId.Value)
+                : null;
+
+            variantCounts.TryGetValue(product.Sku, out int childrenNo);
+
+            return new ProductListResponse
+            {
+                Id = product.Id,
+                AvartarUrl = product.AvatarUrl,
+                Sku = product.Sku,
+                Name = product.Name,
+                IsMaster = product.IsMaster,
+                Status = product.Status,
+                ChildrenNo = childrenNo,
+                CostPrice = latestPrice?.CostPrice,
+                SellingPrice = latestPrice?.SellingPrice,
+                StockQuantity = branchStock?.AvailableQty ?? 0
+            };
+        }).ToList();
+
+        return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_READ_MSG, response);
+    }
+
+    public async Task<IBusinessResult> GetVariantsByParentSkuAsync(string parentSku, Guid? branchId = null)
+    {
+        if (string.IsNullOrEmpty(parentSku))
+        {
+            return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "ParentSku is required");
+        }
+
+        var variants = await _unitOfWork.ProductRepository.GetAllAsync(
+            predicate: p => p.ParentSku == parentSku && p.IsMaster == false,
+            include: q => q.Include(p => p.ProductPriceHistories)
+                          .Include(p => p.BranchStocks)
+        );
+
+        var response = variants.Select(variant =>
+        {
+            var latestPrice = GetLatestPriceHistory(variant.ProductPriceHistories, branchId);
+
+            var branchStock = branchId.HasValue
+                ? variant.BranchStocks?.FirstOrDefault(bs => bs.BranchId == branchId.Value)
+                : variant.BranchStocks?.FirstOrDefault();
+
+            return new ProductListResponse
+            {
+                Id = variant.Id,
+                AvartarUrl = variant.AvatarUrl,
+                Sku = variant.Sku,
+                Name = variant.Name,
+                IsMaster = variant.IsMaster,
+                Status = variant.Status,
+                ChildrenNo = 0, 
+                CostPrice = latestPrice?.CostPrice,
+                SellingPrice = latestPrice?.SellingPrice,
+                StockQuantity = branchStock?.AvailableQty ?? 0,
+            };
+        }).ToList();
+
+        return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_READ_MSG, response);
+    }
+
+    public async Task<IBusinessResult> GetListAsync(ProductQuery query)
+    {
+        Expression<Func<Product, bool>> predicate = p => true;
+
+        if (!string.IsNullOrEmpty(query.SearchTerm))
+        {
+            predicate = predicate.And(p =>
+                p.Name.ToLower().Contains(query.SearchTerm.ToLower()) ||
+                p.Sku.ToLower().Contains(query.SearchTerm.ToLower()) ||
+                p.Description != null && p.Description.ToLower().Contains(query.SearchTerm.ToLower()));
+        }
+
+        // Include both ProductPriceHistories and BranchStocks
+        var products = await _unitOfWork.ProductRepository.GetPagedAsync(
+            query.PageNumber = 1,
+            query.PageSize = 5,
+            predicate,
             include: q => q.Include(p => p.ProductPriceHistories)
             .Include(p => p.BranchStocks)
             .Include(p => p.Category)
@@ -92,40 +180,20 @@ public class ProductService : IProductService
                 ? product.BranchStocks?.FirstOrDefault(bs => bs.BranchId == query.BranchId.Value)
                 : null;
 
-            return new ProductResponse
+            return new ProductListResponse
             {
                 Id = product.Id,
                 AvartarUrl = product.AvatarUrl,
                 Sku = product.Sku,
                 Name = product.Name,
-                Description = product.Description,
-                Color = product.Color,
-                Size = product.Size,
-                Style = product.Style,
-                Brand = product.Brand,
-                Material = product.Material,
-                Weight = product.Weight,
                 IsMaster = product.IsMaster,
                 Status = product.Status,
-                ParentSku = product.ParentSku,
-                CategoryName = product.Category?.Name,
                 CostPrice = latestPrice?.CostPrice,
                 SellingPrice = latestPrice?.SellingPrice,
                 StockQuantity = branchStock?.AvailableQty ?? 0
             };
         }).ToList();
-
-
-        var totalCount = await _unitOfWork.ProductRepository.GetByWhere(predicate).CountAsync();
-        var pagedResult = new PagedResult<ProductResponse>
-        {
-            DataList = response,
-            TotalCount = totalCount,
-            PageIndex = query.PageNumber,
-            PageSize = query.PageSize
-        };
-
-        return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_READ_MSG, pagedResult);
+        return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_READ_MSG, response);
     }
 
     public async Task<IBusinessResult> GetByIdAsync(Guid id, Guid? branchId)
@@ -134,6 +202,8 @@ public class ProductService : IProductService
             .GetByWhere(p => p.Id == id)
             .Include(p => p.ProductPriceHistories)
             .Include(p => p.Category)
+            .Include(p => p.Size)
+            .Include(p => p.Color)
             .AsNoTracking()
             .FirstOrDefaultAsync();
         var branchStock = branchId.HasValue ?
@@ -151,13 +221,13 @@ public class ProductService : IProductService
         {
             Id = product.Id,
             AvartarUrl = product.AvatarUrl,
+            VideoUrl = product.VideoUrl,
             Sku = product.Sku,
             Name = product.Name,
             Description = product.Description,
-            Color = product.Color,
-            Size = product.Size,
+            Color = product.Color.Name,
+            Size = product.Size.Code,
             Style = product.Style,
-            Brand = product.Brand,
             Material = product.Material,
             Weight = product.Weight,
             IsMaster = product.IsMaster,
@@ -166,142 +236,247 @@ public class ProductService : IProductService
             CategoryName = product.Category.Name,
             CostPrice = latestPrice?.CostPrice,
             SellingPrice = latestPrice?.SellingPrice,
-            StockQuantity = branchStock?.AvailableQty ?? 0
+            StockQuantity = branchStock?.AvailableQty ?? 0,
+            HandleStatus = product.HandleStatus,
+            Note = product.Note
         };
 
         return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_READ_MSG, response);
     }
 
-
-    public async Task<IBusinessResult> GetBySKUAsync(string sku, [FromForm] Guid? branchId)
-    {
-        var product = await _unitOfWork.ProductRepository.GetByWhere(p => p.Sku == sku)
-            .Include(p => p.ProductPriceHistories)
-            .Include(p => p.Category)
-            .AsNoTracking()
-            .FirstOrDefaultAsync();
-        var branchStock = branchId.HasValue
-            ? await _unitOfWork.BranchStockRepository
-                .GetByWhere(bs => bs.ProductId == product.Id && bs.BranchId == branchId)
-                .AsNoTracking()
-                .FirstOrDefaultAsync()
-            : null;
-        if (product == null)
-            return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, Const.FAIL_READ_MSG);
-
-        var latestPrice = GetLatestPriceHistory(product.ProductPriceHistories, branchId);
-
-        var response = new ProductResponse
-        {
-            Id = product.Id,
-            AvartarUrl = product.AvatarUrl,
-            Sku = product.Sku,
-            Name = product.Name,
-            Description = product.Description,
-            Color = product.Color,
-            Size = product.Size,
-            Style = product.Style,
-            Brand = product.Brand,
-            Material = product.Material,
-            Weight = product.Weight,
-            IsMaster = product.IsMaster,
-            Status = product.Status,
-            ParentSku = product.ParentSku,
-            CategoryName = product.Category.Name,
-            CostPrice = latestPrice?.CostPrice,
-            SellingPrice = latestPrice?.SellingPrice,
-            StockQuantity = branchStock?.AvailableQty ?? 0
-        };
-
-        return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_READ_MSG, response);
-    }
 
     public async Task<IBusinessResult> CreateAsync(ProductRequest request, Guid accountId)
     {
         if (request == null)
             return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
 
-        // Check SKU trùng
-        var existingSku = await _unitOfWork.ProductRepository
-            .GetByWhere(p => p.Sku == request.Sku)
-            .FirstOrDefaultAsync();
+        if (string.IsNullOrWhiteSpace(request.Sku) || string.IsNullOrWhiteSpace(request.Name))
+            return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "SKU và tên sản phẩm là bắt buộc.");
 
-        if (existingSku != null)
-            return new BusinessResult(Const.HTTP_STATUS_CONFLICT, "SKU đã tồn tại");
+        var baseSku = request.Sku.Trim();
+        var baseName = request.Name.Trim();
 
+        var variantColorIds = request.ColorIds?
+            .Where(id => id != Guid.Empty)
+            .Distinct()
+            .ToList() ?? new List<Guid>();
+        var variantSizeIds = request.SizeIds?
+            .Where(id => id != Guid.Empty)
+            .Distinct()
+            .ToList() ?? new List<Guid>();
 
-        var product = request.Adapt<Product>();
-        product.Id = Guid.NewGuid();
-        product.CreatedAt = DateTime.Now;
-        product.UpdatedAt = DateTime.Now;
+        var generateVariants = variantColorIds.Any() || variantSizeIds.Any();
 
-        await _unitOfWork.ProductRepository.AddAsync(product);
-        await _unitOfWork.SaveChangesAsync();
+        List<Color> colors = new();
+        List<Size> sizes = new();
 
+        if (generateVariants)
+        {
+            if (variantColorIds.Any())
+            {
+                colors = await _unitOfWork.ColorRepository
+                    .GetByWhere(c => variantColorIds.Contains(c.Id))
+                    .AsNoTracking()
+                    .ToListAsync();
+
+                if (colors.Count != variantColorIds.Count)
+                    return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Một hoặc nhiều màu sắc không tồn tại.");
+
+                if (colors.Any(c => string.IsNullOrWhiteSpace(c.Code) || string.IsNullOrWhiteSpace(c.Name)))
+                    return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Vui lòng cấu hình đầy đủ mã và tên cho màu sắc.");
+            }
+
+            if (variantSizeIds.Any())
+            {
+                sizes = await _unitOfWork.SizeRepository
+                    .GetByWhere(s => variantSizeIds.Contains(s.Id))
+                    .AsNoTracking()
+                    .ToListAsync();
+
+                if (sizes.Count != variantSizeIds.Count)
+                    return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Một hoặc nhiều size không tồn tại.");
+
+                if (sizes.Any(s => string.IsNullOrWhiteSpace(s.Code)))
+                    return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Vui lòng cấu hình đầy đủ mã cho size.");
+            }
+        }
+
+        var variantDefinitions = new List<(Color? color, Size? size)>();
+        if (generateVariants)
+        {
+            if (colors.Any() && sizes.Any())
+            {
+                foreach (var color in colors)
+                {
+                    foreach (var size in sizes)
+                    {
+                        variantDefinitions.Add((color, size));
+                    }
+                }
+            }
+            else if (colors.Any())
+            {
+                foreach (var color in colors)
+                {
+                    variantDefinitions.Add((color, null));
+                }
+            }
+            else if (sizes.Any())
+            {
+                foreach (var size in sizes)
+                {
+                    variantDefinitions.Add((null, size));
+                }
+            }
+        }
+
+        var candidateSkus = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { baseSku };
+        foreach (var (color, size) in variantDefinitions)
+        {
+            var variantSku = BuildVariantSku(baseSku, color, size);
+            if (!candidateSkus.Add(variantSku))
+                return new BusinessResult(Const.HTTP_STATUS_CONFLICT, $"SKU biến thể bị trùng: {variantSku}");
+        }
+
+        var duplicatedSkus = await _unitOfWork.ProductRepository
+            .GetByWhere(p => candidateSkus.Contains(p.Sku))
+            .Select(p => p.Sku)
+            .ToListAsync();
+
+        if (duplicatedSkus.Any())
+            return new BusinessResult(Const.HTTP_STATUS_CONFLICT, $"SKU đã tồn tại: {string.Join(", ", duplicatedSkus)}");
+
+        var now = DateTime.Now;
+        var parentProduct = request.Adapt<Product>();
+        parentProduct.Id = Guid.NewGuid();
+        parentProduct.Sku = baseSku;
+        parentProduct.Name = baseName;
+        parentProduct.CreatedAt = now;
+        parentProduct.UpdatedAt = now;
+        parentProduct.ParentSku = generateVariants ? null : request.ParentSku;
+        parentProduct.IsMaster = generateVariants || request.IsMaster;
+
+        if (generateVariants)
+        {
+            parentProduct.ColorId = null;
+            parentProduct.SizeId = null;
+        }
+
+        await _unitOfWork.ProductRepository.AddAsync(parentProduct);
+
+        var variants = new List<Product>();
+        if (variantDefinitions.Any())
+        {
+            foreach (var (color, size) in variantDefinitions)
+            {
+                var variant = new Product
+                {
+                    Id = Guid.NewGuid(),
+                    Sku = BuildVariantSku(baseSku, color, size),
+                    Name = BuildVariantName(baseName, color, size),
+                    Description = parentProduct.Description,
+                    AvatarUrl = parentProduct.AvatarUrl,
+                    VideoUrl = parentProduct.VideoUrl,
+                    ColorId = color?.Id,
+                    SizeId = size?.Id,
+                    Style = parentProduct.Style,
+                    Material = parentProduct.Material,
+                    Weight = parentProduct.Weight,
+                    IsMaster = false,
+                    Status = parentProduct.Status,
+                    CreatedAt = now,
+                    UpdatedAt = now,
+                    CategoryId = parentProduct.CategoryId,
+                    ParentSku = baseSku
+                };
+
+                variants.Add(variant);
+            }
+
+            await _unitOfWork.ProductRepository.AddRangeAsync(variants);
+        }
+
+        var priceHistories = new List<ProductPriceHistory>();
         if (request.SellingPrice.HasValue && request.CostPrice.HasValue)
         {
-            var priceHistory = new ProductPriceHistory
+            var effectiveDate = request.EffectiveDate ?? DateTime.Now.AddDays(-1);
+
+            priceHistories.Add(new ProductPriceHistory
             {
                 Id = Guid.NewGuid(),
-                ProductId = product.Id,
+                ProductId = parentProduct.Id,
                 BranchId = null,
                 SellingPrice = request.SellingPrice.Value,
                 CostPrice = request.CostPrice.Value,
-                EffectiveDate = request.EffectiveDate ?? DateTime.Now.AddDays(-1),
+                EffectiveDate = effectiveDate,
                 ExpiryDate = request.ExpiryDate,
-                CreatedAt = DateTime.Now,
+                CreatedAt = now,
                 CreatedBy = accountId,
                 Note = "Giá khởi tạo sản phẩm"
-            };
+            });
 
-            await _unitOfWork.ProductPriceHistoryRepository.AddAsync(priceHistory);
-            await _unitOfWork.SaveChangesAsync();
+            foreach (var variant in variants)
+            {
+                priceHistories.Add(new ProductPriceHistory
+                {
+                    Id = Guid.NewGuid(),
+                    ProductId = variant.Id,
+                    BranchId = null,
+                    SellingPrice = request.SellingPrice.Value,
+                    CostPrice = request.CostPrice.Value,
+                    EffectiveDate = effectiveDate,
+                    ExpiryDate = request.ExpiryDate,
+                    CreatedAt = now,
+                    CreatedBy = accountId,
+                    Note = "Giá khởi tạo sản phẩm"
+                });
+            }
         }
 
-        var productLog = product.Adapt<ProductRequest>(); // hoặc ProductResponse
-        var response = product.Adapt<ProductResponse>();
-        return new BusinessResult(Const.HTTP_STATUS_CREATED, Const.SUCCESS_CREATE_MSG, response);
-    }
+        if (priceHistories.Any())
+            await _unitOfWork.ProductPriceHistoryRepository.AddRangeAsync(priceHistories);
 
-    public async Task<IBusinessResult> UpdateAsync(ProductRequest request, Guid accountId)
-    {
-        if (request.Id.HasValue == false || request.Id == Guid.Empty)
-            return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
-
-        var existing = await _unitOfWork.ProductRepository.GetByIdAsync(request.Id);
-        if (existing == null)
-            return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, Const.FAIL_READ_MSG);
-
-        var oldValue = JsonSerializer.Serialize(existing);
-        var oldName = existing.Name;
-
-        request.Adapt(existing);
-        existing.UpdatedAt = DateTime.Now;
-
-        _unitOfWork.ProductRepository.Update(existing);
         await _unitOfWork.SaveChangesAsync();
 
+        return new BusinessResult(Const.HTTP_STATUS_CREATED, Const.SUCCESS_CREATE_MSG);
 
-        var response = existing.Adapt<ProductResponse>();
-        return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_UPDATE_MSG, response);
-    }
+        static string BuildVariantSku(string baseSku, Color? color, Size? size)
+        {
+            var suffix = string.Empty;
 
-    public async Task<IBusinessResult> UpdateStatusAsync(Guid id, Guid accountId, string status)
-    {
-        var existing = await _unitOfWork.ProductRepository.GetByIdAsync(id);
-        if (existing == null)
-            return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, Const.FAIL_READ_MSG);
+            if (color != null)
+                suffix += NormalizeCode(color.Code);
 
-        var oldStatus = existing.Status;
-        existing.Status = status;
-        existing.UpdatedAt = DateTime.Now;
+            if (size != null)
+                suffix += NormalizeCode(size.Code);
 
-        _unitOfWork.ProductRepository.Update(existing);
-        await _unitOfWork.SaveChangesAsync();
+            return string.IsNullOrEmpty(suffix) ? baseSku : $"{baseSku}{suffix}";
+        }
 
+        static string BuildVariantName(string baseName, Color? color, Size? size)
+        {
+            var segments = new List<string>();
 
-        var response = existing.Adapt<ProductResponse>();
-        return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_UPDATE_MSG, response);
+            if (color != null)
+                segments.Add(color.Name?.Trim() ?? string.Empty);
+
+            if (size != null)
+                segments.Add(size.Code?.Trim() ?? string.Empty);
+
+            var filteredSegments = segments.Where(s => !string.IsNullOrWhiteSpace(s)).ToList();
+
+            return filteredSegments.Any()
+                ? $"{baseName} - {string.Join(" - ", filteredSegments)}"
+                : baseName;
+        }
+
+        static string NormalizeCode(string? code)
+        {
+            if (string.IsNullOrWhiteSpace(code))
+                throw new ArgumentException("Mã không hợp lệ.", nameof(code));
+
+            return code.Trim().Replace(" ", string.Empty).ToUpperInvariant();
+        }
     }
 
     public async Task<IBusinessResult> DeleteAsync(Guid id, Guid accountId)
@@ -318,243 +493,243 @@ public class ProductService : IProductService
         return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_DELETE_MSG);
     }
 
-    public async Task<IBusinessResult> ImportProductsFromExcelAsync(IFormFile file, Guid accountId)
-    {
-        if (file == null || file.Length == 0)
-            return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "File import không hợp lệ.");
+    //public async Task<IBusinessResult> ImportProductsFromExcelAsync(IFormFile file, Guid accountId)
+    //{
+    //    if (file == null || file.Length == 0)
+    //        return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "File import không hợp lệ.");
 
-        using var memoryStream = new MemoryStream();
-        await file.CopyToAsync(memoryStream);
-        memoryStream.Position = 0;
+    //    using var memoryStream = new MemoryStream();
+    //    await file.CopyToAsync(memoryStream);
+    //    memoryStream.Position = 0;
 
-        using var workbook = new XLWorkbook(memoryStream);
-        var worksheet = workbook.Worksheets
-            .FirstOrDefault(ws => string.Equals(ws.Name, "ProductTemplate", StringComparison.OrdinalIgnoreCase))
-            ?? workbook.Worksheets.FirstOrDefault();
+    //    using var workbook = new XLWorkbook(memoryStream);
+    //    var worksheet = workbook.Worksheets
+    //        .FirstOrDefault(ws => string.Equals(ws.Name, "ProductTemplate", StringComparison.OrdinalIgnoreCase))
+    //        ?? workbook.Worksheets.FirstOrDefault();
 
-        if (worksheet == null)
-            return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Không tìm thấy sheet dữ liệu trong file.");
+    //    if (worksheet == null)
+    //        return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Không tìm thấy sheet dữ liệu trong file.");
 
-        var headerRow = worksheet.FirstRowUsed();
-        if (headerRow == null)
-            return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "File import không có dữ liệu.");
+    //    var headerRow = worksheet.FirstRowUsed();
+    //    if (headerRow == null)
+    //        return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "File import không có dữ liệu.");
 
-        var headerLookup = headerRow.CellsUsed()
-            .ToDictionary(cell => NormalizeHeader(cell.GetString()), cell => cell.Address.ColumnNumber, StringComparer.OrdinalIgnoreCase);
+    //    var headerLookup = headerRow.CellsUsed()
+    //        .ToDictionary(cell => NormalizeHeader(cell.GetString()), cell => cell.Address.ColumnNumber, StringComparer.OrdinalIgnoreCase);
 
-        int? colCategory = GetColumn(headerLookup, "nhóm hàng");
-        int? colSku = GetColumn(headerLookup, "mã hàng");
-        int? colName = GetColumn(headerLookup, "tên hàng");
-        int? colBrand = GetColumn(headerLookup, "thương hiệu");
-        int? colSellPrice = GetColumn(headerLookup, "giá bán");
-        int? colCostPrice = GetColumn(headerLookup, "giá vốn");
-        int? colSize = GetColumn(headerLookup, "size");
-        int? colStyle = GetColumn(headerLookup, "style");
-        int? colColor = GetColumn(headerLookup, "màu");
-        int? colParentSku = GetColumn(headerLookup, "parentsku");
-        int? colIsMaster = GetColumn(headerLookup, "ismaster");
-        int? colImages = GetColumn(headerLookup, "hình ảnh (url1,url2...)", "hình ảnh");
-        int? colStatus = GetColumn(headerLookup, "đang kinh");
-        int? colDescription = GetColumn(headerLookup, "mô tả");
+    //    int? colCategory = GetColumn(headerLookup, "nhóm hàng");
+    //    int? colSku = GetColumn(headerLookup, "mã hàng");
+    //    int? colName = GetColumn(headerLookup, "tên hàng");
+    //    int? colBrand = GetColumn(headerLookup, "thương hiệu");
+    //    int? colSellPrice = GetColumn(headerLookup, "giá bán");
+    //    int? colCostPrice = GetColumn(headerLookup, "giá vốn");
+    //    int? colSize = GetColumn(headerLookup, "size");
+    //    int? colStyle = GetColumn(headerLookup, "style");
+    //    int? colColor = GetColumn(headerLookup, "màu");
+    //    int? colParentSku = GetColumn(headerLookup, "parentsku");
+    //    int? colIsMaster = GetColumn(headerLookup, "ismaster");
+    //    int? colImages = GetColumn(headerLookup, "hình ảnh", "hình ảnh");
+    //    int? colStatus = GetColumn(headerLookup, "đang kinh");
+    //    int? colDescription = GetColumn(headerLookup, "mô tả");
 
-        if (colCategory == null || colSku == null || colName == null)
-            return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Thiếu cột bắt buộc trong file import (Nhóm hàng, Mã hàng, Tên hàng).");
+    //    if (colCategory == null || colSku == null || colName == null)
+    //        return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Thiếu cột bắt buộc trong file import (Nhóm hàng, Mã hàng, Tên hàng).");
 
-        var lastRow = worksheet.LastRowUsed()?.RowNumber() ?? 1;
-        if (lastRow <= headerRow.RowNumber())
-            return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "File import không có dữ liệu.");
+    //    var lastRow = worksheet.LastRowUsed()?.RowNumber() ?? 1;
+    //    if (lastRow <= headerRow.RowNumber())
+    //        return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "File import không có dữ liệu.");
 
-        var categories = await _unitOfWork.CategoryRepository
-            .GetAll()
-            .Select(c => new { c.Id, c.Name })
-            .ToListAsync();
+    //    var categories = await _unitOfWork.CategoryRepository
+    //        .GetAll()
+    //        .Select(c => new { c.Id, c.Name })
+    //        .ToListAsync();
 
-        var categoryLookup = categories.ToDictionary(
-            c => c.Name.Trim().ToLowerInvariant(),
-            c => c.Id);
+    //    var categoryLookup = categories.ToDictionary(
+    //        c => c.Name.Trim().ToLowerInvariant(),
+    //        c => c.Id);
 
-        var importRows = new List<ProductImportRow>();
-        var seenSkus = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var errors = new List<string>();
+    //    var importRows = new List<ProductImportRow>();
+    //    var seenSkus = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+    //    var errors = new List<string>();
 
-        for (int rowNumber = headerRow.RowNumber() + 1; rowNumber <= lastRow; rowNumber++)
-        {
-            var row = worksheet.Row(rowNumber);
-            if (!row.CellsUsed().Any())
-                continue;
+    //    for (int rowNumber = headerRow.RowNumber() + 1; rowNumber <= lastRow; rowNumber++)
+    //    {
+    //        var row = worksheet.Row(rowNumber);
+    //        if (!row.CellsUsed().Any())
+    //            continue;
 
-            var sku = GetCellString(row, colSku).Trim();
-            if (string.IsNullOrWhiteSpace(sku))
-            {
-                errors.Add($"Dòng {rowNumber}: Thiếu Mã hàng.");
-                continue;
-            }
+    //        var sku = GetCellString(row, colSku).Trim();
+    //        if (string.IsNullOrWhiteSpace(sku))
+    //        {
+    //            errors.Add($"Dòng {rowNumber}: Thiếu Mã hàng.");
+    //            continue;
+    //        }
 
-            if (!seenSkus.Add(sku))
-            {
-                errors.Add($"Dòng {rowNumber}: Mã hàng '{sku}' bị trùng trong file.");
-                continue;
-            }
+    //        if (!seenSkus.Add(sku))
+    //        {
+    //            errors.Add($"Dòng {rowNumber}: Mã hàng '{sku}' bị trùng trong file.");
+    //            continue;
+    //        }
 
-            var categoryName = GetCellString(row, colCategory).Trim();
-            if (string.IsNullOrWhiteSpace(categoryName))
-            {
-                errors.Add($"Dòng {rowNumber}: Thiếu Nhóm hàng.");
-                continue;
-            }
+    //        var categoryName = GetCellString(row, colCategory).Trim();
+    //        if (string.IsNullOrWhiteSpace(categoryName))
+    //        {
+    //            errors.Add($"Dòng {rowNumber}: Thiếu Nhóm hàng.");
+    //            continue;
+    //        }
 
-            var productName = GetCellString(row, colName).Trim();
-            if (string.IsNullOrWhiteSpace(productName))
-            {
-                errors.Add($"Dòng {rowNumber}: Thiếu Tên hàng.");
-                continue;
-            }
+    //        var productName = GetCellString(row, colName).Trim();
+    //        if (string.IsNullOrWhiteSpace(productName))
+    //        {
+    //            errors.Add($"Dòng {rowNumber}: Thiếu Tên hàng.");
+    //            continue;
+    //        }
 
-            importRows.Add(new ProductImportRow
-            {
-                RowNumber = rowNumber,
-                CategoryName = categoryName,
-                Sku = sku,
-                Name = productName,
-                Brand = ToNullIfEmpty(GetCellString(row, colBrand)),
-                SellingPrice = ParseDecimal(GetCellString(row, colSellPrice)),
-                CostPrice = ParseDecimal(GetCellString(row, colCostPrice)),
-                Size = ToNullIfEmpty(GetCellString(row, colSize)),
-                Style = ToNullIfEmpty(GetCellString(row, colStyle)),
-                Color = ToNullIfEmpty(GetCellString(row, colColor)),
-                ParentSku = ToNullIfEmpty(GetCellString(row, colParentSku)),
-                IsMaster = ParseBoolean(GetCellString(row, colIsMaster)),
-                AvatarUrl = ExtractFirstImage(GetCellString(row, colImages)),
-                Status = !string.IsNullOrWhiteSpace(GetCellString(row, colStatus))
-                    ? GetCellString(row, colStatus).Trim()
-                    : "Active",
-                Description = ToNullIfEmpty(GetCellString(row, colDescription))
-            });
-        }
+    //        importRows.Add(new ProductImportRow
+    //        {
+    //            RowNumber = rowNumber,
+    //            CategoryName = categoryName,
+    //            Sku = sku,
+    //            Name = productName,
+    //            Brand = ToNullIfEmpty(GetCellString(row, colBrand)),
+    //            SellingPrice = ParseDecimal(GetCellString(row, colSellPrice)),
+    //            CostPrice = ParseDecimal(GetCellString(row, colCostPrice)),
+    //            Size = ToNullIfEmpty(GetCellString(row, colSize)),
+    //            Style = ToNullIfEmpty(GetCellString(row, colStyle)),
+    //            Color = ToNullIfEmpty(GetCellString(row, colColor)),
+    //            ParentSku = ToNullIfEmpty(GetCellString(row, colParentSku)),
+    //            IsMaster = ParseBoolean(GetCellString(row, colIsMaster)),
+    //            AvatarUrl = ExtractFirstImage(GetCellString(row, colImages)),
+    //            Status = !string.IsNullOrWhiteSpace(GetCellString(row, colStatus))
+    //                ? GetCellString(row, colStatus).Trim()
+    //                : "Active",
+    //            Description = ToNullIfEmpty(GetCellString(row, colDescription))
+    //        });
+    //    }
 
-        if (!importRows.Any())
-            return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Không có dữ liệu hợp lệ trong file import.", errors);
+    //    if (!importRows.Any())
+    //        return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Không có dữ liệu hợp lệ trong file import.", errors);
 
-        var skuList = importRows.Select(r => r.Sku).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
-        var existingProducts = await _unitOfWork.ProductRepository
-            .GetByWhere(p => skuList.Contains(p.Sku))
-            .ToListAsync();
+    //    var skuList = importRows.Select(r => r.Sku).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+    //    var existingProducts = await _unitOfWork.ProductRepository
+    //        .GetByWhere(p => skuList.Contains(p.Sku))
+    //        .ToListAsync();
 
-        var existingLookup = existingProducts.ToDictionary(p => p.Sku, StringComparer.OrdinalIgnoreCase);
-        var priceHistories = new List<ProductPriceHistory>();
-        int created = 0;
-        int updated = 0;
+    //    var existingLookup = existingProducts.ToDictionary(p => p.Sku, StringComparer.OrdinalIgnoreCase);
+    //    var priceHistories = new List<ProductPriceHistory>();
+    //    int created = 0;
+    //    int updated = 0;
 
-        foreach (var item in importRows)
-        {
-            if (!categoryLookup.TryGetValue(item.CategoryName.Trim().ToLowerInvariant(), out var categoryId))
-            {
-                errors.Add($"Dòng {item.RowNumber}: Không tìm thấy nhóm hàng '{item.CategoryName}'.");
-                continue;
-            }
+    //    foreach (var item in importRows)
+    //    {
+    //        if (!categoryLookup.TryGetValue(item.CategoryName.Trim().ToLowerInvariant(), out var categoryId))
+    //        {
+    //            errors.Add($"Dòng {item.RowNumber}: Không tìm thấy nhóm hàng '{item.CategoryName}'.");
+    //            continue;
+    //        }
 
-            if (existingLookup.TryGetValue(item.Sku, out var existingProduct))
-            {
-                var oldSnapshot = CreateProductLogPayload(existingProduct);
+    //        if (existingLookup.TryGetValue(item.Sku, out var existingProduct))
+    //        {
+    //            var oldSnapshot = CreateProductLogPayload(existingProduct);
 
-                existingProduct.Name = item.Name;
-                existingProduct.Brand = item.Brand;
-                existingProduct.Size = item.Size;
-                existingProduct.Style = item.Style;
-                existingProduct.Color = item.Color;
-                existingProduct.ParentSku = item.ParentSku;
-                existingProduct.IsMaster = item.IsMaster;
-                existingProduct.AvatarUrl = item.AvatarUrl;
-                existingProduct.Description = item.Description;
-                existingProduct.Status = item.Status;
-                existingProduct.CategoryId = categoryId;
-                existingProduct.UpdatedAt = DateTime.Now;
+    //            existingProduct.Name = item.Name;
+    //            existingProduct.Brand = item.Brand;
+    //            existingProduct.Size = item.Size;
+    //            existingProduct.Style = item.Style;
+    //            existingProduct.Color = item.Color;
+    //            existingProduct.ParentSku = item.ParentSku;
+    //            existingProduct.IsMaster = item.IsMaster;
+    //            existingProduct.AvatarUrl = item.AvatarUrl;
+    //            existingProduct.Description = item.Description;
+    //            existingProduct.Status = item.Status;
+    //            existingProduct.CategoryId = categoryId;
+    //            existingProduct.UpdatedAt = DateTime.Now;
 
-                _unitOfWork.ProductRepository.Update(existingProduct);
-                existingLookup[item.Sku] = existingProduct;
+    //            _unitOfWork.ProductRepository.Update(existingProduct);
+    //            existingLookup[item.Sku] = existingProduct;
 
-                if (item.SellingPrice.HasValue && item.CostPrice.HasValue)
-                {
-                    priceHistories.Add(new ProductPriceHistory
-                    {
-                        Id = Guid.NewGuid(),
-                        ProductId = existingProduct.Id,
-                        SellingPrice = item.SellingPrice.Value,
-                        CostPrice = item.CostPrice.Value,
-                        EffectiveDate = DateTime.Now,
-                        CreatedAt = DateTime.Now,
-                        CreatedBy = accountId,
-                        Note = "Import Excel"
-                    });
-                }
+    //            if (item.SellingPrice.HasValue && item.CostPrice.HasValue)
+    //            {
+    //                priceHistories.Add(new ProductPriceHistory
+    //                {
+    //                    Id = Guid.NewGuid(),
+    //                    ProductId = existingProduct.Id,
+    //                    SellingPrice = item.SellingPrice.Value,
+    //                    CostPrice = item.CostPrice.Value,
+    //                    EffectiveDate = DateTime.Now,
+    //                    CreatedAt = DateTime.Now,
+    //                    CreatedBy = accountId,
+    //                    Note = "Import Excel"
+    //                });
+    //            }
 
-                updated++;
-            }
-            else
-            {
-                var now = DateTime.Now;
-                var newProduct = new Product
-                {
-                    Id = Guid.NewGuid(),
-                    Sku = item.Sku,
-                    Name = item.Name,
-                    Brand = item.Brand,
-                    Size = item.Size,
-                    Style = item.Style,
-                    Color = item.Color,
-                    ParentSku = item.ParentSku,
-                    IsMaster = item.IsMaster,
-                    AvatarUrl = item.AvatarUrl,
-                    Description = item.Description,
-                    Status = item.Status,
-                    CategoryId = categoryId,
-                    Weight = 0,
-                    Material = null,
-                    CreatedAt = now,
-                    UpdatedAt = now
-                };
+    //            updated++;
+    //        }
+    //        else
+    //        {
+    //            var now = DateTime.Now;
+    //            var newProduct = new Product
+    //            {
+    //                Id = Guid.NewGuid(),
+    //                Sku = item.Sku,
+    //                Name = item.Name,
+    //                Brand = item.Brand,
+    //                Size = item.Size,
+    //                Style = item.Style,
+    //                Color = item.Color,
+    //                ParentSku = item.ParentSku,
+    //                IsMaster = item.IsMaster,
+    //                AvatarUrl = item.AvatarUrl,
+    //                Description = item.Description,
+    //                Status = item.Status,
+    //                CategoryId = categoryId,
+    //                Weight = 0,
+    //                Material = null,
+    //                CreatedAt = now,
+    //                UpdatedAt = now
+    //            };
 
-                await _unitOfWork.ProductRepository.AddAsync(newProduct);
-                existingLookup[item.Sku] = newProduct;
+    //            await _unitOfWork.ProductRepository.AddAsync(newProduct);
+    //            existingLookup[item.Sku] = newProduct;
 
-                if (item.SellingPrice.HasValue && item.CostPrice.HasValue)
-                {
-                    priceHistories.Add(new ProductPriceHistory
-                    {
-                        Id = Guid.NewGuid(),
-                        ProductId = newProduct.Id,
-                        SellingPrice = item.SellingPrice.Value,
-                        CostPrice = item.CostPrice.Value,
-                        EffectiveDate = now,
-                        CreatedAt = now,
-                        CreatedBy = accountId,
-                        Note = "Import Excel"
-                    });
-                }
+    //            if (item.SellingPrice.HasValue && item.CostPrice.HasValue)
+    //            {
+    //                priceHistories.Add(new ProductPriceHistory
+    //                {
+    //                    Id = Guid.NewGuid(),
+    //                    ProductId = newProduct.Id,
+    //                    SellingPrice = item.SellingPrice.Value,
+    //                    CostPrice = item.CostPrice.Value,
+    //                    EffectiveDate = now,
+    //                    CreatedAt = now,
+    //                    CreatedBy = accountId,
+    //                    Note = "Import Excel"
+    //                });
+    //            }
 
-                created++;
-            }
-        }
+    //            created++;
+    //        }
+    //    }
 
-        if (priceHistories.Any())
-            await _unitOfWork.ProductPriceHistoryRepository.AddRangeAsync(priceHistories);
+    //    if (priceHistories.Any())
+    //        await _unitOfWork.ProductPriceHistoryRepository.AddRangeAsync(priceHistories);
 
-        if (created > 0 || updated > 0 || priceHistories.Any())
-            await _unitOfWork.SaveChangesAsync();
+    //    if (created > 0 || updated > 0 || priceHistories.Any())
+    //        await _unitOfWork.SaveChangesAsync();
 
-        var message = errors.Any()
-            ? "Import hoàn tất với một số lỗi. Vui lòng kiểm tra chi tiết."
-            : "Import sản phẩm thành công.";
+    //    var message = errors.Any()
+    //        ? "Import hoàn tất với một số lỗi. Vui lòng kiểm tra chi tiết."
+    //        : "Import sản phẩm thành công.";
 
-        var resultPayload = new
-        {
-            Created = created,
-            Updated = updated,
-            Errors = errors
-        };
+    //    var resultPayload = new
+    //    {
+    //        Created = created,
+    //        Updated = updated,
+    //        Errors = errors
+    //    };
 
-        return new BusinessResult(Const.HTTP_STATUS_OK, message, resultPayload);
-    }
+    //    return new BusinessResult(Const.HTTP_STATUS_OK, message, resultPayload);
+    //}
 
 
     private static ProductPriceHistory? GetLatestPriceHistory(IEnumerable<ProductPriceHistory>? priceHistories, Guid? branchId)
@@ -677,34 +852,12 @@ public class ProductService : IProductService
         return parts.FirstOrDefault();
     }
 
-    private static object CreateProductLogPayload(Product product)
-    {
-        return new
-        {
-            product.Id,
-            product.Sku,
-            product.Name,
-            product.Brand,
-            product.Size,
-            product.Style,
-            product.Color,
-            product.ParentSku,
-            product.IsMaster,
-            product.Status,
-            product.CategoryId,
-            product.AvatarUrl,
-            product.Description,
-            product.UpdatedAt
-        };
-    }
-
     private class ProductImportRow
     {
         public int RowNumber { get; set; }
         public string CategoryName { get; set; } = null!;
         public string Sku { get; set; } = null!;
         public string Name { get; set; } = null!;
-        public string? Brand { get; set; }
         public decimal? SellingPrice { get; set; }
         public decimal? CostPrice { get; set; }
         public string? Size { get; set; }

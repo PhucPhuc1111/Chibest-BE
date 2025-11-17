@@ -43,6 +43,29 @@ namespace Chibest.Repository.Base
             return _context.Set<TEntity>().AsQueryable().AsNoTracking();
         }
 
+        public async Task<IEnumerable<TEntity>> GetAllAsync(
+            Expression<Func<TEntity, bool>>? predicate = null,
+            Func<IQueryable<TEntity>, IOrderedQueryable<TEntity>>? orderBy = null,
+            Func<IQueryable<TEntity>, IQueryable<TEntity>>? include = null)
+        {
+            IQueryable<TEntity> query = _context.Set<TEntity>();
+
+            if (include != null)
+            {
+                query = include(query);
+            }
+            if (predicate != null)
+            {
+                query = query.Where(predicate);
+            }
+
+            if (orderBy != null)
+            {
+                query = orderBy(query);
+            }
+            return await query.AsNoTracking().ToListAsync();
+        }
+
         public async Task<TEntity?> GetByIdAsync(object id)
         {
             return await _context.Set<TEntity>().FindAsync(id);
@@ -72,7 +95,6 @@ namespace Chibest.Repository.Base
         {
             _context.Set<TEntity>().UpdateRange(entities);
         }
-
 
         public void Delete(TEntity entity)
         {
@@ -108,7 +130,7 @@ namespace Chibest.Repository.Base
                 query = query.Where(predicate);
             }
 
-            if(orderBy != null)
+            if (orderBy != null)
             {
                 query = orderBy(query);
             }

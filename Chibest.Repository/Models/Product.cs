@@ -17,13 +17,11 @@ public partial class Product
 
     public string? VideoUrl { get; set; }
 
-    public string? Color { get; set; }
+    public Guid? ColorId { get; set; }
 
-    public string? Size { get; set; }
+    public Guid? SizeId { get; set; }
 
     public string? Style { get; set; }
-
-    public string? Brand { get; set; }
 
     public string? Material { get; set; }
 
@@ -49,6 +47,8 @@ public partial class Product
 
     public virtual Category Category { get; set; } = null!;
 
+    public virtual Color? Color { get; set; }
+
     public virtual ICollection<Product> InverseParentSkuNavigation { get; set; } = new List<Product>();
 
     public virtual Product? ParentSkuNavigation { get; set; }
@@ -62,6 +62,8 @@ public partial class Product
     public virtual ICollection<PurchaseReturnDetail> PurchaseReturnDetails { get; set; } = new List<PurchaseReturnDetail>();
 
     public virtual ICollection<SalesOrderDetail> SalesOrderDetails { get; set; } = new List<SalesOrderDetail>();
+
+    public virtual Size? Size { get; set; }
 
     public virtual ICollection<StockAdjustmentDetail> StockAdjustmentDetails { get; set; } = new List<StockAdjustmentDetail>();
 
