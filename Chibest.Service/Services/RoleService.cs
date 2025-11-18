@@ -192,7 +192,7 @@ public class RoleService : IRoleService
         var existingAccRole = await _unitOfWork.AccountRoleRepository.GetByWhere(
             ar => ar.AccountId == request.AccountId &&
             ar.RoleId == request.RoleId &&
-            (ar.EndDate == null || ar.EndDate > DateTime.Now))
+            ar.BranchId == request.BranchId)
             .FirstOrDefaultAsync();
         if (existingAccRole != null)
             return new BusinessResult(Const.HTTP_STATUS_CONFLICT, "Account already has this role assigned");
@@ -201,9 +201,7 @@ public class RoleService : IRoleService
         {
             AccountId = request.AccountId,
             RoleId = request.RoleId,
-            BranchId = validBranch ? request.BranchId : null,
-            StartDate = DateTime.Now,
-            EndDate = request.EndDate != null ? request.EndDate : null
+            BranchId = validBranch ? request.BranchId : null
         };
 
         await _unitOfWork.AccountRoleRepository.AddAsync(accRole);
@@ -272,10 +270,13 @@ public class RoleService : IRoleService
             return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, Const.FAIL_READ_MSG + " RoleId");
 
         // Find current accountRole
-        var currentAccountRole = await _unitOfWork.AccountRoleRepository.GetByWhere(
-            ar => ar.AccountId == request.AccountId &&
-            (ar.EndDate == null || ar.EndDate > nowTime))
-            .FirstOrDefaultAsync();
+        var currentAccountRoleQuery = _unitOfWork.AccountRoleRepository.GetByWhere(
+            ar => ar.AccountId == request.AccountId);
+
+        if (request.BranchId.HasValue)
+            currentAccountRoleQuery = currentAccountRoleQuery.Where(ar => ar.BranchId == request.BranchId);
+
+        var currentAccountRole = await currentAccountRoleQuery.FirstOrDefaultAsync();
         if (currentAccountRole == null)
             return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, Const.FAIL_READ_MSG);
         var oldData = JsonSerializer.Serialize(currentAccountRole);
@@ -321,8 +322,7 @@ public class RoleService : IRoleService
         // Find Account Role
         var accRole = await _unitOfWork.AccountRoleRepository.GetByWhere(
             ar => ar.AccountId == accountId &&
-            ar.RoleId == roleId &&
-            (ar.EndDate == null || ar.EndDate > DateTime.Now))
+            ar.RoleId == roleId)
             .FirstOrDefaultAsync();
 
         if (accRole == null)

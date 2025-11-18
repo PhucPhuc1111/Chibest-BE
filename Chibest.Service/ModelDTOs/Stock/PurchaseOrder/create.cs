@@ -16,7 +16,7 @@ namespace Chibest.Service.ModelDTOs.Stock.PurchaseOrder
 
         public string? Note { get; set; }
 
-        public Guid? WarehouseId { get; set; }
+        public Guid? BranchId { get; set; }
 
         public Guid? EmployeeId { get; set; }
 

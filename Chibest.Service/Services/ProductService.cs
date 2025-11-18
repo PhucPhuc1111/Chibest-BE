@@ -233,7 +233,7 @@ public class ProductService : IProductService
             Sku = product.Sku,
             Name = product.Name,
             Description = product.Description,
-            Color = product.Color.Name,
+            Color = product.Color.Code,
             Size = product.Size.Code,
             Style = product.Style,
             Material = product.Material,
@@ -245,7 +245,6 @@ public class ProductService : IProductService
             CostPrice = latestPrice?.CostPrice,
             SellingPrice = latestPrice?.SellingPrice,
             StockQuantity = branchStock?.AvailableQty ?? 0,
-            HandleStatus = product.HandleStatus,
             Note = product.Note
         };
 
@@ -355,7 +354,7 @@ public class ProductService : IProductService
                 if (colors.Count != variantColorIds.Count)
                     return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Một hoặc nhiều màu sắc không tồn tại.");
 
-                if (colors.Any(c => string.IsNullOrWhiteSpace(c.Code) || string.IsNullOrWhiteSpace(c.Name)))
+                if (colors.Any(c => string.IsNullOrWhiteSpace(c.Code) || string.IsNullOrWhiteSpace(c.Code)))
                     return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Vui lòng cấu hình đầy đủ mã và tên cho màu sắc.");
             }
 
@@ -415,7 +414,7 @@ public class ProductService : IProductService
             .GetByWhere(p => candidateSkus.Contains(p.Sku))
             .Select(p => p.Sku)
             .ToListAsync();
-
+        
         if (duplicatedSkus.Any())
             return new BusinessResult(Const.HTTP_STATUS_CONFLICT, $"SKU đã tồn tại: {string.Join(", ", duplicatedSkus)}");
 
@@ -427,6 +426,7 @@ public class ProductService : IProductService
         parentProduct.Name = baseName;
         parentProduct.AvatarUrl = avatarUrl;
         parentProduct.VideoUrl = videoUrl;
+        parentProduct.Status = "UnAvailable";
         parentProduct.CreatedAt = now;
         parentProduct.UpdatedAt = now;
         parentProduct.ParentSku = generateVariants ? null : request.ParentSku;
@@ -489,7 +489,6 @@ public class ProductService : IProductService
                 EffectiveDate = effectiveDate,
                 ExpiryDate = request.ExpiryDate,
                 CreatedAt = now,
-                CreatedBy = accountId,
                 Note = "Giá khởi tạo sản phẩm"
             });
 
@@ -505,7 +504,6 @@ public class ProductService : IProductService
                     EffectiveDate = effectiveDate,
                     ExpiryDate = request.ExpiryDate,
                     CreatedAt = now,
-                    CreatedBy = accountId,
                     Note = "Giá khởi tạo sản phẩm"
                 });
             }
@@ -536,7 +534,7 @@ public class ProductService : IProductService
             var segments = new List<string>();
 
             if (color != null)
-                segments.Add(color.Name?.Trim() ?? string.Empty);
+                segments.Add(color.Code?.Trim() ?? string.Empty);
 
             if (size != null)
                 segments.Add(size.Code?.Trim() ?? string.Empty);

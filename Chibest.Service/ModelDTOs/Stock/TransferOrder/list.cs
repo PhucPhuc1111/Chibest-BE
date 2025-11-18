@@ -14,9 +14,9 @@ namespace Chibest.Service.ModelDTOs.Stock.TransferOrder
 
             public string InvoiceCode { get; set; } = null!;
 
-            public string? FromWarehouseName { get; set; }
+            public string? FromBranchName { get; set; }
 
-            public string? ToWarehouseName { get; set; }
+            public string? ToBranchName { get; set; }
 
             public DateTime OrderDate { get; set; }
 

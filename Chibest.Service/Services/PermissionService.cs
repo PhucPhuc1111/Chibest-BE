@@ -42,8 +42,7 @@ public class PermissionService : IPermissionService
         }
 
         var activeRoles = await _unitOfWork.AccountRoleRepository
-            .GetByWhere(ar => ar.AccountId == accountId &&
-                (ar.EndDate == null || ar.EndDate > DateTime.Now))
+            .GetByWhere(ar => ar.AccountId == accountId)
             .Include(ar => ar.Role)
                 .ThenInclude(role => role.Permissions)
             .ToListAsync();

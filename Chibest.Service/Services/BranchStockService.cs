@@ -64,7 +64,7 @@ public class BranchStockService : IBranchStockService
 
         if (query.IsLowStock.HasValue && query.IsLowStock.Value)
         {
-            predicate = predicate.And(s => s.AvailableQty <= s.ReorderPoint && s.AvailableQty > 0);
+            predicate = predicate.And(s => s.AvailableQty <= s.MinimumStock && s.AvailableQty > 0);
         }
 
         if (query.IsOutOfStock.HasValue && query.IsOutOfStock.Value)
@@ -74,7 +74,7 @@ public class BranchStockService : IBranchStockService
 
         if (query.NeedsReorder.HasValue && query.NeedsReorder.Value)
         {
-            predicate = predicate.And(s => s.AvailableQty <= s.ReorderPoint);
+            predicate = predicate.And(s => s.AvailableQty <= s.MinimumStock);
         }
 
         Func<IQueryable<BranchStock>, IOrderedQueryable<BranchStock>>? orderBy = null;
@@ -86,8 +86,8 @@ public class BranchStockService : IBranchStockService
                     q.OrderByDescending(s => s.AvailableQty) : q.OrderBy(s => s.AvailableQty),
                 "productname" => q => query.SortDescending ?
                     q.OrderByDescending(s => s.Product.Name) : q.OrderBy(s => s.Product.Name),
-                "reorderpoint" => q => query.SortDescending ?
-                    q.OrderByDescending(s => s.ReorderPoint) : q.OrderBy(s => s.ReorderPoint)
+                "minimumstock" => q => query.SortDescending ?
+                    q.OrderByDescending(s => s.MinimumStock) : q.OrderBy(s => s.MinimumStock)
             };
         }
 
@@ -131,7 +131,7 @@ public class BranchStockService : IBranchStockService
     public async Task<IBusinessResult> GetLowStockItemsAsync(Guid? branchId = null)
     {
         Expression<Func<BranchStock, bool>> predicate = s =>
-            s.AvailableQty <= s.ReorderPoint && s.AvailableQty > 0;
+            s.AvailableQty <= s.MinimumStock && s.AvailableQty > 0;
 
         if (branchId.HasValue)
         {
@@ -148,7 +148,7 @@ public class BranchStockService : IBranchStockService
 
     public async Task<IBusinessResult> GetItemsNeedingReorderAsync(Guid? branchId = null)
     {
-        Expression<Func<BranchStock, bool>> predicate = s => s.AvailableQty <= s.ReorderPoint;
+        Expression<Func<BranchStock, bool>> predicate = s => s.AvailableQty <= s.MinimumStock;
 
         if (branchId.HasValue)
         {
@@ -168,7 +168,7 @@ public class BranchStockService : IBranchStockService
         if (request == null)
             return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
 
-        // Check if stock record already exists for product, branch, and warehouse
+        // Check if stock record already exists for product and branch
         var existingStock = await _unitOfWork.BranchStockRepository.GetByWhere(s =>
             s.ProductId == request.ProductId &&
             s.BranchId == request.BranchId)
@@ -224,6 +224,4 @@ public class BranchStockService : IBranchStockService
 
         return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_DELETE_MSG);
     }
-
-   
 }

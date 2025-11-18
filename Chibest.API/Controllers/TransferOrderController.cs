@@ -35,11 +35,11 @@ namespace Chibest.API.Controllers
             DateTime? fromDate = null,
             DateTime? toDate = null,
             string? status = null,
-            Guid? fromWarehouseId = null,
-            Guid? toWarehouseId = null,
+            Guid? fromBranchId = null,
+            Guid? toBranchId = null,
             Guid? branchId = null)
         {
-            var result = await _transferOrderService.GetTransferOrderList(pageIndex, pageSize, search, fromDate, toDate, status, fromWarehouseId, toWarehouseId, branchId);
+            var result = await _transferOrderService.GetTransferOrderList(pageIndex, pageSize, search, fromDate, toDate, status, fromBranchId, toBranchId, branchId);
             return StatusCode(result.StatusCode, result);
         }
 

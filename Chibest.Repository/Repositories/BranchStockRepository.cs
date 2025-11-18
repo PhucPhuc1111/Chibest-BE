@@ -12,7 +12,7 @@ public class BranchStockRepository : GenericRepository<BranchStock>, IBranchStoc
     public BranchStockRepository(ChiBestDbContext context) : base(context) { }
 
     public async Task<IBusinessResult> UpdateBranchStockAsync(
-    Guid warehouseId,
+    Guid branchId,
     Guid productId,
     int deltaAvailableQty = 0,
     int deltaReservedQty = 0,
@@ -21,14 +21,7 @@ public class BranchStockRepository : GenericRepository<BranchStock>, IBranchStoc
     {
         try
         {
-            var warehouse = await _context.Warehouses
-                .AsNoTracking()
-                .FirstOrDefaultAsync(x => x.Id == warehouseId);
 
-            if (warehouse == null)
-                return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, $"Không tìm thấy Warehouse ID: {warehouseId}");
-
-            var branchId = warehouse.BranchId;
 
             // 2️⃣ Tìm bản ghi tồn kho
             var branchStock = await _context.BranchStocks
@@ -46,8 +39,6 @@ public class BranchStockRepository : GenericRepository<BranchStock>, IBranchStoc
                     AvailableQty = Math.Max(0, deltaAvailableQty),
                     MinimumStock = 0,
                     MaximumStock = 0,
-                    ReorderPoint = 0,
-                    ReorderQty = 0,
                 };
 
                 await _context.BranchStocks.AddAsync(branchStock);

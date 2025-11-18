@@ -17,10 +17,6 @@ public partial class BranchStock
 
     public int MaximumStock { get; set; }
 
-    public int ReorderPoint { get; set; }
-
-    public int ReorderQty { get; set; }
-
     public virtual Branch Branch { get; set; } = null!;
 
     public virtual Product Product { get; set; } = null!;

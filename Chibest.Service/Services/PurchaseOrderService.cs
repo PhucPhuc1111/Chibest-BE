@@ -38,7 +38,7 @@ namespace Chibest.Service.Services
                 SupplierId = request.SupplierId,
                 SubTotal = request.SubTotal,
                 Note = request.Note,
-                WarehouseId = request.WarehouseId,
+                BranchId = request.BranchId,
                 EmployeeId = request.EmployeeId,
                 Status = OrderStatus.Draft.ToString(),
                 CreatedAt = DateTime.Now,
@@ -77,7 +77,7 @@ namespace Chibest.Service.Services
                     SubTotal = x.SubTotal,
                     Note = x.Note,
                     Status = x.Status,
-                    WarehouseName = x.Warehouse != null ? x.Warehouse.Name : null,
+                    BranchName = x.Branch != null ? x.Branch.Name : null,
                     EmployeeName = x.Employee != null ? x.Employee.Name : null,
                     SupplierName = x.Supplier != null ? x.Supplier.Name : null,
 
@@ -144,7 +144,7 @@ namespace Chibest.Service.Services
             {
                 Guid branchIdValue = branchId.Value;
                 Expression<Func<PurchaseOrder, bool>> branchFilter =
-                    x => x.Warehouse != null && x.Warehouse.BranchId == branchIdValue;
+                    x => x.BranchId == branchIdValue;
                 filter = filter.And(branchFilter);
             }
 
@@ -204,12 +204,15 @@ namespace Chibest.Service.Services
 
                 if (request.Status == OrderStatus.Received)
                 {
+                    if (!purchaseOrder.BranchId.HasValue)
+                        return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Phiếu nhập chưa gắn chi nhánh để cập nhật tồn kho.");
+
                     foreach (var detail in purchaseOrder.PurchaseOrderDetails)
                     {
                         if (detail.ActualQuantity.HasValue && detail.ActualQuantity.Value > 0)
                         {
                             var result = await _unitOfWork.BranchStockRepository.UpdateBranchStockAsync(
-                                warehouseId: (Guid)purchaseOrder.WarehouseId,
+                                branchId: purchaseOrder.BranchId.Value,
                                 productId: detail.ProductId,
                                 deltaAvailableQty: detail.ActualQuantity.Value
                             );

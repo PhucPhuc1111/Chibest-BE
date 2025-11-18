@@ -26,9 +26,9 @@ namespace Chibest.Service.ModelDTOs.Stock.TransferOrder
 
             public string Status { get; set; } = null!;
 
-            public string? FromWarehouseName { get; set; }
+            public string? FromBranchName { get; set; }
 
-            public string? ToWarehouseName { get; set; }
+            public string? ToBranchName { get; set; }
 
             public virtual ICollection<TransferOrderDetailResponse> TransferOrderDetails { get; set; } = new List<TransferOrderDetailResponse>();
         }
@@ -44,8 +44,6 @@ namespace Chibest.Service.ModelDTOs.Stock.TransferOrder
             public int? ActualQuantity { get; set; }
 
             public decimal CommissionFee { get; set; }
-
-            public decimal ExtraFee { get; set; }
 
             public decimal UnitPrice { get; set; }
 

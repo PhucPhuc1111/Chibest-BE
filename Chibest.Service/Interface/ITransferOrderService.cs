@@ -14,8 +14,8 @@ namespace Chibest.Service.Interface
     {
         Task<IBusinessResult> AddTransferOrder(TransferOrderCreate request);
         Task<IBusinessResult> GetTransferOrderList(int pageIndex, int pageSize, string? search = null,
-    DateTime? fromDate = null, DateTime? toDate = null, string? status = null, Guid? fromWarehouseId = null,
-    Guid? toWarehouseId = null, Guid? branchId = null);
+    DateTime? fromDate = null, DateTime? toDate = null, string? status = null, Guid? fromBranchId = null,
+    Guid? toBranchId = null, Guid? branchId = null);
         Task<IBusinessResult> GetTransferOrderById(Guid id);
         Task<IBusinessResult> UpdateTransferOrderAsync(Guid id, TransferOrderUpdate request);
         Task<IBusinessResult> ReadTransferDetailFromExcel(IFormFile file);

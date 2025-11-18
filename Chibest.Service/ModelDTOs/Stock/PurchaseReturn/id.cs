@@ -27,9 +27,9 @@ namespace Chibest.Service.ModelDTOs.Stock.PurchaseReturn
 
             public string Status { get; set; } = null!;
 
-            public string? FromWarehouseName { get; set; }
+            public string? BranchName { get; set; }
 
-            public string? ToWarehouseName { get; set; }
+            public string? SupplierName { get; set; }
 
             public virtual ICollection<PurchaseReturnDetailResponse> PurchaseReturnDetails { get; set; } = new List<PurchaseReturnDetailResponse>();
         }

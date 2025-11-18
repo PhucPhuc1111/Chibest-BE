@@ -427,7 +427,7 @@ public class FileService : IFileService
             Name = que.Product.Name,
             Description = que.Product.Description,
             AvatarUrl = que.Product.AvatarUrl, // Lấy URL (đường dẫn tương đối)
-            Color = que.Product.Color.Name,
+            Color = que.Product.Color.Code,
             Size = que.Product.Size.Code,
             Style = que.Product.Style,
             Material = que.Product.Material,
@@ -455,9 +455,6 @@ public class FileService : IFileService
 
             Note = que.ProductPrice != null ?
                 que.ProductPrice.Note : null,
-
-            CreatedBy = que.ProductPrice != null ?
-                que.ProductPrice.CreatedBy : null,
 
             BranchId = que.ProductPrice != null ?
                 que.ProductPrice.BranchId : null,

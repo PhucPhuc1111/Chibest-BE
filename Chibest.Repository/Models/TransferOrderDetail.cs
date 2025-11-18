@@ -11,8 +11,6 @@ public partial class TransferOrderDetail
 
     public int? ActualQuantity { get; set; }
 
-    public decimal ExtraFee { get; set; }
-
     public decimal CommissionFee { get; set; }
 
     public decimal UnitPrice { get; set; }

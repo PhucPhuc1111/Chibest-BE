@@ -24,8 +24,6 @@ namespace Chibest.Service.ModelDTOs.Stock.StockAdjustment
 
             public string? BranchName { get; set; }
 
-            public string? WarehouseName { get; set; }
-
             public string? EmployeeName { get; set; }
 
             public string? ApproveName { get; set; }

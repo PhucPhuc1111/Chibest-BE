@@ -15,7 +15,6 @@ namespace Chibest.Service.ModelDTOs.Stock.StockAdjustment
             public DateTime AdjustmentDate { get; set; }
             public AdjustmentType AdjustmentType { get; set; }
             public Guid BranchId { get; set; }
-            public Guid? WarehouseId { get; set; }
             public Guid EmployeeId { get; set; }
             public string? Status { get; set; }
             public string? Note { get; set; }

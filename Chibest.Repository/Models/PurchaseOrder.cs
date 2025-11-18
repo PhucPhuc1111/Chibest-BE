@@ -21,17 +21,17 @@ public partial class PurchaseOrder
 
     public string Status { get; set; } = null!;
 
-    public Guid? WarehouseId { get; set; }
+    public Guid? BranchId { get; set; }
 
     public Guid? EmployeeId { get; set; }
 
     public Guid? SupplierId { get; set; }
+
+    public virtual Branch? Branch { get; set; }
 
     public virtual Account? Employee { get; set; }
 
     public virtual ICollection<PurchaseOrderDetail> PurchaseOrderDetails { get; set; } = new List<PurchaseOrderDetail>();
 
     public virtual Account? Supplier { get; set; }
-
-    public virtual Warehouse? Warehouse { get; set; }
 }

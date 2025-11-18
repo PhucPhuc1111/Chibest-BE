@@ -45,8 +45,7 @@ public class AccountService : IAccountService
 
         //Find Role
         var existAccRole = await _unitOfWork.AccountRoleRepository.GetByWhere(
-            ar => ar.AccountId == existAccount.Id &&
-            (ar.EndDate == null || ar.EndDate > DateTime.Now))
+            ar => ar.AccountId == existAccount.Id)
             .Include(accR => accR.Role)
             .FirstOrDefaultAsync();
         if (existAccRole is null)
@@ -105,8 +104,7 @@ public class AccountService : IAccountService
 
         //Find Role
         var existAccRole = await _unitOfWork.AccountRoleRepository.GetByWhere(
-            ar => ar.AccountId == existAccount.Id &&
-            (ar.EndDate == null || ar.EndDate > DateTime.Now))
+            ar => ar.AccountId == existAccount.Id)
             .Include(accR => accR.Role)
             .FirstOrDefaultAsync();
         if (existAccRole is null)
@@ -236,8 +234,6 @@ public class AccountService : IAccountService
                     AccountId = account.Id,
                     RoleId = existedRole.Id,
                     BranchId = request.BranchId,//branch can be null so don't check
-                    StartDate = DateTime.Now,
-                    EndDate = null
                 };
                 await _unitOfWork.AccountRoleRepository.AddAsync(accountRole);
 
@@ -394,8 +390,7 @@ public class AccountService : IAccountService
 
         var supplierAccounts = await _unitOfWork.AccountRepository
             .GetByWhere(a => a.AccountRoles.Any(ar =>
-                ar.RoleId == supplierRole.Id &&
-                ar.EndDate == null))
+                ar.RoleId == supplierRole.Id))
             .Include(a => a.AccountRoles)
                 .ThenInclude(ar => ar.Role)
             .OrderByDescending(a => a.CreatedAt)

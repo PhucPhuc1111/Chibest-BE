@@ -37,8 +37,6 @@ public partial class Product
 
     public DateTime UpdatedAt { get; set; }
 
-    public string HandleStatus { get; set; } = null!;
-
     public string? Note { get; set; }
 
     public Guid CategoryId { get; set; }
@@ -56,6 +54,8 @@ public partial class Product
     public virtual Product? ParentSkuNavigation { get; set; }
 
     public virtual ICollection<ProductDetail> ProductDetails { get; set; } = new List<ProductDetail>();
+
+    public virtual ICollection<ProductPlan> ProductPlans { get; set; } = new List<ProductPlan>();
 
     public virtual ICollection<ProductPriceHistory> ProductPriceHistories { get; set; } = new List<ProductPriceHistory>();
 

@@ -49,6 +49,8 @@ public partial class ChiBestDbContext : DbContext
 
     public virtual DbSet<ProductDetail> ProductDetails { get; set; }
 
+    public virtual DbSet<ProductPlan> ProductPlans { get; set; }
+
     public virtual DbSet<ProductPriceHistory> ProductPriceHistories { get; set; }
 
     public virtual DbSet<PurchaseOrder> PurchaseOrders { get; set; }
@@ -83,14 +85,9 @@ public partial class ChiBestDbContext : DbContext
 
     public virtual DbSet<Voucher> Vouchers { get; set; }
 
-    public virtual DbSet<Warehouse> Warehouses { get; set; }
-
     public virtual DbSet<WorkShift> WorkShifts { get; set; }
 
-    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
-        => optionsBuilder.UseNpgsql("Host=localhost;Database=ChiBestDB;Username=postgres;Password=12345;");
-
+    
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Account>(entity =>
@@ -128,18 +125,13 @@ public partial class ChiBestDbContext : DbContext
 
         modelBuilder.Entity<AccountRole>(entity =>
         {
-            entity.HasKey(e => new { e.AccountId, e.RoleId, e.StartDate }).HasName("pk_accountrole");
+            entity.HasKey(e => new { e.AccountId, e.RoleId }).HasName("pk_accountrole");
 
             entity.ToTable("AccountRole");
 
-            entity.HasIndex(e => new { e.AccountId, e.StartDate }, "ix_accountrole_accountid").IsDescending(false, true);
+            entity.HasIndex(e => e.AccountId, "ix_accountrole_accountid");
 
             entity.HasIndex(e => new { e.BranchId, e.RoleId }, "ix_accountrole_branchid_roleid");
-
-            entity.Property(e => e.StartDate)
-                .HasDefaultValueSql("CURRENT_TIMESTAMP")
-                .HasColumnType("timestamp(3) without time zone");
-            entity.Property(e => e.EndDate).HasColumnType("timestamp(3) without time zone");
 
             entity.HasOne(d => d.Account).WithMany(p => p.AccountRoles)
                 .HasForeignKey(d => d.AccountId)
@@ -214,7 +206,6 @@ public partial class ChiBestDbContext : DbContext
                 .HasColumnType("timestamp(3) without time zone");
             entity.Property(e => e.IsFranchise).HasDefaultValue(false);
             entity.Property(e => e.Name).HasMaxLength(255);
-            entity.Property(e => e.OwnerName).HasMaxLength(255);
             entity.Property(e => e.PhoneNumber).HasMaxLength(15);
             entity.Property(e => e.Status)
                 .HasMaxLength(40)
@@ -288,8 +279,6 @@ public partial class ChiBestDbContext : DbContext
             entity.Property(e => e.AvailableQty).HasDefaultValue(0);
             entity.Property(e => e.MaximumStock).HasDefaultValue(0);
             entity.Property(e => e.MinimumStock).HasDefaultValue(0);
-            entity.Property(e => e.ReorderPoint).HasDefaultValue(0);
-            entity.Property(e => e.ReorderQty).HasDefaultValue(0);
 
             entity.HasOne(d => d.Branch).WithMany(p => p.BranchStocks)
                 .HasForeignKey(d => d.BranchId)
@@ -319,8 +308,7 @@ public partial class ChiBestDbContext : DbContext
             entity.ToTable("Color");
 
             entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
-            entity.Property(e => e.Code).HasMaxLength(7);
-            entity.Property(e => e.Name).HasMaxLength(100);
+            entity.Property(e => e.Code).HasMaxLength(10);
         });
 
         modelBuilder.Entity<Commission>(entity =>
@@ -513,8 +501,6 @@ public partial class ChiBestDbContext : DbContext
 
             entity.HasIndex(e => e.Sku, "Product_SKU_key").IsUnique();
 
-            entity.HasIndex(e => e.BarCode, "ix_product_barcode");
-
             entity.HasIndex(e => e.CategoryId, "ix_product_categoryid");
 
             entity.HasIndex(e => e.ColorId, "ix_product_colorid");
@@ -531,9 +517,6 @@ public partial class ChiBestDbContext : DbContext
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("timestamp(3) without time zone");
-            entity.Property(e => e.HandleStatus)
-                .HasMaxLength(40)
-                .HasDefaultValueSql("'Draft'::character varying");
             entity.Property(e => e.IsMaster).HasDefaultValue(true);
             entity.Property(e => e.Material).HasMaxLength(100);
             entity.Property(e => e.Name).HasMaxLength(250);
@@ -546,7 +529,7 @@ public partial class ChiBestDbContext : DbContext
                 .HasColumnName("SKU");
             entity.Property(e => e.Status)
                 .HasMaxLength(40)
-                .HasDefaultValueSql("'Available'::character varying");
+                .HasDefaultValueSql("'UnAvailable'::character varying");
             entity.Property(e => e.Style).HasMaxLength(100);
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
@@ -603,6 +586,41 @@ public partial class ChiBestDbContext : DbContext
                 .HasConstraintName("ProductDetail_ProductId_fkey");
         });
 
+        modelBuilder.Entity<ProductPlan>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("ProductPlan_pkey");
+
+            entity.ToTable("ProductPlan");
+
+            entity.HasIndex(e => new { e.SupplierId, e.ProductId, e.SendDate }, "ix_productplan_product_supplier").IsDescending(false, false, true);
+
+            entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .HasColumnType("timestamp(3) without time zone");
+            entity.Property(e => e.DetailAmount).HasMaxLength(100);
+            entity.Property(e => e.Note).HasMaxLength(100);
+            entity.Property(e => e.SendDate)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .HasColumnType("timestamp(3) without time zone");
+            entity.Property(e => e.Status)
+                .HasMaxLength(40)
+                .HasDefaultValueSql("'Queue'::character varying");
+            entity.Property(e => e.Type).HasMaxLength(100);
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .HasColumnType("timestamp(3) without time zone");
+
+            entity.HasOne(d => d.Product).WithMany(p => p.ProductPlans)
+                .HasForeignKey(d => d.ProductId)
+                .HasConstraintName("ProductPlan_ProductId_fkey");
+
+            entity.HasOne(d => d.Supplier).WithMany(p => p.ProductPlans)
+                .HasForeignKey(d => d.SupplierId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("ProductPlan_SupplierId_fkey");
+        });
+
         modelBuilder.Entity<ProductPriceHistory>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("ProductPriceHistory_pkey");
@@ -627,10 +645,6 @@ public partial class ChiBestDbContext : DbContext
                 .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("ProductPriceHistory_BranchId_fkey");
 
-            entity.HasOne(d => d.CreatedByNavigation).WithMany(p => p.ProductPriceHistories)
-                .HasForeignKey(d => d.CreatedBy)
-                .HasConstraintName("ProductPriceHistory_CreatedBy_fkey");
-
             entity.HasOne(d => d.Product).WithMany(p => p.ProductPriceHistories)
                 .HasForeignKey(d => d.ProductId)
                 .HasConstraintName("ProductPriceHistory_ProductId_fkey");
@@ -643,8 +657,6 @@ public partial class ChiBestDbContext : DbContext
             entity.ToTable("PurchaseOrder");
 
             entity.HasIndex(e => e.InvoiceCode, "PurchaseOrder_InvoiceCode_key").IsUnique();
-
-            entity.HasIndex(e => e.InvoiceCode, "ix_purchaseorder_invoicecode");
 
             entity.HasIndex(e => e.OrderDate, "ix_transactionorder_orderdate").IsDescending();
 
@@ -666,6 +678,11 @@ public partial class ChiBestDbContext : DbContext
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("timestamp(3) without time zone");
 
+            entity.HasOne(d => d.Branch).WithMany(p => p.PurchaseOrders)
+                .HasForeignKey(d => d.BranchId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("PurchaseOrder_BranchId_fkey");
+
             entity.HasOne(d => d.Employee).WithMany(p => p.PurchaseOrderEmployees)
                 .HasForeignKey(d => d.EmployeeId)
                 .HasConstraintName("PurchaseOrder_EmployeeId_fkey");
@@ -674,11 +691,6 @@ public partial class ChiBestDbContext : DbContext
                 .HasForeignKey(d => d.SupplierId)
                 .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("PurchaseOrder_SupplierId_fkey");
-
-            entity.HasOne(d => d.Warehouse).WithMany(p => p.PurchaseOrders)
-                .HasForeignKey(d => d.WarehouseId)
-                .OnDelete(DeleteBehavior.Cascade)
-                .HasConstraintName("PurchaseOrder_WarehouseId_fkey");
         });
 
         modelBuilder.Entity<PurchaseOrderDetail>(entity =>
@@ -712,9 +724,9 @@ public partial class ChiBestDbContext : DbContext
 
             entity.HasIndex(e => e.InvoiceCode, "PurchaseReturn_InvoiceCode_key").IsUnique();
 
-            entity.HasIndex(e => e.OrderDate, "ix_purchasereturn_orderdate").IsDescending();
+            entity.HasIndex(e => e.BranchId, "ix_purchasereturn_branch");
 
-            entity.HasIndex(e => e.Status, "ix_purchasereturn_status");
+            entity.HasIndex(e => e.OrderDate, "ix_purchasereturn_orderdate").IsDescending();
 
             entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
             entity.Property(e => e.CreatedAt)
@@ -732,6 +744,10 @@ public partial class ChiBestDbContext : DbContext
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("timestamp(3) without time zone");
 
+            entity.HasOne(d => d.Branch).WithMany(p => p.PurchaseReturns)
+                .HasForeignKey(d => d.BranchId)
+                .HasConstraintName("fk_purchasereturn_branch");
+
             entity.HasOne(d => d.Employee).WithMany(p => p.PurchaseReturnEmployees)
                 .HasForeignKey(d => d.EmployeeId)
                 .HasConstraintName("fk_purchasereturn_employee");
@@ -739,10 +755,6 @@ public partial class ChiBestDbContext : DbContext
             entity.HasOne(d => d.Supplier).WithMany(p => p.PurchaseReturnSuppliers)
                 .HasForeignKey(d => d.SupplierId)
                 .HasConstraintName("fk_purchasereturn_supplier");
-
-            entity.HasOne(d => d.Warehouse).WithMany(p => p.PurchaseReturns)
-                .HasForeignKey(d => d.WarehouseId)
-                .HasConstraintName("fk_purchasereturn_warehouse");
         });
 
         modelBuilder.Entity<PurchaseReturnDetail>(entity =>
@@ -916,10 +928,6 @@ public partial class ChiBestDbContext : DbContext
             entity.HasOne(d => d.Voucher).WithMany(p => p.SalesOrders)
                 .HasForeignKey(d => d.VoucherId)
                 .HasConstraintName("SalesOrder_VoucherId_fkey");
-
-            entity.HasOne(d => d.Warehouse).WithMany(p => p.SalesOrders)
-                .HasForeignKey(d => d.WarehouseId)
-                .HasConstraintName("SalesOrder_WarehouseId_fkey");
         });
 
         modelBuilder.Entity<SalesOrderDetail>(entity =>
@@ -1004,18 +1012,12 @@ public partial class ChiBestDbContext : DbContext
 
             entity.HasOne(d => d.Branch).WithMany(p => p.StockAdjustments)
                 .HasForeignKey(d => d.BranchId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("StockAdjustment_BranchId_fkey");
 
             entity.HasOne(d => d.Employee).WithMany(p => p.StockAdjustmentEmployees)
                 .HasForeignKey(d => d.EmployeeId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("StockAdjustment_EmployeeId_fkey");
-
-            entity.HasOne(d => d.Warehouse).WithMany(p => p.StockAdjustments)
-                .HasForeignKey(d => d.WarehouseId)
-                .OnDelete(DeleteBehavior.Cascade)
-                .HasConstraintName("StockAdjustment_WarehouseId_fkey");
         });
 
         modelBuilder.Entity<StockAdjustmentDetail>(entity =>
@@ -1097,9 +1099,9 @@ public partial class ChiBestDbContext : DbContext
 
             entity.HasIndex(e => e.InvoiceCode, "TransferOrder_InvoiceCode_key").IsUnique();
 
-            entity.HasIndex(e => e.OrderDate, "ix_transferorder_orderdate").IsDescending();
+            entity.HasIndex(e => new { e.FromBranch, e.ToBranch, e.OrderDate }, "ix_transferorder_branch").IsDescending(false, false, true);
 
-            entity.HasIndex(e => e.Status, "ix_transferorder_status");
+            entity.HasIndex(e => e.OrderDate, "ix_transferorder_orderdate").IsDescending();
 
             entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
             entity.Property(e => e.CreatedAt)
@@ -1121,13 +1123,13 @@ public partial class ChiBestDbContext : DbContext
                 .HasForeignKey(d => d.EmployeeId)
                 .HasConstraintName("TransferOrder_EmployeeId_fkey");
 
-            entity.HasOne(d => d.FromWarehouse).WithMany(p => p.TransferOrderFromWarehouses)
-                .HasForeignKey(d => d.FromWarehouseId)
-                .HasConstraintName("TransferOrder_FromWarehouseId_fkey");
+            entity.HasOne(d => d.FromBranchNavigation).WithMany(p => p.TransferOrderFromBranchNavigations)
+                .HasForeignKey(d => d.FromBranch)
+                .HasConstraintName("TransferOrder_FromBranch_fkey");
 
-            entity.HasOne(d => d.ToWarehouse).WithMany(p => p.TransferOrderToWarehouses)
-                .HasForeignKey(d => d.ToWarehouseId)
-                .HasConstraintName("TransferOrder_ToWarehouseId_fkey");
+            entity.HasOne(d => d.ToBranchNavigation).WithMany(p => p.TransferOrderToBranchNavigations)
+                .HasForeignKey(d => d.ToBranch)
+                .HasConstraintName("TransferOrder_ToBranch_fkey");
         });
 
         modelBuilder.Entity<TransferOrderDetail>(entity =>
@@ -1142,7 +1144,6 @@ public partial class ChiBestDbContext : DbContext
 
             entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
             entity.Property(e => e.CommissionFee).HasColumnType("money");
-            entity.Property(e => e.ExtraFee).HasColumnType("money");
             entity.Property(e => e.UnitPrice).HasColumnType("money");
 
             entity.HasOne(d => d.Product).WithMany(p => p.TransferOrderDetails)
@@ -1191,37 +1192,6 @@ public partial class ChiBestDbContext : DbContext
             entity.Property(e => e.VoucherType)
                 .HasMaxLength(50)
                 .HasDefaultValueSql("'Giảm Giá'::character varying");
-        });
-
-        modelBuilder.Entity<Warehouse>(entity =>
-        {
-            entity.HasKey(e => e.Id).HasName("Warehouse_pkey");
-
-            entity.ToTable("Warehouse");
-
-            entity.HasIndex(e => e.Code, "Warehouse_Code_key").IsUnique();
-
-            entity.HasIndex(e => e.BranchId, "ix_warehouse_branchid");
-
-            entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
-            entity.Property(e => e.Address).HasMaxLength(500);
-            entity.Property(e => e.Code).HasMaxLength(50);
-            entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("CURRENT_TIMESTAMP")
-                .HasColumnType("timestamp(3) without time zone");
-            entity.Property(e => e.Name).HasMaxLength(255);
-            entity.Property(e => e.PhoneNumber).HasMaxLength(15);
-            entity.Property(e => e.Status)
-                .HasMaxLength(40)
-                .HasDefaultValueSql("'Active'::character varying");
-            entity.Property(e => e.UpdatedAt)
-                .HasDefaultValueSql("CURRENT_TIMESTAMP")
-                .HasColumnType("timestamp(3) without time zone");
-
-            entity.HasOne(d => d.Branch).WithMany(p => p.Warehouses)
-                .HasForeignKey(d => d.BranchId)
-                .OnDelete(DeleteBehavior.Cascade)
-                .HasConstraintName("Warehouse_BranchId_fkey");
         });
 
         modelBuilder.Entity<WorkShift>(entity =>

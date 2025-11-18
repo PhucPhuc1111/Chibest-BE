@@ -34,7 +34,6 @@ public static class ServiceRegister
         services.AddScoped<IFileService, FileService>();
         services.AddScoped<IPermissionService, PermissionService>();
         services.AddSingleton<IContentTypeProvider, FileExtensionContentTypeProvider>();
-        services.AddScoped<IWarehouseService, WarehouseService>();
         services.AddScoped<IAccountService, AccountService>();
         services.AddScoped<IRoleService, RoleService>();
         services.AddScoped<IBranchService, BranchService>();
@@ -43,6 +42,7 @@ public static class ServiceRegister
         services.AddScoped<IProductService, ProductService>();
         services.AddScoped<IProductPriceHistoryService, ProductPriceHistoryService>();
         services.AddScoped<IBranchStockService, BranchStockService>();
+        services.AddScoped<IProductPlanService, ProductPlanService>();
         services.AddScoped<IColorService, ColorService>();
         services.AddScoped<ISizeService, SizeService>();
 

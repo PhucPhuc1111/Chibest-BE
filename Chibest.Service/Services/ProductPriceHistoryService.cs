@@ -74,11 +74,6 @@ public class ProductPriceHistoryService : IProductPriceHistoryService
             }
         }
 
-        if (query.CreatedBy.HasValue)
-        {
-            predicate = predicate.And(p => p.CreatedBy == query.CreatedBy.Value);
-        }
-
         if (query.EffectiveDateFrom.HasValue)
         {
             predicate = predicate.And(p => p.EffectiveDate >= query.EffectiveDateFrom.Value);
@@ -161,7 +156,6 @@ public class ProductPriceHistoryService : IProductPriceHistoryService
                 ExpiryDate = p.ExpiryDate,
                 Note = p.Note,
                 CreatedAt = p.CreatedAt,
-                CreatedBy = p.CreatedBy,
                 ProductId = p.ProductId,
                 BranchId = p.BranchId,
 
@@ -196,7 +190,6 @@ public class ProductPriceHistoryService : IProductPriceHistoryService
                 ExpiryDate = p.ExpiryDate,
                 Note = p.Note,
                 CreatedAt = p.CreatedAt,
-                CreatedBy = p.CreatedBy,
                 ProductId = p.ProductId,
                 BranchId = p.BranchId,
                 Sku = p.Product != null ? p.Product.Sku : "null",
@@ -235,7 +228,6 @@ public class ProductPriceHistoryService : IProductPriceHistoryService
                 ExpiryDate = p.ExpiryDate,
                 Note = p.Note,
                 CreatedAt = p.CreatedAt,
-                CreatedBy = p.CreatedBy,
                 ProductId = p.ProductId,
                 BranchId = p.BranchId,
 
@@ -263,7 +255,6 @@ public class ProductPriceHistoryService : IProductPriceHistoryService
             ExpiryDate = p.ExpiryDate,
             Note = p.Note,
             CreatedAt = p.CreatedAt,
-            CreatedBy = p.CreatedBy,
             ProductId = p.ProductId,
             BranchId = p.BranchId,
             Sku = p.Product != null ? p.Product.Sku : "null",
@@ -290,7 +281,6 @@ public class ProductPriceHistoryService : IProductPriceHistoryService
             ExpiryDate = p.ExpiryDate,
             Note = p.Note,
             CreatedAt = p.CreatedAt,
-            CreatedBy = p.CreatedBy,
             ProductId = p.ProductId,
             BranchId = p.BranchId,
             Sku = p.Product != null ? p.Product.Sku : "null",
@@ -344,7 +334,6 @@ public class ProductPriceHistoryService : IProductPriceHistoryService
         // 4. Tạo giá mới
         var newPrice = request.Adapt<ProductPriceHistory>();
         newPrice.Id = Guid.NewGuid();
-        newPrice.CreatedBy = accountId;
         newPrice.CreatedAt = DateTime.Now;
 
         await _unitOfWork.ProductPriceHistoryRepository.AddAsync(newPrice);

@@ -26,7 +26,7 @@ namespace Chibest.Service.ModelDTOs.Stock.PurchaseOrder
 
         public string Status { get; set; } = null!;
 
-        public string? WarehouseName { get; set; }
+        public string? BranchName { get; set; }
 
         public string? EmployeeName { get; set; }
 

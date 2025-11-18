@@ -15,8 +15,6 @@ public partial class StockAdjustment
 
     public Guid BranchId { get; set; }
 
-    public Guid? WarehouseId { get; set; }
-
     public Guid EmployeeId { get; set; }
 
     public decimal TotalValueChange { get; set; }
@@ -38,6 +36,4 @@ public partial class StockAdjustment
     public virtual Account Employee { get; set; } = null!;
 
     public virtual ICollection<StockAdjustmentDetail> StockAdjustmentDetails { get; set; } = new List<StockAdjustmentDetail>();
-
-    public virtual Warehouse? Warehouse { get; set; }
 }

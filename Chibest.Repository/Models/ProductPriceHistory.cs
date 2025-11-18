@@ -19,15 +19,11 @@ public partial class ProductPriceHistory
 
     public DateTime CreatedAt { get; set; }
 
-    public Guid? CreatedBy { get; set; }
-
     public Guid ProductId { get; set; }
 
     public Guid? BranchId { get; set; }
 
     public virtual Branch? Branch { get; set; }
-
-    public virtual Account? CreatedByNavigation { get; set; }
 
     public virtual Product Product { get; set; } = null!;
 }

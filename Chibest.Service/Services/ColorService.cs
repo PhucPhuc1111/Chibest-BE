@@ -26,7 +26,7 @@ public class ColorService : IColorService
     public async Task<IBusinessResult> GetAllAsync()
     {
         var colors = await _unitOfWork.ColorRepository
-            .GetAllAsync(orderBy: query => query.OrderBy(c => c.Name));
+            .GetAllAsync(orderBy: query => query.OrderBy(c => c.Code));
 
         var response = colors.Adapt<IEnumerable<ColorResponse>>();
         return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_READ_MSG, response);
@@ -56,7 +56,6 @@ public class ColorService : IColorService
 
         var existingColor = await _unitOfWork.ColorRepository
             .GetByWhere(c =>
-                c.Name.ToLower() == normalizedName ||
                 c.Code.ToLower() == normalizedCode)
             .AsNoTracking()
             .FirstOrDefaultAsync();
@@ -69,7 +68,6 @@ public class ColorService : IColorService
         var color = new Color
         {
             Id = Guid.NewGuid(),
-            Name = request.Name.Trim(),
             Code = request.Code.Trim()
         };
 

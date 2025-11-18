@@ -17,25 +17,10 @@ CREATE TABLE "Branch" (
     "PhoneNumber" VARCHAR(15),
     "Status" VARCHAR(40) NOT NULL DEFAULT 'Active', -- 'InActive', 'Deleted'
     "IsFranchise" BOOLEAN NOT NULL DEFAULT FALSE,
-    "OwnerName" VARCHAR(255) NULL,
     "CreatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "UpdatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE "Warehouse" (
-    "Id" UUID DEFAULT GEN_RANDOM_UUID() PRIMARY KEY,
-    "Code" VARCHAR(50) UNIQUE NOT NULL,
-    "Name" VARCHAR(255) NOT NULL,
-    "Address" VARCHAR(500) NOT NULL,
-    "PhoneNumber" VARCHAR(15),
-    "Status" VARCHAR(40) NOT NULL DEFAULT 'Active', -- 'InActive', 'Deleted'
-    "CreatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "UpdatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    "BranchId" UUID REFERENCES "Branch"("Id") ON DELETE CASCADE
-);
-
-CREATE INDEX IX_Warehouse_BranchId ON "Warehouse"("BranchId");
 
 -- =============================================
 -- MODULE 2: ACCOUNT & ROLE MANAGEMENT
@@ -72,8 +57,6 @@ CREATE TABLE "AccountRole" (
     "AccountId" UUID NOT NULL,
     "RoleId" UUID NOT NULL,
     "BranchId" UUID NULL,
-    "StartDate" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "EndDate" TIMESTAMP(3) NULL,
 
     CONSTRAINT PK_AccountRole PRIMARY KEY ("AccountId", "RoleId", "StartDate"),
 
@@ -90,7 +73,7 @@ CREATE TABLE "AccountRole" (
         ON DELETE CASCADE
 );
 
-CREATE INDEX IX_AccountRole_AccountId ON "AccountRole"("AccountId", "StartDate" DESC);
+CREATE INDEX IX_AccountRole_AccountId ON "AccountRole"("AccountId");
 CREATE INDEX IX_AccountRole_BranchId_RoleId ON "AccountRole"("BranchId", "RoleId") INCLUDE ("AccountId");
 
 -- Tạo bảng Permission
@@ -154,7 +137,6 @@ CREATE INDEX IX_Customer_GroupId ON "Customer"("GroupId");
 CREATE TABLE "Category" (
     "Id" UUID DEFAULT GEN_RANDOM_UUID() PRIMARY KEY,
     "Name" VARCHAR(150) NOT NULL,
-    "Description" TEXT
 );
 
 CREATE INDEX IX_Category_Type_Name ON "Category"("Name");
@@ -162,8 +144,7 @@ CREATE INDEX IX_Category_Type_Name ON "Category"("Name");
 
 CREATE TABLE "Color" (
     "Id" UUID DEFAULT GEN_RANDOM_UUID() PRIMARY KEY,
-    "Name" VARCHAR(100) NOT NULL,
-    "Code" VARCHAR(7) NOT NULL
+    "Code" VARCHAR(10) NOT NULL
 );
 
 -- Tạo bảng Size
@@ -187,10 +168,9 @@ CREATE TABLE "Product" (
     "Weight" INT NOT NULL DEFAULT 0,
     "IsMaster" BOOLEAN NOT NULL DEFAULT TRUE,
     "BarCode" VARCHAR(100) UNIQUE,
-    "Status" VARCHAR(40) NOT NULL DEFAULT 'Available',
+    "Status" VARCHAR(40) NOT NULL DEFAULT 'UnAvailable', -- Available
     "CreatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "UpdatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "HandleStatus" VARCHAR(40) NOT NULL DEFAULT 'Draft',
     "Note" VARCHAR(200),
     "CategoryId" UUID NOT NULL REFERENCES "Category"("Id") ON DELETE CASCADE,
     "ParentSKU" VARCHAR(50) NULL REFERENCES "Product"("SKU")
@@ -200,6 +180,21 @@ CREATE INDEX IX_Product_CategoryId ON "Product"("CategoryId");
 CREATE INDEX IX_Product_ParentSKU ON "Product"("ParentSKU");
 CREATE INDEX IX_Product_ColorId ON "Product"("ColorId");
 CREATE INDEX IX_Product_SizeId ON "Product"("SizeId");
+
+CREATE TABLE "ProductPlan" (
+    "Id" UUID DEFAULT GEN_RANDOM_UUID() PRIMARY KEY,
+    "ProductId" UUID NOT NULL REFERENCES "Product"("Id") ON DELETE CASCADE,
+	"SupplierId" UUID NOT NULL REFERENCES "Account"("Id") ON DELETE CASCADE,
+    "Type" VARCHAR(100),
+    "SendDate" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	"DetailAmount" VARCHAR(100),
+	"Amount" INT,
+    "Status" VARCHAR(40) NOT NULL DEFAULT 'Queue', -- Processing / Delivery / Cancel
+	"Note" VARCHAR(100),
+    "CreatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "UpdatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+);
+CREATE INDEX IX_ProductPlan_Product_Supplier ON "Product"("SupplierId","ProductId","SendDate" DESC);
 
 -- =============================================
 -- MODULE 5: PRICING MANAGEMENT
@@ -215,7 +210,6 @@ CREATE TABLE "ProductPriceHistory" (
     "ExpiryDate" TIMESTAMP(3),
     "Note" TEXT,
     "CreatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "CreatedBy" UUID REFERENCES "Account"("Id"),
     "ProductId" UUID NOT NULL REFERENCES "Product"("Id") ON DELETE CASCADE,
     "BranchId" UUID REFERENCES "Branch"("Id") ON DELETE CASCADE -- NULL = giá chung cho tất cả chi nhánh
 );
@@ -238,17 +232,12 @@ CREATE TABLE "BranchStock" (
     -- Ngưỡng tồn kho
     "MinimumStock" INT NOT NULL DEFAULT 0,
     "MaximumStock" INT NOT NULL DEFAULT 0,
-    "ReorderPoint" INT NOT NULL DEFAULT 0,
-    "ReorderQty" INT NOT NULL DEFAULT 0,
-    
-    
     CONSTRAINT UQ_BranchStock_Product_Branch UNIQUE ("ProductId", "BranchId")
 );
 
 CREATE INDEX IX_BranchStock_BranchId ON "BranchStock"("BranchId", "AvailableQty");
 CREATE INDEX IX_BranchStock_ProductId ON "BranchStock"("ProductId");
 
--- Tracking chi tiết sản phẩm vật lý (RFID/Barcode)
 CREATE TABLE "ProductDetail" (
     "Id" UUID DEFAULT GEN_RANDOM_UUID() PRIMARY KEY,
     "ChipCode" VARCHAR(100) UNIQUE,
@@ -278,12 +267,12 @@ CREATE TABLE "PurchaseOrder" (
     "SubTotal" MONEY NOT NULL DEFAULT 0,
     "Note" TEXT,
     "Status" VARCHAR(40) NOT NULL DEFAULT 'Draft', -- 'Submit' / 'Cancel' / 'Done'
-    "WarehouseId" UUID REFERENCES "Warehouse"("Id") ON DELETE CASCADE,                        -- Kho nhận
+    "BranchId" UUID REFERENCES "Branch"("Id") ON DELETE CASCADE,                       
     "EmployeeId" UUID REFERENCES "Account"("Id"),                           -- Nhân viên xác nhận giao dịch
     "SupplierId" UUID REFERENCES "Account"("Id") ON DELETE CASCADE                           
 );
 
-CREATE INDEX IX_PurchaseOrder_InvoiceCode ON "PurchaseOrder"("InvoiceCode");
+CREATE INDEX IX_PurchaseOrder_InvoiceCode ON "PurchaseOrder_Branch"("BranchId");
 CREATE INDEX IX_TransactionOrder_Status ON "PurchaseOrder"("Status");
 CREATE INDEX IX_TransactionOrder_OrderDate ON "PurchaseOrder"("OrderDate" DESC);
 
@@ -319,11 +308,11 @@ CREATE TABLE "TransferOrder" (
     "Note" TEXT,
     "Status" VARCHAR(40) NOT NULL DEFAULT 'Draft', -- 'Submit' / 'Cancel' / 'Done'
     "EmployeeId" UUID REFERENCES "Account"("Id"),                           -- Nhân viên xác nhận giao dịch
-    "FromWarehouseId" UUID REFERENCES "Warehouse"("Id"),                    -- Kho nguồn 
-    "ToWarehouseId" UUID REFERENCES "Warehouse"("Id")                      -- Kho đích
+    "FromBranch" UUID REFERENCES "Branch"("Id"),                    
+    "ToBranch" UUID REFERENCES "Branch"("Id")                      
 );
 
-CREATE INDEX IX_TransferOrder_Status ON "TransferOrder"("Status");
+CREATE INDEX IX_TransferOrder_Branch ON "TransferOrder"("FromBranch", "ToBranch", "OrderDate" DESC);
 CREATE INDEX IX_TransferOrder_OrderDate ON "TransferOrder"("OrderDate" DESC);
 
 -- =====================================================================
@@ -332,7 +321,6 @@ CREATE TABLE "TransferOrderDetail" (
     "Id" UUID DEFAULT GEN_RANDOM_UUID() PRIMARY KEY,
     "Quantity" INT NOT NULL,
     "ActualQuantity" INT,
-    "ExtraFee" money not null,
     "CommissionFee" money not null,
     "UnitPrice" MONEY NOT NULL,
     "Note" TEXT,
@@ -354,13 +342,13 @@ CREATE TABLE "PurchaseReturn" (
     "Note" TEXT,
     "Status" VARCHAR(40) NOT NULL DEFAULT 'Draft', -- 'Submit' / 'Cancel' / 'Done'
     "EmployeeId" UUID NULL,
-    "WarehouseId" UUID NULL,
+    "BranchId" UUID NULL,
     "SupplierId" UUID NULL,
     CONSTRAINT FK_PurchaseReturn_Employee FOREIGN KEY ("EmployeeId") REFERENCES "Account"("Id"),
-    CONSTRAINT FK_PurchaseReturn_Warehouse FOREIGN KEY ("WarehouseId") REFERENCES "Warehouse"("Id"),
+    CONSTRAINT FK_PurchaseReturn_Branch FOREIGN KEY ("BranchId") REFERENCES "Branch"("Id"),
     CONSTRAINT FK_PurchaseReturn_Supplier FOREIGN KEY ("SupplierId") REFERENCES "Account"("Id")
 );
-CREATE INDEX IX_PurchaseReturn_Status ON "PurchaseReturn"("Status");
+CREATE INDEX IX_PurchaseReturn_Branch ON "PurchaseReturn"("BranchId");
 CREATE INDEX IX_PurchaseReturn_OrderDate ON "PurchaseReturn"("OrderDate" DESC);
 -- Chi Tiết Đơn lỗi
 CREATE TABLE "PurchaseReturnDetail" (
@@ -385,8 +373,7 @@ CREATE TABLE "StockAdjustment" (
     "AdjustmentDate" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "AdjustmentType" VARCHAR(50) NOT NULL, 
     
-    "BranchId" UUID NOT NULL REFERENCES "Branch"("Id") ,
-    "WarehouseId" UUID NULL REFERENCES "Warehouse"("Id") ON DELETE CASCADE,
+    "BranchId" UUID NOT NULL REFERENCES "Branch"("Id") ON DELETE CASCADE,
     "EmployeeId" UUID NOT NULL REFERENCES "Account"("Id"),
     
     "TotalValueChange" MONEY NOT NULL DEFAULT 0,
@@ -477,7 +464,6 @@ CREATE TABLE "SalesOrder" (
     
     -- Thông tin giao dịch
     "BranchId" UUID NOT NULL REFERENCES "Branch"("Id"),
-    "WarehouseId" UUID NULL REFERENCES "Warehouse"("Id"),
     "EmployeeId" UUID NOT NULL REFERENCES "Account"("Id"),
     
     -- Thông tin giao hàng

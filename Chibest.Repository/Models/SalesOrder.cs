@@ -21,8 +21,6 @@ public partial class SalesOrder
 
     public Guid BranchId { get; set; }
 
-    public Guid? WarehouseId { get; set; }
-
     public Guid EmployeeId { get; set; }
 
     public string DeliveryMethod { get; set; } = null!;
@@ -70,6 +68,4 @@ public partial class SalesOrder
     public virtual ICollection<SalesOrderDetail> SalesOrderDetails { get; set; } = new List<SalesOrderDetail>();
 
     public virtual Voucher? Voucher { get; set; }
-
-    public virtual Warehouse? Warehouse { get; set; }
 }
