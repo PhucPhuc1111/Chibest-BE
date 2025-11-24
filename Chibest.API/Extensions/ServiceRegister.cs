@@ -21,8 +21,14 @@ public static class ServiceRegister
 {
     public static void RegisterServices(IServiceCollection services, IConfiguration configuration)
     {
-        var connectionString = Environment.GetEnvironmentVariable("DB_PG_CONNECTION_STRING");
-        services.AddDbContext<ChiBestDbContext>(options => options.UseNpgsql(connectionString));
+        var connectionString = Environment.GetEnvironmentVariable("DB_PG_CONNECTION_STRING")
+            ?? configuration.GetConnectionString("DefaultConnection")
+            ?? throw new InvalidOperationException("Database connection string is not configured.");
+
+        services.AddDbContext<ChiBestDbContext>(options =>
+        {
+            options.UseNpgsql(connectionString);
+        });
 
         services.AddAuthorizeService(configuration);
         AddCorsToThisWeb(services);          // <-- CORS policy
@@ -32,18 +38,19 @@ public static class ServiceRegister
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<ITokenService, TokenService>();
         services.AddScoped<IFileService, FileService>();
+        services.AddScoped<IPermissionService, PermissionService>();
         services.AddSingleton<IContentTypeProvider, FileExtensionContentTypeProvider>();
-        services.AddScoped<IWarehouseService, WarehouseService>();
         services.AddScoped<IAccountService, AccountService>();
         services.AddScoped<IRoleService, RoleService>();
         services.AddScoped<IBranchService, BranchService>();
 
-        services.AddScoped<ISystemLogService, SystemLogService>();
         services.AddScoped<ICategoryService, CategoryService>();
         services.AddScoped<IProductService, ProductService>();
-        services.AddScoped<IProductDetailService, ProductDetailService>();
         services.AddScoped<IProductPriceHistoryService, ProductPriceHistoryService>();
         services.AddScoped<IBranchStockService, BranchStockService>();
+        services.AddScoped<IProductPlanService, ProductPlanService>();
+        services.AddScoped<IColorService, ColorService>();
+        services.AddScoped<ISizeService, SizeService>();
 
         services.AddScoped<IPurchaseOrderService, PurchaseOrderService>();
         services.AddScoped<ITransferOrderService, TransferOrderService>();

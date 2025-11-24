@@ -1,9 +1,9 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace Chibest.Repository.Models;
 
-public partial class CustomerVoucher
+public class CustomerVoucher
 {
     public Guid VoucherId { get; set; }
 

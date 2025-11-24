@@ -7,7 +7,7 @@ namespace Chibest.Repository.Interface;
 public interface IBranchStockRepository : IGenericRepository<BranchStock> 
 {
     Task<IBusinessResult> UpdateBranchStockAsync(
-    Guid warehouseId,
+    Guid branchId,
     Guid productId,
     int deltaAvailableQty = 0,
     int deltaReservedQty = 0,

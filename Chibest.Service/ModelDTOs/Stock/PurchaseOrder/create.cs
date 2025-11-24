@@ -12,17 +12,11 @@ namespace Chibest.Service.ModelDTOs.Stock.PurchaseOrder
         public string? InvoiceCode { get; set; }
         public DateTime OrderDate { get; set; }
 
-        public string? PayMethod { get; set; }
-
         public decimal SubTotal { get; set; }
-
-        public decimal DiscountAmount { get; set; }
-
-        public decimal Paid { get; set; }
 
         public string? Note { get; set; }
 
-        public Guid? WarehouseId { get; set; }
+        public Guid? BranchId { get; set; }
 
         public Guid? EmployeeId { get; set; }
 
@@ -38,8 +32,6 @@ namespace Chibest.Service.ModelDTOs.Stock.PurchaseOrder
         public int Quantity { get; set; }
 
         public decimal UnitPrice { get; set; }
-
-        public decimal Discount { get; set; }
 
         public decimal ReFee { get; set; }
 

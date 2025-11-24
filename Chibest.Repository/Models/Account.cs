@@ -1,9 +1,9 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace Chibest.Repository.Models;
 
-public partial class Account
+public class Account
 {
     public Guid Id { get; set; }
 
@@ -16,12 +16,6 @@ public partial class Account
     public string Name { get; set; } = null!;
 
     public string? PhoneNumber { get; set; }
-
-    public string? Address { get; set; }
-
-    public string? Cccd { get; set; }
-
-    public string? FaxNumber { get; set; }
 
     public string? AvatarUrl { get; set; }
 
@@ -47,9 +41,7 @@ public partial class Account
 
     public virtual ICollection<Payroll> Payrolls { get; set; } = new List<Payroll>();
 
-    public virtual ICollection<ProductDetail> ProductDetails { get; set; } = new List<ProductDetail>();
-
-    public virtual ICollection<ProductPriceHistory> ProductPriceHistories { get; set; } = new List<ProductPriceHistory>();
+    public virtual ICollection<ProductPlan> ProductPlans { get; set; } = new List<ProductPlan>();
 
     public virtual ICollection<PurchaseOrder> PurchaseOrderEmployees { get; set; } = new List<PurchaseOrder>();
 
@@ -68,8 +60,6 @@ public partial class Account
     public virtual ICollection<StockAdjustment> StockAdjustmentEmployees { get; set; } = new List<StockAdjustment>();
 
     public virtual SupplierDebt? SupplierDebt { get; set; }
-
-    public virtual ICollection<SystemLog> SystemLogs { get; set; } = new List<SystemLog>();
 
     public virtual ICollection<TransferOrder> TransferOrders { get; set; } = new List<TransferOrder>();
 }

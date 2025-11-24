@@ -1,9 +1,9 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace Chibest.Repository.Models;
 
-public partial class Branch
+public class Branch
 {
     public Guid Id { get; set; }
 
@@ -19,8 +19,6 @@ public partial class Branch
 
     public bool IsFranchise { get; set; }
 
-    public string? OwnerName { get; set; }
-
     public DateTime CreatedAt { get; set; }
 
     public DateTime UpdatedAt { get; set; }
@@ -35,9 +33,11 @@ public partial class Branch
 
     public virtual ICollection<Payroll> Payrolls { get; set; } = new List<Payroll>();
 
-    public virtual ICollection<ProductDetail> ProductDetails { get; set; } = new List<ProductDetail>();
-
     public virtual ICollection<ProductPriceHistory> ProductPriceHistories { get; set; } = new List<ProductPriceHistory>();
+
+    public virtual ICollection<PurchaseOrder> PurchaseOrders { get; set; } = new List<PurchaseOrder>();
+
+    public virtual ICollection<PurchaseReturn> PurchaseReturns { get; set; } = new List<PurchaseReturn>();
 
     public virtual ICollection<SalaryConfig> SalaryConfigs { get; set; } = new List<SalaryConfig>();
 
@@ -45,5 +45,7 @@ public partial class Branch
 
     public virtual ICollection<StockAdjustment> StockAdjustments { get; set; } = new List<StockAdjustment>();
 
-    public virtual ICollection<Warehouse> Warehouses { get; set; } = new List<Warehouse>();
+    public virtual ICollection<TransferOrder> TransferOrderFromBranchNavigations { get; set; } = new List<TransferOrder>();
+
+    public virtual ICollection<TransferOrder> TransferOrderToBranchNavigations { get; set; } = new List<TransferOrder>();
 }

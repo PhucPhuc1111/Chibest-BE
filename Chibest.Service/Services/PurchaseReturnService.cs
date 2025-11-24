@@ -39,7 +39,7 @@ namespace Chibest.Service.Services
                 SupplierId = request.SupplierId,
                 SubTotal = request.SubTotal,
                 Note = request.Note,
-                WarehouseId = request.WarehouseId,
+                BranchId = request.BranchId,
                 EmployeeId = request.EmployeeId,
                 Status = OrderStatus.Draft.ToString(),
                 CreatedAt = DateTime.Now,
@@ -53,7 +53,6 @@ namespace Chibest.Service.Services
                 ProductId = detailReq.ProductId,
                 Quantity = detailReq.Quantity,
                 UnitPrice = detailReq.UnitPrice,
-                ReturnPrice = detailReq.ReturnPrice,
                 Note = detailReq.Note
             }).ToList();
 
@@ -82,15 +81,14 @@ namespace Chibest.Service.Services
                     Note = x.Note,
                     Status = x.Status,
 
-                    FromWarehouseName = x.Warehouse != null ? x.Warehouse.Name : null,
-                    ToWarehouseName = x.Supplier != null ? x.Supplier.Name : null, 
+                    BranchName = x.Branch != null ? x.Branch.Name : null,
+                    SupplierName = x.Supplier != null ? x.Supplier.Name : null, 
 
                     PurchaseReturnDetails = x.PurchaseReturnDetails.Select(d => new PurchaseReturnDetailResponse
                     {
                         Id = d.Id,
                         Quantity = d.Quantity,
                         UnitPrice = d.UnitPrice,
-                        ReturnPrice = d.ReturnPrice,
                         Note = d.Note,
                         ProductName = d.Product != null ? d.Product.Name : null,
                         Sku = d.Product != null ? d.Product.Sku : string.Empty
@@ -146,7 +144,7 @@ namespace Chibest.Service.Services
             {
                 Guid branchIdValue = branchId.Value;
                 Expression<Func<PurchaseReturn, bool>> branchFilter =
-                    x => x.Warehouse != null && x.Warehouse.BranchId == branchIdValue;
+                    x => x.BranchId == branchIdValue;
                 filter = filter.And(branchFilter);
             }
 
@@ -194,12 +192,15 @@ namespace Chibest.Service.Services
 
                 if (status == OrderStatus.Received && oldStatus != OrderStatus.Received.ToString())
                 {
+                    if (!purchaseReturn.BranchId.HasValue)
+                        return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Phiếu trả hàng chưa gắn chi nhánh để cập nhật tồn kho.");
+
                     foreach (var detail in purchaseReturn.PurchaseReturnDetails)
                     {
                         if (detail.Quantity > 0)
                         {
                             var decreaseResult = await _unitOfWork.BranchStockRepository.UpdateBranchStockAsync(
-                                warehouseId: (Guid)purchaseReturn.WarehouseId,
+                                branchId: purchaseReturn.BranchId.Value,
                                 productId: detail.ProductId,
                                 deltaAvailableQty: -detail.Quantity
                             );
@@ -232,30 +233,26 @@ namespace Chibest.Service.Services
                         }
                     }
 
-                    if (purchaseReturn.WarehouseId != null)
+                    if (purchaseReturn.BranchId.HasValue)
                     {
-                        var warehouse = await _unitOfWork.WarehouseRepository.GetByIdAsync((Guid)purchaseReturn.WarehouseId);
-                        if (warehouse?.BranchId != null)
+                        var branch = await _unitOfWork.BranchRepository.GetByIdAsync(purchaseReturn.BranchId.Value);
+                        if (branch != null && branch.IsFranchise == false)
                         {
-                            var branch = await _unitOfWork.BranchRepository.GetByIdAsync((Guid)warehouse.BranchId);
-                            if (branch != null && branch.IsFranchise == false)
+                            decimal subtotal = purchaseReturn.SubTotal;
+
+                            if (subtotal != 0)
                             {
-                                decimal subtotal = purchaseReturn.SubTotal;
+                                var branchDebtResult = await _unitOfWork.BranchDebtRepository.AddBranchTransactionAsync(
+                                    branchId: branch.Id,
+                                    transactionType: "Return",
+                                    amount: subtotal,
+                                    note: $"Công nợ chi nhánh từ phiếu trả hàng #{purchaseReturn.InvoiceCode}"
+                                );
 
-                                if (subtotal != 0)
+                                if (branchDebtResult.StatusCode != Const.HTTP_STATUS_OK)
                                 {
-                                    var branchDebtResult = await _unitOfWork.BranchDebtRepository.AddBranchTransactionAsync(
-                                        branchId: (Guid)warehouse.BranchId,
-                                        transactionType: "Return",
-                                        amount: subtotal,
-                                        note: $"Công nợ chi nhánh từ phiếu trả hàng #{purchaseReturn.InvoiceCode}"
-                                    );
-
-                                    if (branchDebtResult.StatusCode != Const.HTTP_STATUS_OK)
-                                    {
-                                        return new BusinessResult(Const.ERROR_EXCEPTION,
-                                            "Lỗi xử lý công nợ chi nhánh khi trả hàng");
-                                    }
+                                    return new BusinessResult(Const.ERROR_EXCEPTION,
+                                        "Lỗi xử lý công nợ chi nhánh khi trả hàng");
                                 }
                             }
                         }
@@ -340,7 +337,6 @@ namespace Chibest.Service.Services
                                 ProductName = product.Name,
                                 Quantity = quantity,
                                 UnitPrice = unitPrice,
-                                ReturnPrice = returnPrice,
                                 Note = $"Giảm giá trả lại: {discount}"
                             });
                         }

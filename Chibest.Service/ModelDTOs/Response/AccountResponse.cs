@@ -11,9 +11,6 @@ public class AccountResponse
     public string Email { get; set; } = null!;
     public string Name { get; set; } = null!;
     public string? PhoneNumber { get; set; }
-    public string? Address { get; set; }
-    public string? Cccd { get; set; }
-    public string? FaxNumber { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     public string Status { get; set; } = null!;

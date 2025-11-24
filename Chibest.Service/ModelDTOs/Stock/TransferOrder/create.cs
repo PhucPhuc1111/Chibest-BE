@@ -14,19 +14,15 @@ namespace Chibest.Service.ModelDTOs.Stock.TransferOrder
             public string? InvoiceCode { get; set; }
             public DateTime OrderDate { get; set; }
 
-            public string? PayMethod { get; set; }
 
             public decimal SubTotal { get; set; }
 
-            public decimal DiscountAmount { get; set; }
-
-            public decimal Paid { get; set; }
 
             public string? Note { get; set; }
 
-            public Guid? FromWarehouseId { get; set; }
+            public Guid? FromBranchId { get; set; }
 
-            public Guid? ToWarehouseId { get; set; }
+            public Guid? ToBranchId { get; set; }
 
             public Guid? EmployeeId { get; set; }
             public virtual ICollection<TransferOrderDetailCreate> TransferOrderDetails { get; set; } = new List<TransferOrderDetailCreate>();
@@ -38,11 +34,8 @@ namespace Chibest.Service.ModelDTOs.Stock.TransferOrder
 
             public decimal UnitPrice { get; set; }
 
-            public decimal ExtraFee { get; set; }
-
             public decimal CommissionFee { get; set; }
 
-            public decimal Discount { get; set; }
 
             public string? Note { get; set; }
 
@@ -51,7 +44,7 @@ namespace Chibest.Service.ModelDTOs.Stock.TransferOrder
 
         public class TransferMultiOrderCreate
         {
-            public Guid FromWarehouseId { get; set; }
+            public Guid FromBranchId { get; set; }
             public Guid EmployeeId { get; set; }
             public DateTime OrderDate { get; set; }
             public string? Note { get; set; }
@@ -68,7 +61,7 @@ namespace Chibest.Service.ModelDTOs.Stock.TransferOrder
         /// </summary>
         public class BranchTransferInfo
         {
-            public Guid ToWarehouseId { get; set; }
+            public Guid ToBranchId { get; set; }
             public decimal SubTotal { get; set; }
 
             // Danh sách sản phẩm + phí riêng của chi nhánh đó
@@ -83,9 +76,7 @@ namespace Chibest.Service.ModelDTOs.Stock.TransferOrder
             public Guid ProductId { get; set; }
             public int Quantity { get; set; }
             public decimal UnitPrice { get; set; }
-            public decimal ExtraFee { get; set; }
             public decimal CommissionFee { get; set; }
-            public decimal Discount { get; set; }
             public string? Note { get; set; }
         }
 

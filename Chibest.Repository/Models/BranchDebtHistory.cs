@@ -1,9 +1,9 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace Chibest.Repository.Models;
 
-public partial class BranchDebtHistory
+public class BranchDebtHistory
 {
     public Guid Id { get; set; }
 
@@ -15,11 +15,11 @@ public partial class BranchDebtHistory
 
     public decimal Amount { get; set; }
 
-    public decimal BalanceBefore { get; set; }
-
-    public decimal BalanceAfter { get; set; }
-
     public string? Note { get; set; }
+
+    public string? Confirmation { get; set; }
+
+    public string Status { get; set; } = null!;
 
     public DateTime CreatedAt { get; set; }
 

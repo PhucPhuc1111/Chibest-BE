@@ -36,7 +36,6 @@ namespace Chibest.Service.Services
                 AdjustmentDate = request.AdjustmentDate == default ? DateTime.Now : request.AdjustmentDate,
                 AdjustmentType = request.AdjustmentType.ToString(),
                 BranchId = request.BranchId,
-                WarehouseId = request.WarehouseId,
                 EmployeeId = request.EmployeeId,
                 Note = request.Note,
                 Status = request.Status != null ? request.Status : "Lưu Tạm",
@@ -62,7 +61,6 @@ namespace Chibest.Service.Services
                     SystemQty = detailReq.SystemQty,
                     ActualQty = detailReq.ActualQty,
                     UnitCost = detailReq.UnitCost,
-                    Reason = null,
                     Note = null
                 });
             }
@@ -114,7 +112,6 @@ namespace Chibest.Service.Services
                     detail.SystemQty = detailReq.SystemQty;
                     detail.ActualQty = detailReq.ActualQty;
                     detail.UnitCost = detailReq.UnitCost;
-                    detail.Reason = detailReq.Reason ?? detail.Reason;
                     detail.Note = detailReq.Note ?? detail.Note;
 
                     int diffQty = detail.ActualQty - detail.SystemQty;
@@ -140,7 +137,7 @@ namespace Chibest.Service.Services
                         if (detail.DifferenceQty != 0)
                         {
                             var result = await _unitOfWork.BranchStockRepository.UpdateBranchStockAsync(
-                                warehouseId: (Guid)stockAdjustment.WarehouseId,
+                                branchId: stockAdjustment.BranchId,
                                 productId: detail.ProductId,
                                 deltaAvailableQty: detail.DifferenceQty ?? 0
                             );
@@ -153,7 +150,6 @@ namespace Chibest.Service.Services
                         }
                     }
                     stockAdjustment.ApprovedBy = request.ApprovebyId;
-                    stockAdjustment.ApprovedAt = DateTime.Now;
                     await _unitOfWork.SaveChangesAsync();
                 }
 
@@ -221,8 +217,7 @@ namespace Chibest.Service.Services
             {
                 Guid branchIdValue = branchId.Value;
                 Expression<Func<StockAdjustment, bool>> branchFilter =
-                    x => x.BranchId == branchIdValue
-                      || (x.Warehouse != null && x.Warehouse.BranchId == branchIdValue);
+                    x => x.BranchId == branchIdValue;
                 filter = filter.And(branchFilter);
             }
 
@@ -262,13 +257,10 @@ namespace Chibest.Service.Services
                     AdjustmentDate = x.AdjustmentDate,
                     AdjustmentType = x.AdjustmentType,
                     BranchName = x.Branch != null ? x.Branch.Name : null,
-                    WarehouseName = x.Warehouse != null ? x.Warehouse.Name : null,
                     EmployeeName = x.Employee != null ? x.Employee.Name : null,
                     ApproveName = x.ApprovedByNavigation != null ? x.ApprovedByNavigation.Name : null,
-                    ApprovedAt = x.ApprovedAt,
                     TotalValueChange = x.TotalValueChange,
                     Status = x.Status,
-                    Reason = x.Reason,
                     Note = x.Note,
                     CreatedAt = x.CreatedAt,
                     UpdatedAt = x.UpdatedAt,
@@ -281,7 +273,6 @@ namespace Chibest.Service.Services
                         DifferenceQty = d.DifferenceQty,
                         UnitCost = d.UnitCost,
                         TotalValueChange = d.TotalValueChange,
-                        Reason = d.Reason,
                         Note = d.Note,
                         ProductName = d.Product != null ? d.Product.Name : null,
                         Sku = d.Product != null ? d.Product.Sku : string.Empty

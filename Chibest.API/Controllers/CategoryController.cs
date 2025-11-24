@@ -1,8 +1,8 @@
-﻿using Chibest.Common;
+﻿using Chibest.API.Attributes;
+using Chibest.Common;
 using Chibest.Service.Interface;
 using Chibest.Service.ModelDTOs.Request;
 using Chibest.Service.ModelDTOs.Request.Query;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
@@ -10,6 +10,7 @@ namespace Chibest.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Permission(Const.Permissions.Product)]
 public class CategoryController : ControllerBase
 {
     private readonly ICategoryService _categoryService;
@@ -19,7 +20,6 @@ public class CategoryController : ControllerBase
         _categoryService = categoryService;
     }
 
-    [Authorize]
     [HttpGet]
     public async Task<IActionResult> GetList([FromQuery] CategoryQuery query)
     {
@@ -27,7 +27,6 @@ public class CategoryController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [Authorize]
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(Guid id)
     {
@@ -35,31 +34,7 @@ public class CategoryController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [Authorize]
-    [HttpGet("type/{type}")]
-    public async Task<IActionResult> GetByType(string type)
-    {
-        var result = await _categoryService.GetByTypeAsync(type);
-        return StatusCode(result.StatusCode, result);
-    }
 
-    [Authorize]
-    [HttpGet("hierarchy")]
-    public async Task<IActionResult> GetHierarchy()
-    {
-        var result = await _categoryService.GetHierarchyAsync();
-        return StatusCode(result.StatusCode, result);
-    }
-
-    [Authorize]
-    [HttpGet("parent/{parentId}/children")]
-    public async Task<IActionResult> GetChildren(Guid parentId)
-    {
-        var result = await _categoryService.GetChildrenAsync(parentId);
-        return StatusCode(result.StatusCode, result);
-    }
-
-    [Authorize]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CategoryRequest request)
     {
@@ -71,7 +46,6 @@ public class CategoryController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [Authorize]
     [HttpPut]
     public async Task<IActionResult> Update([FromBody] CategoryRequest request)
     {
@@ -83,7 +57,6 @@ public class CategoryController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [Authorize]
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete([FromRoute] Guid id)
     {

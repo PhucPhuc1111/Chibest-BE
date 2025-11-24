@@ -1,9 +1,9 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace Chibest.Repository.Models;
 
-public partial class TransferOrderDetail
+public class TransferOrderDetail
 {
     public Guid Id { get; set; }
 
@@ -11,13 +11,9 @@ public partial class TransferOrderDetail
 
     public int? ActualQuantity { get; set; }
 
-    public decimal ExtraFee { get; set; }
-
     public decimal CommissionFee { get; set; }
 
     public decimal UnitPrice { get; set; }
-
-    public decimal Discount { get; set; }
 
     public string? Note { get; set; }
 

@@ -1,9 +1,9 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace Chibest.Repository.Models;
 
-public partial class SalesOrder
+public class SalesOrder
 {
     public Guid Id { get; set; }
 
@@ -20,8 +20,6 @@ public partial class SalesOrder
     public string? CustomerEmail { get; set; }
 
     public Guid BranchId { get; set; }
-
-    public Guid? WarehouseId { get; set; }
 
     public Guid EmployeeId { get; set; }
 
@@ -70,6 +68,4 @@ public partial class SalesOrder
     public virtual ICollection<SalesOrderDetail> SalesOrderDetails { get; set; } = new List<SalesOrderDetail>();
 
     public virtual Voucher? Voucher { get; set; }
-
-    public virtual Warehouse? Warehouse { get; set; }
 }

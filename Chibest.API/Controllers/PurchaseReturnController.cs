@@ -1,17 +1,18 @@
-﻿using Chibest.Common.BusinessResult;
+﻿using Chibest.API.Attributes;
+using Chibest.Common;
+using Chibest.Common.BusinessResult;
 using Chibest.Common.Enums;
 using Chibest.Repository.Interface;
 using Chibest.Service.Interface;
 using Chibest.Service.ModelDTOs.Stock.PurchaseOrder;
 using Chibest.Service.Services;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using static Chibest.Service.ModelDTOs.Stock.PurchaseReturn.create;
 namespace Chibest.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize]
+    [Permission(Const.Permissions.PurchaseReturn)]
     public class PurchaseReturn : ControllerBase
     {
         private readonly IPurchaseReturnService _purchaseReturnService;
@@ -21,7 +22,6 @@ namespace Chibest.API.Controllers
             _purchaseReturnService = purchaseReturnService;
         }
         [HttpPost]
-        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Create([FromBody] PurchaseReturnCreate request)
         {
             var result = await _purchaseReturnService.AddPurchaseReturn(request);
@@ -50,7 +50,6 @@ namespace Chibest.API.Controllers
         }
 
         [HttpPut("{id}")]
-        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> UpdateStatus(Guid id, [FromQuery] OrderStatus status)
         {
             var result = await _purchaseReturnService.UpdatePurchaseReturnAsync(id, status);
@@ -58,14 +57,12 @@ namespace Chibest.API.Controllers
         }
 
         [HttpPost("import")]
-        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> PurchaseReturnfile(IFormFile file)
         {
             var result = await _purchaseReturnService.ReadPurchaseReturnFromExcel(file);
             return StatusCode(result.StatusCode, result);
         }
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeletePurchaseReturn(Guid id)
         {
             var result = await _purchaseReturnService.DeletePurchaseReturn(id);

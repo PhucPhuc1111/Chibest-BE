@@ -17,8 +17,6 @@ namespace Chibest.Service.ModelDTOs.Request
 
         public Guid? BranchId { get; set; }
 
-        public bool IsMainWarehouse { get; set; }
-
         public string? Status { get; set; }
     }
 }

@@ -1,9 +1,9 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace Chibest.Repository.Models;
 
-public partial class StockAdjustment
+public class StockAdjustment
 {
     public Guid Id { get; set; }
 
@@ -15,15 +15,11 @@ public partial class StockAdjustment
 
     public Guid BranchId { get; set; }
 
-    public Guid? WarehouseId { get; set; }
-
     public Guid EmployeeId { get; set; }
 
     public decimal TotalValueChange { get; set; }
 
     public string Status { get; set; } = null!;
-
-    public string? Reason { get; set; }
 
     public string? Note { get; set; }
 
@@ -33,8 +29,6 @@ public partial class StockAdjustment
 
     public Guid? ApprovedBy { get; set; }
 
-    public DateTime? ApprovedAt { get; set; }
-
     public virtual Account? ApprovedByNavigation { get; set; }
 
     public virtual Branch Branch { get; set; } = null!;
@@ -42,6 +36,4 @@ public partial class StockAdjustment
     public virtual Account Employee { get; set; } = null!;
 
     public virtual ICollection<StockAdjustmentDetail> StockAdjustmentDetails { get; set; } = new List<StockAdjustmentDetail>();
-
-    public virtual Warehouse? Warehouse { get; set; }
 }

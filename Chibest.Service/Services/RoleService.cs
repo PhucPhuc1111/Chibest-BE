@@ -16,12 +16,10 @@ namespace Chibest.Service.Services;
 public class RoleService : IRoleService
 {
     private readonly IUnitOfWork _unitOfWork;
-    private readonly ISystemLogService _systemLogService;
 
-    public RoleService(IUnitOfWork unitOfWork, ISystemLogService systemLogService)
+    public RoleService(IUnitOfWork unitOfWork)
     {
         _unitOfWork = unitOfWork;
-        _systemLogService = systemLogService;
     }
 
     public async Task<IBusinessResult> GetByIdAsync(Guid id)
@@ -29,7 +27,11 @@ public class RoleService : IRoleService
         if (id == Guid.Empty)
             return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
 
-        var role = await _unitOfWork.RoleRepository.GetByIdAsync(id);
+        var role = await _unitOfWork.RoleRepository
+            .GetByWhere(x => x.Id == id)
+            .Include(x => x.Permissions)
+            .FirstOrDefaultAsync();
+        
         if (role == null)
             return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, Const.FAIL_READ_MSG);
 
@@ -54,15 +56,17 @@ public class RoleService : IRoleService
 
         if (!string.IsNullOrWhiteSpace(search))
         {
-            predicate = x => x.Name.Contains(search) ||
-                            x.Description.Contains(search);
+            predicate = x => x.Name.Contains(search);
         }
 
         Func<IQueryable<Role>, IOrderedQueryable<Role>> orderBy =
             q => q.OrderBy(x => x.Name);
 
+        Func<IQueryable<Role>, IQueryable<Role>> include =
+            q => q.Include(x => x.Permissions);
+
         var roles = await _unitOfWork.RoleRepository.GetPagedAsync(
-            pageNumber, pageSize, predicate, orderBy);
+            pageNumber, pageSize, predicate, orderBy, include);
 
         var totalCount = await _unitOfWork.RoleRepository.CountAsync();
 
@@ -118,6 +122,7 @@ public class RoleService : IRoleService
     {
         var roles = await _unitOfWork.RoleRepository
             .GetAll()
+            .Include(x => x.Permissions)
             .OrderBy(x => x.Name)
             .ToListAsync();
 
@@ -154,9 +159,6 @@ public class RoleService : IRoleService
         await _unitOfWork.RoleRepository.AddAsync(role);
         await _unitOfWork.SaveChangesAsync();
 
-        await LogSystemAction("Create", "Product", role.Id, accountId,
-                            null, JsonSerializer.Serialize(role),
-                            $"Tạo vai trò mới: {role.Name}");
 
         var response = role.Adapt<RoleResponse>();
         response.AccountCount = 0;
@@ -190,7 +192,7 @@ public class RoleService : IRoleService
         var existingAccRole = await _unitOfWork.AccountRoleRepository.GetByWhere(
             ar => ar.AccountId == request.AccountId &&
             ar.RoleId == request.RoleId &&
-            (ar.EndDate == null || ar.EndDate > DateTime.Now))
+            ar.BranchId == request.BranchId)
             .FirstOrDefaultAsync();
         if (existingAccRole != null)
             return new BusinessResult(Const.HTTP_STATUS_CONFLICT, "Account already has this role assigned");
@@ -199,17 +201,12 @@ public class RoleService : IRoleService
         {
             AccountId = request.AccountId,
             RoleId = request.RoleId,
-            BranchId = validBranch ? request.BranchId : null,
-            StartDate = DateTime.Now,
-            EndDate = request.EndDate != null ? request.EndDate : null
+            BranchId = validBranch ? request.BranchId : null
         };
 
         await _unitOfWork.AccountRoleRepository.AddAsync(accRole);
         await _unitOfWork.SaveChangesAsync();
 
-        await LogSystemAction("Create", "AccountRole", account.Id, makerId,
-                            null, JsonSerializer.Serialize(accRole),
-                            $"Tạo vai trò mới: {role.Name}");
 
         return new BusinessResult(Const.HTTP_STATUS_CREATED, Const.SUCCESS_CREATE_MSG);
     }
@@ -240,15 +237,10 @@ public class RoleService : IRoleService
         if (!string.IsNullOrEmpty(request.Name))
             existingRole.Name = request.Name;
 
-        if (request.Description != null)
-            existingRole.Description = request.Description;
 
         _unitOfWork.RoleRepository.Update(existingRole);
         await _unitOfWork.SaveChangesAsync();
 
-        await LogSystemAction("Update", "Role", request.Id.Value, accountId,
-                            oldValue, JsonSerializer.Serialize(existingRole),
-                            $"Cập nhật vai trò: {oldName} → {existingRole.Name}");
 
         var response = existingRole.Adapt<RoleResponse>();
 
@@ -278,10 +270,13 @@ public class RoleService : IRoleService
             return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, Const.FAIL_READ_MSG + " RoleId");
 
         // Find current accountRole
-        var currentAccountRole = await _unitOfWork.AccountRoleRepository.GetByWhere(
-            ar => ar.AccountId == request.AccountId &&
-            (ar.EndDate == null || ar.EndDate > nowTime))
-            .FirstOrDefaultAsync();
+        var currentAccountRoleQuery = _unitOfWork.AccountRoleRepository.GetByWhere(
+            ar => ar.AccountId == request.AccountId);
+
+        if (request.BranchId.HasValue)
+            currentAccountRoleQuery = currentAccountRoleQuery.Where(ar => ar.BranchId == request.BranchId);
+
+        var currentAccountRole = await currentAccountRoleQuery.FirstOrDefaultAsync();
         if (currentAccountRole == null)
             return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, Const.FAIL_READ_MSG);
         var oldData = JsonSerializer.Serialize(currentAccountRole);
@@ -297,9 +292,6 @@ public class RoleService : IRoleService
         // Save all changes
         await _unitOfWork.SaveChangesAsync();
 
-        await LogSystemAction("ChangeRoleAccount", "Account", request.AccountId, whoMakeId,
-                            oldData, JsonSerializer.Serialize(currentAccountRole),
-                            $"Thay đổi vai trò tài khoản: {oldRoleId} → {request.RoleId}");
 
         return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_UPDATE_MSG);
     }
@@ -317,9 +309,6 @@ public class RoleService : IRoleService
         _unitOfWork.RoleRepository.Delete(role);
         await _unitOfWork.SaveChangesAsync();
 
-        await LogSystemAction("Delete", "Role", id, accountId,
-                            oldValue, null,
-                            $"Xóa vai trò: {role.Name}");
 
         return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_DELETE_MSG);
     }
@@ -333,8 +322,7 @@ public class RoleService : IRoleService
         // Find Account Role
         var accRole = await _unitOfWork.AccountRoleRepository.GetByWhere(
             ar => ar.AccountId == accountId &&
-            ar.RoleId == roleId &&
-            (ar.EndDate == null || ar.EndDate > DateTime.Now))
+            ar.RoleId == roleId)
             .FirstOrDefaultAsync();
 
         if (accRole == null)
@@ -344,33 +332,125 @@ public class RoleService : IRoleService
         _unitOfWork.AccountRoleRepository.Delete(accRole);
         await _unitOfWork.SaveChangesAsync();
 
-        await LogSystemAction("Delete", "AccountRole", accountId, makerId,
-                            oldValue, null,
-                            $"Xóa vai trò của tài khoản: {accountId}");
 
         return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_DELETE_MSG);
     }
 
-    private async Task LogSystemAction(string action, string entityType, Guid entityId, Guid accountId,
-                                     string? oldValue, string? newValue, string description)
+    public async Task<IBusinessResult> GetRolePermissionsAsync(Guid roleId)
     {
-        var account = await _unitOfWork.AccountRepository
-            .GetByWhere(acc => acc.Id == accountId)
-            .AsNoTracking().FirstOrDefaultAsync();
-        var logRequest = new SystemLogRequest
-        {
-            Action = action,
-            EntityType = entityType,
-            EntityId = entityId,
-            OldValue = oldValue,
-            NewValue = newValue,
-            Description = description,
-            AccountId = accountId,
-            AccountName = account != null ? account.Name : null,
-            Module = "ProductDetail",
-            LogLevel = "INFO"
-        };
+        if (roleId == Guid.Empty)
+            return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
 
-        await _systemLogService.CreateAsync(logRequest);
+        var role = await _unitOfWork.RoleRepository
+            .GetByWhere(x => x.Id == roleId)
+            .Include(x => x.Permissions)
+            .FirstOrDefaultAsync();
+
+        if (role == null)
+            return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, Const.FAIL_READ_MSG + " Role");
+
+        var permissions = role.Permissions.Adapt<List<PermissionResponse>>();
+        return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_READ_MSG, permissions);
+    }
+
+    public async Task<IBusinessResult> AssignPermissionsToRoleAsync(RolePermissionRequest request, Guid accountId)
+    {
+        if (request == null || request.RoleId == Guid.Empty || request.PermissionIds == null || !request.PermissionIds.Any())
+            return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
+
+        // Get role with permissions
+        var role = await _unitOfWork.RoleRepository
+            .GetByWhere(x => x.Id == request.RoleId)
+            .Include(x => x.Permissions)
+            .FirstOrDefaultAsync();
+
+        if (role == null)
+            return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, Const.FAIL_READ_MSG + " Role");
+
+        // Get permissions to assign
+        var permissions = await _unitOfWork.PermissionRepository
+            .GetByWhere(x => request.PermissionIds.Contains(x.Id))
+            .ToListAsync();
+
+        if (permissions.Count != request.PermissionIds.Count)
+            return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, "One or more permissions not found");
+
+        // Add only new permissions (avoid duplicates)
+        foreach (var permission in permissions)
+        {
+            if (!role.Permissions.Any(p => p.Id == permission.Id))
+            {
+                role.Permissions.Add(permission);
+            }
+        }
+
+        _unitOfWork.RoleRepository.Update(role);
+        await _unitOfWork.SaveChangesAsync();
+
+        return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_UPDATE_MSG);
+    }
+
+    public async Task<IBusinessResult> RemovePermissionFromRoleAsync(Guid roleId, Guid permissionId, Guid accountId)
+    {
+        if (roleId == Guid.Empty || permissionId == Guid.Empty)
+            return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
+
+        // Get role with permissions
+        var role = await _unitOfWork.RoleRepository
+            .GetByWhere(x => x.Id == roleId)
+            .Include(x => x.Permissions)
+            .FirstOrDefaultAsync();
+
+        if (role == null)
+            return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, Const.FAIL_READ_MSG + " Role");
+
+        var permission = role.Permissions.FirstOrDefault(p => p.Id == permissionId);
+        if (permission == null)
+            return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, "Permission not found in this role");
+
+        role.Permissions.Remove(permission);
+        _unitOfWork.RoleRepository.Update(role);
+        await _unitOfWork.SaveChangesAsync();
+
+        return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_DELETE_MSG);
+    }
+
+    public async Task<IBusinessResult> UpdateRolePermissionsAsync(RolePermissionRequest request, Guid accountId)
+    {
+        if (request == null || request.RoleId == Guid.Empty || request.PermissionIds == null)
+            return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
+
+        // Get role with current permissions
+        var role = await _unitOfWork.RoleRepository
+            .GetByWhere(x => x.Id == request.RoleId)
+            .Include(x => x.Permissions)
+            .FirstOrDefaultAsync();
+
+        if (role == null)
+            return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, Const.FAIL_READ_MSG + " Role");
+
+        // Get new permissions
+        var newPermissions = new List<Permission>();
+        if (request.PermissionIds.Any())
+        {
+            newPermissions = await _unitOfWork.PermissionRepository
+                .GetByWhere(x => request.PermissionIds.Contains(x.Id))
+                .ToListAsync();
+
+            if (newPermissions.Count != request.PermissionIds.Count)
+                return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, "One or more permissions not found");
+        }
+
+        // Clear existing permissions and add new ones
+        role.Permissions.Clear();
+        foreach (var permission in newPermissions)
+        {
+            role.Permissions.Add(permission);
+        }
+
+        _unitOfWork.RoleRepository.Update(role);
+        await _unitOfWork.SaveChangesAsync();
+
+        return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_UPDATE_MSG);
     }
 }

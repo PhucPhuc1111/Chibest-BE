@@ -4,6 +4,10 @@ namespace Chibest.Repository.Base
 {
     public interface IGenericRepository<TEntity> where TEntity : class
     {
+        Task<IEnumerable<TEntity>> GetAllAsync(
+            Expression<Func<TEntity, bool>>? predicate = null,
+            Func<IQueryable<TEntity>, IOrderedQueryable<TEntity>>? orderBy = null,
+            Func<IQueryable<TEntity>, IQueryable<TEntity>>? include = null);
         IQueryable<TEntity> GetAll();
 
         Task<TEntity?> GetByIdAsync(object id);

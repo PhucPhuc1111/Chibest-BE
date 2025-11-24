@@ -1,10 +1,8 @@
-﻿using Chibest.Repository.Models;
+﻿using Chibest.API.Attributes;
+using Chibest.Common;
 using Chibest.Service.Interface;
 using Chibest.Service.ModelDTOs.Request;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Sprache;
-using System.Security.Claims;
 
 namespace Chibest.API.Controllers;
 
@@ -21,7 +19,7 @@ public class FileController : ControllerBase
     }
 
     //=================================[ Endpoints ]================================
-    [Authorize]
+    [Permission(Const.Permissions.File)]
     [HttpPost("image")]
     [Consumes("multipart/form-data")]
     public async Task<IActionResult> UploadImage([FromForm] ImageRequest request)
@@ -43,7 +41,7 @@ public class FileController : ControllerBase
         return File(fileStream, contentType);
     }
 
-    [Authorize]
+    [Permission(Const.Permissions.File)]
     [HttpPost("export")]
     [ProducesResponseType(typeof(FileContentResult), 200)]
     public async Task<IActionResult> ExportProducts([FromBody] ExcelExportRequest request)

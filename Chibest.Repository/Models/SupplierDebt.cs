@@ -1,9 +1,9 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace Chibest.Repository.Models;
 
-public partial class SupplierDebt
+public class SupplierDebt
 {
     public Guid Id { get; set; }
 
@@ -16,10 +16,6 @@ public partial class SupplierDebt
     public decimal ReturnAmount { get; set; }
 
     public decimal? RemainingDebt { get; set; }
-
-    public DateTime? LastTransactionDate { get; set; }
-
-    public DateTime LastUpdated { get; set; }
 
     public virtual Account Supplier { get; set; } = null!;
 

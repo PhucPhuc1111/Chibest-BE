@@ -6,21 +6,23 @@ public interface IUnitOfWork
 {
     Task SaveChangesAsync();
 
-    IWarehouseRepository WarehouseRepository { get; }
     IAccountRepository AccountRepository { get; }
     IAccountRoleRepository AccountRoleRepository { get; }
     IRoleRepository RoleRepository { get; }
+    IPermissionRepository PermissionRepository { get; }
     IBranchRepository BranchRepository { get; }
     IBranchStockRepository BranchStockRepository { get; }
     IProductRepository ProductRepository { get; }
     IProductDetailRepository ProductDetailRepository { get; }
     IProductPriceHistoryRepository ProductPriceHistoryRepository { get; }
-    ISystemLogRepository SystemLogRepository { get; }
     ICategoryRepository CategoryRepository { get; }
+    IColorRepository ColorRepository { get; }
+    ISizeRepository SizeRepository { get; }
     IPurchaseOrderRepository PurchaseOrderRepository { get; }
     ITransferOrderRepository TransferOrderRepository { get; }
     IPurchaseReturnRepository PurchaseReturnRepository { get; }
     IStockAdjusmentRepository StockAdjusmentRepository { get; }
+    IProductPlanRepository ProductPlanRepository { get; }
     ISupplierDebtRepository SupplierDebtRepository { get; }
     IBranchDebtRepository BranchDebtRepository { get; }
     IBranchDebtHistoryRepository BranchDebtHistoryRepository { get; }

@@ -1,9 +1,9 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace Chibest.Repository.Models;
 
-public partial class StockAdjustmentDetail
+public class StockAdjustmentDetail
 {
     public Guid Id { get; set; }
 
@@ -20,8 +20,6 @@ public partial class StockAdjustmentDetail
     public decimal UnitCost { get; set; }
 
     public decimal? TotalValueChange { get; set; }
-
-    public string? Reason { get; set; }
 
     public string? Note { get; set; }
 

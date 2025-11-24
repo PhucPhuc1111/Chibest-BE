@@ -8,7 +8,6 @@ using Chibest.Service.Utilities;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using OfficeOpenXml;
-using System;
 using System.Linq.Expressions;
 using static Chibest.Service.ModelDTOs.Stock.TransferOrder.create;
 using static Chibest.Service.ModelDTOs.Stock.TransferOrder.id;
@@ -92,23 +91,18 @@ namespace Chibest.Service.Services
                     ProductId = p.ProductId,
                     Quantity = p.Quantity,
                     UnitPrice = p.UnitPrice,
-                    ExtraFee = p.ExtraFee,
                     CommissionFee = p.CommissionFee,
-                    Discount = p.Discount,
                     Note = p.Note
                 }).ToList();
 
                 var singleRequest = new TransferOrderCreate
                 {
-                    FromWarehouseId = request.FromWarehouseId,
-                    ToWarehouseId = dest.ToWarehouseId,
+                    FromBranchId = request.FromBranchId,
+                    ToBranchId = dest.ToBranchId,
                     EmployeeId = request.EmployeeId,
                     OrderDate = request.OrderDate,
-                    DiscountAmount = branchDiscount,
                     SubTotal = summary.SubTotal,
-                    Paid = branchPaid,
                     Note = request.Note,
-                    PayMethod = request.PayMethod,
                     TransferOrderDetails = detailRequests
                 };
 
@@ -117,7 +111,7 @@ namespace Chibest.Service.Services
                 if (result.StatusCode != Const.HTTP_STATUS_OK)
                 {
                     return new BusinessResult(Const.ERROR_EXCEPTION,
-                        $"Error creating order for warehouse {dest.ToWarehouseId}", result.Message ?? string.Empty);
+                        $"Error creating order for chi nhánh {dest.ToBranchId}", result.Message ?? string.Empty);
                 }
 
                 if (result is BusinessResult orderResult && orderResult.Data != null)
@@ -128,10 +122,8 @@ namespace Chibest.Service.Services
                 {
                     createdOrders.Add(new
                     {
-                        WarehouseId = dest.ToWarehouseId,
+                        BranchId = dest.ToBranchId,
                         singleRequest.SubTotal,
-                        singleRequest.DiscountAmount,
-                        singleRequest.Paid
                     });
                 }
             }
@@ -143,18 +135,23 @@ namespace Chibest.Service.Services
         {
             var transferOrder = await _unitOfWork.TransferOrderRepository
                 .GetByWhere(x => x.Id == id)
-                .Include(x => x.FromWarehouse)
-                    .ThenInclude(w => w.Branch)
-                .Include(x => x.ToWarehouse)
-                    .ThenInclude(w => w.Branch)
+                .Include(x => x.FromBranchNavigation)
+                .Include(x => x.ToBranchNavigation)
                 .Include(x => x.TransferOrderDetails)
                 .FirstOrDefaultAsync();
 
             if (transferOrder == null)
                 return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, "Không tìm thấy phiếu chuyển kho");
 
-            var fromBranch = new { Id = transferOrder.FromWarehouse.Branch.Id, IsFranchise = transferOrder.FromWarehouse.Branch.IsFranchise };
-            var toBranch = new { Id = transferOrder.ToWarehouse.Branch.Id, IsFranchise = transferOrder.ToWarehouse.Branch.IsFranchise };
+            var fromBranch = transferOrder.FromBranchNavigation != null
+                ? new { Id = transferOrder.FromBranchNavigation.Id, IsFranchise = transferOrder.FromBranchNavigation.IsFranchise }
+                : null;
+            var toBranch = transferOrder.ToBranchNavigation != null
+                ? new { Id = transferOrder.ToBranchNavigation.Id, IsFranchise = transferOrder.ToBranchNavigation.IsFranchise }
+                : null;
+
+            if (fromBranch == null || toBranch == null || !transferOrder.FromBranch.HasValue || !transferOrder.ToBranch.HasValue)
+                return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Phiếu chuyển kho thiếu thông tin chi nhánh.");
             var oldStatus = transferOrder.Status;
             foreach (var detailReq in request.TransferOrderDetails)
             {
@@ -166,15 +163,11 @@ namespace Chibest.Service.Services
                     detail.ActualQuantity = detailReq.ActualQuantity ?? detail.ActualQuantity;
                     detail.UnitPrice = detailReq.UnitPrice;
                     detail.CommissionFee = detailReq.CommissionFee;
-                    detail.ExtraFee = detailReq.ExtraFee;
                     detail.Note = detailReq.Note;
                 }
             }
-            transferOrder.PayMethod = request.PayMethod;
             transferOrder.Status = request.Status.ToString();
             transferOrder.SubTotal = request.SubTotal;
-            transferOrder.DiscountAmount = request.DiscountAmount;
-            transferOrder.Paid = request.Paid;
             transferOrder.UpdatedAt = DateTime.Now;
 
                 _unitOfWork.TransferOrderRepository.Update(transferOrder);
@@ -182,7 +175,7 @@ namespace Chibest.Service.Services
 
                 if (request.Status == OrderStatus.Received && oldStatus != OrderStatus.Received.ToString())
                 {
-                    var debt = transferOrder.SubTotal - transferOrder.Paid;
+                    var debt = transferOrder.SubTotal;
                     var note = $"Công nợ từ phiếu chuyển kho #{transferOrder.InvoiceCode}";
 
                     if (fromBranch.IsFranchise && !toBranch.IsFranchise)
@@ -217,7 +210,7 @@ namespace Chibest.Service.Services
                             int qty = detail.ActualQuantity.Value;
 
                             var increaseResult = await _unitOfWork.BranchStockRepository.UpdateBranchStockAsync(
-                                warehouseId: (Guid)transferOrder.ToWarehouseId,
+                                branchId: transferOrder.ToBranch.Value,
                                 productId: detail.ProductId,
                                 deltaAvailableQty: qty
                             );
@@ -243,27 +236,14 @@ namespace Chibest.Service.Services
                 return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Invalid request");
 
             if (request.TransferOrderDetails == null || !request.TransferOrderDetails.Any())
-                return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Transfer order must contain at least one product");
+                return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Transfer order must contain at least một sản phẩm");
+
+            if (!request.FromBranchId.HasValue || !request.ToBranchId.HasValue)
+                return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Vui lòng chọn chi nhánh nguồn và đích");
 
             var orderSubTotal = Math.Round(CalculateTransferOrderSubtotal(request.TransferOrderDetails), 2, MidpointRounding.AwayFromZero);
 
-            var orderDiscountAmount = Math.Round(request.DiscountAmount, 2, MidpointRounding.AwayFromZero);
-            var orderPaid = Math.Round(request.Paid, 2, MidpointRounding.AwayFromZero);
-
             orderSubTotal = Math.Max(orderSubTotal, 0m);
-            orderDiscountAmount = Math.Max(orderDiscountAmount, 0m);
-            orderPaid = Math.Max(orderPaid, 0m);
-
-            if (orderDiscountAmount > orderSubTotal)
-            {
-                orderDiscountAmount = orderSubTotal;
-            }
-
-            var maxPayable = orderSubTotal - orderDiscountAmount;
-            if (orderPaid > maxPayable)
-            {
-                orderPaid = maxPayable;
-            }
 
             string invoiceCode = request.InvoiceCode;
             if (invoiceCode == null)
@@ -274,13 +254,10 @@ namespace Chibest.Service.Services
                 Id = Guid.NewGuid(),
                 InvoiceCode = invoiceCode,
                 OrderDate = request.OrderDate,
-                DiscountAmount = orderDiscountAmount,
                 SubTotal = orderSubTotal,
-                Paid = orderPaid,
                 Note = request.Note,
-                PayMethod = request.PayMethod,
-                FromWarehouseId = request.FromWarehouseId,
-                ToWarehouseId = request.ToWarehouseId,
+                FromBranch = request.FromBranchId,
+                ToBranch = request.ToBranchId,
                 EmployeeId = request.EmployeeId,
                 Status = OrderStatus.Draft.ToString(),
                 CreatedAt = DateTime.Now,
@@ -294,9 +271,7 @@ namespace Chibest.Service.Services
                 ProductId = detailReq.ProductId,
                 Quantity = detailReq.Quantity,
                 UnitPrice = detailReq.UnitPrice,
-                ExtraFee = detailReq.ExtraFee,
                 CommissionFee = detailReq.CommissionFee,
-                Discount = detailReq.Discount,
                 Note = detailReq.Note
             }).ToList();
 
@@ -304,10 +279,13 @@ namespace Chibest.Service.Services
                 await _unitOfWork.TransferOrderDetailRepository.AddRangeAsync(transferDetails);
             await _unitOfWork.SaveChangesAsync();
 
+            if (!transferOrder.FromBranch.HasValue)
+                return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Phiếu chuyển kho chưa gắn chi nhánh nguồn.");
+
             foreach (var detail in transferDetails)
                 {
                     var decreaseResult = await _unitOfWork.BranchStockRepository.UpdateBranchStockAsync(
-                        warehouseId: (Guid)transferOrder.FromWarehouseId,
+                        branchId: transferOrder.FromBranch.Value,
                         productId: detail.ProductId,
                         deltaAvailableQty: -detail.Quantity
                     );
@@ -332,7 +310,7 @@ namespace Chibest.Service.Services
 
             foreach (var product in products)
             {
-                total += CalculateLineSubtotal(product.Quantity, product.UnitPrice, product.ExtraFee, product.CommissionFee, product.Discount);
+                total += CalculateLineSubtotal(product.Quantity, product.UnitPrice, product.CommissionFee);
             }
 
             return total;
@@ -347,15 +325,15 @@ namespace Chibest.Service.Services
 
             foreach (var detail in details)
             {
-                total += CalculateLineSubtotal(detail.Quantity, detail.UnitPrice, detail.ExtraFee, detail.CommissionFee, detail.Discount);
+                total += CalculateLineSubtotal(detail.Quantity, detail.UnitPrice, detail.CommissionFee);
             }
 
             return total;
         }
 
-        private decimal CalculateLineSubtotal(int quantity, decimal unitPrice, decimal extraFee, decimal commissionFee, decimal discount)
+        private decimal CalculateLineSubtotal(int quantity, decimal unitPrice, decimal commissionFee)
         {
-            var lineTotal = ((unitPrice + extraFee + commissionFee) * quantity) - discount;
+            var lineTotal = ((unitPrice + commissionFee) * quantity);
             return Math.Max(lineTotal, 0m);
         }
 
@@ -366,8 +344,8 @@ namespace Chibest.Service.Services
     DateTime? fromDate = null,
     DateTime? toDate = null,
     string? status = null,
-    Guid? fromWarehouseId = null,
-    Guid? toWarehouseId = null,
+    Guid? fromBranchId = null,
+    Guid? toBranchId = null,
     Guid? branchId = null)
         {
             Expression<Func<TransferOrder, bool>> filter = x => true;
@@ -377,8 +355,8 @@ namespace Chibest.Service.Services
                 string searchTerm = search.ToLower();
                 Expression<Func<TransferOrder, bool>> searchFilter =
                     x => x.InvoiceCode.ToLower().Contains(searchTerm)
-                      || (x.FromWarehouse != null && x.FromWarehouse.Name.ToLower().Contains(searchTerm))
-                      || (x.ToWarehouse != null && x.ToWarehouse.Name.ToLower().Contains(searchTerm));
+                      || (x.FromBranchNavigation != null && x.FromBranchNavigation.Name.ToLower().Contains(searchTerm))
+                      || (x.ToBranchNavigation != null && x.ToBranchNavigation.Name.ToLower().Contains(searchTerm));
                 filter = filter.And(searchFilter);
             }
 
@@ -402,26 +380,24 @@ namespace Chibest.Service.Services
                 filter = filter.And(toDateFilter);
             }
 
-            if (fromWarehouseId.HasValue && fromWarehouseId.Value != Guid.Empty)
+            if (fromBranchId.HasValue && fromBranchId.Value != Guid.Empty)
             {
-                Expression<Func<TransferOrder, bool>> fromWarehouseFilter =
-                    x => x.FromWarehouse != null && x.FromWarehouse.Id == fromWarehouseId.Value;
-                filter = filter.And(fromWarehouseFilter);
+                Guid sourceBranch = fromBranchId.Value;
+                filter = filter.And(x => x.FromBranch == sourceBranch);
             }
 
-            if (toWarehouseId.HasValue && toWarehouseId.Value != Guid.Empty)
+            if (toBranchId.HasValue && toBranchId.Value != Guid.Empty)
             {
-                Expression<Func<TransferOrder, bool>> toWarehouseFilter =
-                    x => x.ToWarehouse != null && x.ToWarehouse.Id == toWarehouseId.Value;
-                filter = filter.And(toWarehouseFilter);
+                Guid destBranch = toBranchId.Value;
+                filter = filter.And(x => x.ToBranch == destBranch);
             }
 
             if (branchId.HasValue && branchId.Value != Guid.Empty)
             {
                 Guid branchIdValue = branchId.Value;
                 Expression<Func<TransferOrder, bool>> branchFilter =
-                    x => (x.FromWarehouse != null && x.FromWarehouse.BranchId == branchIdValue)
-                      || (x.ToWarehouse != null && x.ToWarehouse.BranchId == branchIdValue);
+                    x => x.FromBranch == branchIdValue
+                      || x.ToBranch == branchIdValue;
                 filter = filter.And(branchFilter);
             }
 
@@ -434,8 +410,8 @@ namespace Chibest.Service.Services
                     OrderDate = to.OrderDate,
                     SubTotal = to.SubTotal,
                     Status = to.Status,
-                    FromWarehouseName = to.FromWarehouse != null ? to.FromWarehouse.Name : null,
-                    ToWarehouseName = to.ToWarehouse != null ? to.ToWarehouse.Name : null
+                    FromBranchName = to.FromBranchNavigation != null ? to.FromBranchNavigation.Name : null,
+                    ToBranchName = to.ToBranchNavigation != null ? to.ToBranchNavigation.Name : null
                 })
                 .OrderByDescending(x => x.OrderDate)
                 .Skip((pageIndex - 1) * pageSize)
@@ -462,21 +438,17 @@ namespace Chibest.Service.Services
                     CreatedAt = x.CreatedAt,
                     UpdatedAt = x.UpdatedAt,
                     SubTotal = x.SubTotal,
-                    DiscountAmount = x.DiscountAmount,
-                    Paid = x.Paid,
                     Note = x.Note,
                     Status = x.Status,
-                    FromWarehouseName = x.FromWarehouse != null ? x.FromWarehouse.Name : null,
-                    ToWarehouseName = x.ToWarehouse != null ? x.ToWarehouse.Name : null,
+                    FromBranchName = x.FromBranchNavigation != null ? x.FromBranchNavigation.Name : null,
+                    ToBranchName = x.ToBranchNavigation != null ? x.ToBranchNavigation.Name : null,
                     TransferOrderDetails = x.TransferOrderDetails.Select(d => new TransferOrderDetailResponse
                     {
                         Id = d.Id,
                         Quantity = d.Quantity,
                         ActualQuantity = d.ActualQuantity,
                         CommissionFee = d.CommissionFee,
-                        ExtraFee = d.ExtraFee,
                         UnitPrice = d.UnitPrice,
-                        Discount = d.Discount,
                         Note = d.Note,
                         ProductName = d.Product != null ? d.Product.Name : null,
                         Sku = d.Product != null ? d.Product.Sku : string.Empty
@@ -542,7 +514,6 @@ namespace Chibest.Service.Services
                         var quantity = ParseInt(sheet.Cells[row, 2].Text);
                         var transferPrice = ParseDecimal(sheet.Cells[row, 3].Text);
                         var commissionFee = ParseDecimal(sheet.Cells[row, 4].Text);
-                        var extrafee = ParseDecimal(sheet.Cells[row, 5].Text);
 
                         var product = await _unitOfWork.ProductRepository.GetByWhere(x => x.Sku == productCode).FirstOrDefaultAsync();
 
@@ -560,8 +531,7 @@ namespace Chibest.Service.Services
                             Sku = product.Sku,
                             Quantity = quantity,
                             UnitPrice = transferPrice,
-                            CommissionFee = commissionFee,
-                            ExtraFee = extrafee
+                            CommissionFee = commissionFee
                         });
 
                         row++;
@@ -592,10 +562,13 @@ namespace Chibest.Service.Services
                 return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Không thể xóa phiếu chuyển kho đã nhận");
 
 
+                if (!transferOrder.FromBranch.HasValue)
+                    return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Phiếu chuyển kho chưa gắn chi nhánh nguồn.");
+
                 foreach (var detail in transferOrder.TransferOrderDetails)
                 {
                     var restoreResult = await _unitOfWork.BranchStockRepository.UpdateBranchStockAsync(
-                        warehouseId: (Guid)transferOrder.FromWarehouseId,
+                        branchId: transferOrder.FromBranch.Value,
                         productId: detail.ProductId,
                         deltaAvailableQty: detail.Quantity
                     );

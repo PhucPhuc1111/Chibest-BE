@@ -20,10 +20,6 @@ public class ProductDetailResponse
     public string Name { get; set; }
     public Guid ProductId { get; set; }
 
-    public Guid BranchId { get; set; }
-
-    public Guid? WarehouseId { get; set; }
-
     public Guid? SupplierId { get; set; }
 
     public DateTime CreatedAt { get; set; }

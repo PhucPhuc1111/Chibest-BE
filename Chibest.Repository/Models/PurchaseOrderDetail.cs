@@ -1,9 +1,9 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace Chibest.Repository.Models;
 
-public partial class PurchaseOrderDetail
+public class PurchaseOrderDetail
 {
     public Guid Id { get; set; }
 
@@ -14,8 +14,6 @@ public partial class PurchaseOrderDetail
     public decimal ReFee { get; set; }
 
     public decimal UnitPrice { get; set; }
-
-    public decimal Discount { get; set; }
 
     public string? Note { get; set; }
 

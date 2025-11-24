@@ -21,7 +21,6 @@ public class BranchService : IBranchService
         var branch = await _unitOfWork.BranchRepository
             .GetByWhere(x => x.Id == id)
             .Include(x => x.AccountRoles)
-            .Include(x => x.Warehouses)
             .FirstOrDefaultAsync();
 
         if (branch == null)
@@ -39,7 +38,6 @@ public class BranchService : IBranchService
             IsFranchise = branch.IsFranchise,
             Status = branch.Status,
             UserCount = branch.AccountRoles?.Count ?? 0,
-            WarehouseCount = branch.Warehouses?.Count ?? 0
         };
 
         return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_READ_MSG, response);
@@ -52,6 +50,8 @@ public class BranchService : IBranchService
             return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Invalid request");
         }
 
+        var now = DateTime.Now;
+
         var branchEntity = new Branch
         {
             Id = Guid.NewGuid(),
@@ -59,10 +59,10 @@ public class BranchService : IBranchService
             Code = request.Code,
             Address = request.Address,
             PhoneNumber = request.PhoneNumber,
-            IsFranchise= request.IsFranchise,
-            OwnerName = request.OwnerName,
-            CreatedAt = DateTime.Now,
-            UpdatedAt = DateTime.Now
+            IsFranchise = request.IsFranchise,
+            CreatedAt = now,
+            UpdatedAt = now,
+            Status = string.IsNullOrWhiteSpace(request.Status) ? "Active" : request.Status!
         };
 
         await _unitOfWork.BranchRepository.AddAsync(branchEntity);
@@ -82,12 +82,13 @@ public class BranchService : IBranchService
                 TotalDebt = 0,
                 PaidAmount = 0,
                 ReturnAmount = 0,
-                LastTransactionDate = DateTime.Now,
-                LastUpdated = DateTime.Now
+                LastTransactionDate = now,
+                LastUpdated = now
             };
             await _unitOfWork.BranchDebtRepository.AddAsync(branchDebt);
             await _unitOfWork.SaveChangesAsync();
         }
+
 
         return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_CREATE_MSG);
     }
@@ -100,7 +101,7 @@ public class BranchService : IBranchService
             pageIndex,
             pageSize,
             x => string.IsNullOrEmpty(searchTerm) || x.Name.ToLower().Contains(searchTerm),
-            include: q => q.Include(b => b.AccountRoles).Include(b => b.Warehouses)
+            include: q => q.Include(b => b.AccountRoles)
         );
 
         if (branches == null || !branches.Any())
@@ -116,10 +117,8 @@ public class BranchService : IBranchService
             Address = branch.Address,
             PhoneNumber = branch.PhoneNumber,
             IsFranchise = branch.IsFranchise,
-            OwnerName = branch.OwnerName,
             Status = branch.Status,
             UserCount = branch.AccountRoles?.Count ?? 0,
-            WarehouseCount = branch.Warehouses?.Count ?? 0
         }).ToList();
 
         return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_READ_MSG, responseList);
@@ -137,7 +136,6 @@ public class BranchService : IBranchService
         branchEntity.Address = request.Address;
         branchEntity.PhoneNumber = request.PhoneNumber;
         branchEntity.IsFranchise = request.IsFranchise;
-        branchEntity.OwnerName = request.OwnerName;
         branchEntity.Status = string.IsNullOrEmpty(request.Status) ? branchEntity.Status : request.Status;
         branchEntity.UpdatedAt = DateTime.Now;
         _unitOfWork.BranchRepository.Update(branchEntity);

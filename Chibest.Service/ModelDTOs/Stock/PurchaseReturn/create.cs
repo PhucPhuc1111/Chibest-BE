@@ -14,17 +14,13 @@ namespace Chibest.Service.ModelDTOs.Stock.PurchaseReturn
 
             public DateTime OrderDate { get; set; }
 
-            public string? PayMethod { get; set; }
 
             public decimal SubTotal { get; set; }
 
-            public decimal DiscountAmount { get; set; }
-
-            public decimal Paid { get; set; }
 
             public string? Note { get; set; }
 
-            public Guid? WarehouseId { get; set; }
+            public Guid? BranchId { get; set; }
 
             public Guid? EmployeeId { get; set; }
 
@@ -38,7 +34,6 @@ namespace Chibest.Service.ModelDTOs.Stock.PurchaseReturn
 
             public decimal UnitPrice { get; set; }
 
-            public decimal ReturnPrice { get; set; }
 
             public string? Note { get; set; }
 

@@ -1,9 +1,9 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace Chibest.Repository.Models;
 
-public partial class PurchaseReturn
+public class PurchaseReturn
 {
     public Guid Id { get; set; }
 
@@ -23,15 +23,15 @@ public partial class PurchaseReturn
 
     public Guid? EmployeeId { get; set; }
 
-    public Guid? WarehouseId { get; set; }
+    public Guid? BranchId { get; set; }
 
     public Guid? SupplierId { get; set; }
+
+    public virtual Branch? Branch { get; set; }
 
     public virtual Account? Employee { get; set; }
 
     public virtual ICollection<PurchaseReturnDetail> PurchaseReturnDetails { get; set; } = new List<PurchaseReturnDetail>();
 
     public virtual Account? Supplier { get; set; }
-
-    public virtual Warehouse? Warehouse { get; set; }
 }

@@ -1,17 +1,15 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace Chibest.Repository.Models;
 
-public partial class PurchaseReturnDetail
+public class PurchaseReturnDetail
 {
     public Guid Id { get; set; }
 
     public int Quantity { get; set; }
 
     public decimal UnitPrice { get; set; }
-
-    public decimal ReturnPrice { get; set; }
 
     public string? Note { get; set; }
 

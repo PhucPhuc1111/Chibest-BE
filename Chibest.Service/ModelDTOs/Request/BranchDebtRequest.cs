@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 
 namespace Chibest.Service.ModelDTOs.Request
 {
@@ -36,8 +37,19 @@ namespace Chibest.Service.ModelDTOs.Request
         public decimal Amount { get; set; }
 
         public string? Note { get; set; }
+        public string? Confirmation {get; set; }
+        public IFormFile? ConfirmationFile { get; set; }
+
+        public string Status { get; set; } = null!;
 
         public DateTime CreatedAt { get; set; }
+    }
+
+    public class BranchDebtHistoryUpdateRequest
+    {
+        public string? Status { get; set; }
+        public string? Confirmation { get; set; }
+        public IFormFile? ConfirmationFile { get; set; }
     }
 }
 
