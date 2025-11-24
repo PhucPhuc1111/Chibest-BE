@@ -1,39 +1,15 @@
 ﻿using Chibest.API.Extensions;
-using Chibest.API.Health;
 using Chibest.API.Middleware;
-using Chibest.Repository.Models;
-using Microsoft.AspNetCore.Diagnostics.HealthChecks;
-using Microsoft.Extensions.Diagnostics.HealthChecks;
-using Prometheus;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var envFile = Path.Combine(Directory.GetCurrentDirectory(), ".env");
-var isRunningInContainer = string.Equals(
-    Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER"),
-    "true",
-    StringComparison.OrdinalIgnoreCase);
-if (!isRunningInContainer && File.Exists(envFile))
-{
-    DotNetEnv.Env.Load(envFile);
-}
-
+DotNetEnv.Env.Load(Path.Combine(Directory.GetCurrentDirectory(), ".env"));
 builder.Configuration.AddJsonFile("excel-mappings.json", optional: true, reloadOnChange: true);
-
-builder.Logging.ClearProviders();
-builder.Logging.AddConsole();
-builder.Logging.AddJsonConsole();
-
-var databaseConnectionString = Environment.GetEnvironmentVariable("DB_PG_CONNECTION_STRING")
-    ?? builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? throw new InvalidOperationException("Database connection string is not configured. Set DB_PG_CONNECTION_STRING or ConnectionStrings:DefaultConnection.");
-
-var autoApplyMigrations = builder.Configuration.ShouldAutoApplyMigrations();
-var migrateOnly = args.Any(a => string.Equals(a, "--migrate", StringComparison.OrdinalIgnoreCase));
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddHttpClient();
 
+// Swagger (UI sẽ bật mọi môi trường)
 builder.Services.AddSwaggerGen();
 
 builder.Services.AddControllers()
@@ -44,36 +20,28 @@ builder.Services.AddControllers()
 
 builder.Services.AddMemoryCache();
 
-ServiceRegister.RegisterServices(builder.Services, builder.Configuration, databaseConnectionString);
+// Đăng ký DI, CORS, JWT, Swagger… (trong ServiceRegister đã tạo policy "FrontendCors")
+ServiceRegister.RegisterServices(builder.Services, builder.Configuration);
 
 builder.Services.AddAuthorization();
-builder.Services.AddHealthChecks()
-    .AddCheck("self", () => HealthCheckResult.Healthy(), tags: new[] { "live" })
-    .AddCheck<DatabaseHealthCheck>(
-        "database",
-        failureStatus: HealthStatus.Unhealthy,
-        tags: new[] { "ready" });
 
 builder.Services.AddEndpointsApiExplorer();
 
+// Console notes
+Console.WriteLine("For develop environment, ensure .env is in the same folder as Program.cs then restart app.");
+Console.WriteLine("Make sure .env is at path: " + Directory.GetCurrentDirectory());
+
 var app = builder.Build();
 
-if (migrateOnly || autoApplyMigrations)
-{
-    await app.ApplyDatabaseMigrationsAsync(app.Logger);
-    if (migrateOnly)
-    {
-        return;
-    }
-}
-
+// Swagger trước để tiện debug
 app.UseSwagger();
 app.UseSwaggerUI();
 
-app.UseRouting();
-
+// === CORS phải chạy SỚM, trước auth ===
+// Dùng đúng tên policy đã cấu hình trong ServiceRegister: "FrontendCors"
 app.UseCors("FrontendCors");
 
+// (Tùy chọn) Cho OPTIONS pass nhanh để preflight không bị auth chặn
 app.Use(async (context, next) =>
 {
     if (HttpMethods.IsOptions(context.Request.Method))
@@ -84,28 +52,15 @@ app.Use(async (context, next) =>
     await next();
 });
 
+// Global exception middleware (đặt sau CORS để header CORS đã có sẵn)
 app.UseMiddleware<GlobalExceptionMiddleware>();
 
 app.UseHttpsRedirection();
 
+// Auth phải sau CORS
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.UseHttpMetrics();
-
-app.MapHealthChecks("/health/live", new HealthCheckOptions
-{
-    Predicate = registration => registration.Tags.Contains("live"),
-    ResponseWriter = HealthCheckResponseWriter.WriteResponse
-});
-
-app.MapHealthChecks("/health/ready", new HealthCheckOptions
-{
-    Predicate = registration => registration.Tags.Contains("ready"),
-    ResponseWriter = HealthCheckResponseWriter.WriteResponse
-});
-
-app.MapMetrics("/metrics");
 app.MapControllers();
 
-await app.RunAsync();
+app.Run();
