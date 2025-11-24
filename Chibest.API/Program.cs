@@ -1,7 +1,27 @@
 ﻿using Chibest.API.Extensions;
 using Chibest.API.Middleware;
+using Microsoft.AspNetCore.Http.Features;
 
 var builder = WebApplication.CreateBuilder(args);
+
+const long DefaultUploadLimitBytes = 1L * 1024 * 1024 * 1024; // 1 GB
+var maxUploadBytes = builder.Configuration.GetValue<long?>("UploadLimits:MaxRequestBodySizeBytes") ?? DefaultUploadLimitBytes;
+
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.Limits.MaxRequestBodySize = maxUploadBytes;
+});
+
+builder.Services.Configure<IISServerOptions>(options =>
+{
+    options.MaxRequestBodySize = maxUploadBytes;
+});
+
+builder.Services.Configure<FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = maxUploadBytes;
+    options.ValueLengthLimit = int.MaxValue;
+});
 
 DotNetEnv.Env.Load(Path.Combine(Directory.GetCurrentDirectory(), ".env"));
 builder.Configuration.AddJsonFile("excel-mappings.json", optional: true, reloadOnChange: true);
