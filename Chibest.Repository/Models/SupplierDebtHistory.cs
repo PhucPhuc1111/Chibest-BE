@@ -1,9 +1,9 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace Chibest.Repository.Models;
 
-public partial class SupplierDebtHistory
+public class SupplierDebtHistory
 {
     public Guid Id { get; set; }
 
@@ -14,6 +14,10 @@ public partial class SupplierDebtHistory
     public DateTime TransactionDate { get; set; }
 
     public decimal Amount { get; set; }
+
+    public string? Confirmation { get; set; }
+
+    public string Status { get; set; } = null!;
 
     public string? Note { get; set; }
 

@@ -8,11 +8,6 @@ namespace Chibest.Repository.Base
     {
         protected readonly ChiBestDbContext _context;
 
-        public GenericRepository()
-        {
-            _context = new ChiBestDbContext();
-        }
-
         public GenericRepository(ChiBestDbContext context)
         {
             _context = context ?? throw new ArgumentNullException(nameof(context));

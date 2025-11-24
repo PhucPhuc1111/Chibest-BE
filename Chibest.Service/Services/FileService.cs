@@ -54,7 +54,7 @@ public class FileService : IFileService
             ? MB : 2) * 1024 * 1024;
         _compressionQuality = int.TryParse(Environment.GetEnvironmentVariable("Image_Compressiom_Quality_Percent"), out var percent) ? percent : 75;
         _videoMaxSizeByte = (long.TryParse(Environment.GetEnvironmentVariable("Video_Max_Size_MB"), out var videoMB)
-            ? videoMB : 1024) * 1024 * 1024;
+            ? videoMB : 1024) * 1024 * 1024; //1,048,576
 
         _allowedImageExtensions = BuildExtensionList(Environment.GetEnvironmentVariable("Image_Type"), DefaultImageExtensions);
         _allowedVideoExtensions = BuildExtensionList(Environment.GetEnvironmentVariable("Video_Type"), DefaultVideoExtensions);

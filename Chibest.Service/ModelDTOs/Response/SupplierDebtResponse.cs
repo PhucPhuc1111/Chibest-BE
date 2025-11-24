@@ -35,6 +35,10 @@ namespace Chibest.Service.ModelDTOs.Response
 
         public string? Note { get; set; }
 
+        public string? Confirmation { get; set; }
+
+        public string Status { get; set; } = null!;
+
         public DateTime CreatedAt { get; set; }
 
     }

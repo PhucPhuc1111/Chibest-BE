@@ -1,9 +1,9 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace Chibest.Repository.Models;
 
-public partial class SalaryConfig
+public class SalaryConfig
 {
     public Guid Id { get; set; }
 

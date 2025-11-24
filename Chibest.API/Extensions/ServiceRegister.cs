@@ -21,8 +21,14 @@ public static class ServiceRegister
 {
     public static void RegisterServices(IServiceCollection services, IConfiguration configuration)
     {
-        var connectionString = Environment.GetEnvironmentVariable("DB_PG_CONNECTION_STRING");
-        services.AddDbContext<ChiBestDbContext>(options => options.UseNpgsql(connectionString));
+        var connectionString = Environment.GetEnvironmentVariable("DB_PG_CONNECTION_STRING")
+            ?? configuration.GetConnectionString("DefaultConnection")
+            ?? throw new InvalidOperationException("Database connection string is not configured.");
+
+        services.AddDbContext<ChiBestDbContext>(options =>
+        {
+            options.UseNpgsql(connectionString);
+        });
 
         services.AddAuthorizeService(configuration);
         AddCorsToThisWeb(services);          // <-- CORS policy

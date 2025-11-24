@@ -1,9 +1,9 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace Chibest.Repository.Models;
 
-public partial class PurchaseReturnDetail
+public class PurchaseReturnDetail
 {
     public Guid Id { get; set; }
 

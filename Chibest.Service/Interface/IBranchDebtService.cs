@@ -22,6 +22,7 @@ namespace Chibest.Service.Interface
     DateTime? toDate = null,
     decimal? debtFrom = null,
     decimal? debtTo = null);
+        Task<IBusinessResult> UpdateBranchDebtHistoryAsync(Guid branchDebtId, Guid historyId, BranchDebtHistoryUpdateRequest request);
         Task<IBusinessResult> DeleteBranchDebtHistoryAsync(Guid branchDebtId, Guid historyId);
         Task<byte[]> ExportBranchDebtToExcelAsync();
     }

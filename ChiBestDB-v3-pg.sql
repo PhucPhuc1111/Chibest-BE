@@ -1,4 +1,3 @@
--- Chạy riêng lệnh này:
 DROP DATABASE IF EXISTS "ChiBestDB";
 
 -- Sau đó chạy riêng:
@@ -58,7 +57,7 @@ CREATE TABLE "AccountRole" (
     "RoleId" UUID NOT NULL,
     "BranchId" UUID NULL,
 
-    CONSTRAINT PK_AccountRole PRIMARY KEY ("AccountId", "RoleId", "StartDate"),
+    CONSTRAINT PK_AccountRole PRIMARY KEY ("AccountId", "RoleId"),
 
     CONSTRAINT FK_AccountRole_Account FOREIGN KEY ("AccountId")
         REFERENCES "Account"("Id")
@@ -79,11 +78,10 @@ CREATE INDEX IX_AccountRole_BranchId_RoleId ON "AccountRole"("BranchId", "RoleId
 -- Tạo bảng Permission
 CREATE TABLE "Permission" (
     "Id" UUID DEFAULT GEN_RANDOM_UUID() PRIMARY KEY,
-    "Code" VARCHAR(100) UNIQUE NOT NULL,
+    "Code" VARCHAR(100) UNIQUE NOT NULL
 );
 
 CREATE INDEX IX_Permission_Code ON "Permission"("Code");
-CREATE INDEX IX_Permission_Module ON "Permission"("Module");
 
 -- Tạo bảng RolePermission
 CREATE TABLE "RolePermission" (
@@ -136,7 +134,7 @@ CREATE INDEX IX_Customer_GroupId ON "Customer"("GroupId");
 
 CREATE TABLE "Category" (
     "Id" UUID DEFAULT GEN_RANDOM_UUID() PRIMARY KEY,
-    "Name" VARCHAR(150) NOT NULL,
+    "Name" VARCHAR(150) NOT NULL
 );
 
 CREATE INDEX IX_Category_Type_Name ON "Category"("Name");
@@ -187,14 +185,18 @@ CREATE TABLE "ProductPlan" (
 	"SupplierId" UUID NOT NULL REFERENCES "Account"("Id") ON DELETE CASCADE,
     "Type" VARCHAR(100),
     "SendDate" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	"ClosingDate" TIMESTAMP(3),
 	"DetailAmount" VARCHAR(100),
 	"Amount" INT,
     "Status" VARCHAR(40) NOT NULL DEFAULT 'Queue', -- Processing / Delivery / Cancel
 	"Note" VARCHAR(100),
     "CreatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "UpdatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "UpdatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX IX_ProductPlan_Product_Supplier ON "Product"("SupplierId","ProductId","SendDate" DESC);
+CREATE INDEX "IX_ProductPlan_ProductId" ON "ProductPlan" ("ProductId");
+
+-- Index cho SupplierId (foreign key)
+CREATE INDEX "IX_ProductPlan_SupplierId" ON "ProductPlan" ("SupplierId");
 
 -- =============================================
 -- MODULE 5: PRICING MANAGEMENT
@@ -256,6 +258,7 @@ CREATE INDEX IX_ProductDetail_ProductId ON "ProductDetail"("ProductId");
 -- Quản lý đơn nhập hàng từ NCC
 -- =============================================
 
+
 CREATE TABLE "PurchaseOrder" (
     "Id" UUID DEFAULT GEN_RANDOM_UUID() PRIMARY KEY,
     "InvoiceCode" VARCHAR(100) NOT NULL UNIQUE,              -- NYC-CUST105-INV78 (location + client + sequence)                                
@@ -272,7 +275,6 @@ CREATE TABLE "PurchaseOrder" (
     "SupplierId" UUID REFERENCES "Account"("Id") ON DELETE CASCADE                           
 );
 
-CREATE INDEX IX_PurchaseOrder_InvoiceCode ON "PurchaseOrder_Branch"("BranchId");
 CREATE INDEX IX_TransactionOrder_Status ON "PurchaseOrder"("Status");
 CREATE INDEX IX_TransactionOrder_OrderDate ON "PurchaseOrder"("OrderDate" DESC);
 
@@ -539,6 +541,8 @@ CREATE TABLE "SupplierDebtHistory" (
     "TransactionType" VARCHAR(50) NOT NULL, -- Nhập hàng, Thanh Toán, Điều Chỉnh
     "TransactionDate" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "Amount" MONEY NOT NULL,    
+	"Confirmation" TEXT,
+	"Status" VARCHAR(40) NOT NULL DEFAULT 'Pending', -- Approved
     "Note" TEXT,
     "CreatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -568,11 +572,12 @@ CREATE TABLE "BranchDebtHistory" (
     
     -- Thay vì tham chiếu trực tiếp BranchId, tham chiếu tới BranchDebt
     "BranchDebtId" UUID NOT NULL REFERENCES "BranchDebt"("Id") ON DELETE CASCADE,
-
     "TransactionType" VARCHAR(50) NOT NULL,
     "TransactionDate" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "Amount" MONEY NOT NULL,
     "Note" TEXT,
+	"Confirmation" TEXT,
+	"Status" VARCHAR(40) NOT NULL DEFAULT 'Pending', -- Approved
     "CreatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -740,5 +745,3 @@ CREATE TABLE "Payroll" (
 
 CREATE INDEX IX_Payroll_EmployeeId ON "Payroll"("EmployeeId", "PeriodYear" DESC, "PeriodMonth" DESC);
 CREATE INDEX IX_Payroll_Status ON "Payroll"("PaymentStatus", "PeriodYear" DESC, "PeriodMonth" DESC);
-
-

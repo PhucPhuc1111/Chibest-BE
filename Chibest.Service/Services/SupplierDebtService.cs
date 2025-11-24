@@ -16,88 +16,111 @@ namespace Chibest.Service.Services
     public class SupplierDebtService : ISupplierDebtService
     {
         private readonly IUnitOfWork _unitOfWork;
-        public SupplierDebtService(IUnitOfWork unitOfWork)
+        private readonly IFileService _fileService;
+
+        public SupplierDebtService(IUnitOfWork unitOfWork, IFileService fileService)
         {
             _unitOfWork = unitOfWork;
+            _fileService = fileService;
         }
         public async Task<IBusinessResult> AddSupplierTransactionAsync(
-    Guid supplierDebtId,
-    List<SupplierDebtHistoryRequest> transactions)
+            Guid supplierDebtId,
+            List<SupplierDebtHistoryRequest> transactions)
         {
             if (transactions == null || !transactions.Any())
                 return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "No transaction data provided");
 
-                var supplierDebt = await _unitOfWork.SupplierDebtRepository
-                    .GetByWhere(x => x.Id == supplierDebtId)
-                    .FirstOrDefaultAsync();
+            var supplierDebt = await _unitOfWork.SupplierDebtRepository
+                .GetByWhere(x => x.Id == supplierDebtId)
+                .FirstOrDefaultAsync();
 
+            if (supplierDebt == null)
+                return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, "Supplier debt not found");
 
-                decimal currentBalance = supplierDebt.RemainingDebt ?? 0;
-                var historyEntities = new List<SupplierDebtHistory>();
+            decimal currentBalance = supplierDebt.RemainingDebt ?? 0;
+            var historyEntities = new List<SupplierDebtHistory>();
+            var hasApprovedTransactions = false;
 
-                foreach (var t in transactions)
+            foreach (var t in transactions)
+            {
+                if (t == null)
+                    continue;
+
+                string? confirmationUrl = t.Confirmation;
+                if (t.ConfirmationFile != null && t.ConfirmationFile.Length > 0)
                 {
-                    decimal balanceBefore = currentBalance;
-                    decimal balanceAfter = balanceBefore;
-
-                    switch (t.TransactionType)
-                    {
-                        case "Purchase":
-                            supplierDebt.TotalDebt += t.Amount;
-                            balanceAfter = supplierDebt.TotalDebt - supplierDebt.PaidAmount - supplierDebt.ReturnAmount;
-                            break;
-
-                        case "Payment":
-                            supplierDebt.PaidAmount += t.Amount;
-                            balanceAfter = supplierDebt.TotalDebt - supplierDebt.PaidAmount - supplierDebt.ReturnAmount;
-                            break;
-
-                        case "Return":
-                            supplierDebt.ReturnAmount += t.Amount;
-                            balanceAfter = supplierDebt.TotalDebt - supplierDebt.PaidAmount - supplierDebt.ReturnAmount;
-                            break;
-                        case "Custom":
-                            balanceAfter = t.Amount;
-                            supplierDebt.RemainingDebt = t.Amount;
-
-                            supplierDebt.TotalDebt = Math.Max(t.Amount, 0);
-                            supplierDebt.PaidAmount = supplierDebt.TotalDebt - t.Amount;
-                            supplierDebt.ReturnAmount = 0;
-                            break;
-
-                        default:
-                            throw new Exception($"Invalid TransactionType: {t.TransactionType}");
-                    }
-
-                    supplierDebt.RemainingDebt = Math.Max(0, balanceAfter);
-                    currentBalance = supplierDebt.RemainingDebt ?? 0;
-
-                    historyEntities.Add(new SupplierDebtHistory
-                    {
-                        Id = Guid.NewGuid(),
-                        SupplierDebtId = supplierDebt.Id,
-                        TransactionType = t.TransactionType,
-                        TransactionDate = t.TransactionDate,
-                        Amount = t.Amount,
-                        Note = t.Note,
-                        CreatedAt = DateTime.Now
-                    });
+                    var confirmationFileName = $"{supplierDebt.SupplierId}_{Guid.NewGuid()}";
+                    confirmationUrl = await _fileService.SaveImageAsync(t.ConfirmationFile, confirmationFileName, "confirmation");
                 }
 
+                historyEntities.Add(new SupplierDebtHistory
+                {
+                    Id = Guid.NewGuid(),
+                    SupplierDebtId = supplierDebt.Id,
+                    TransactionType = t.TransactionType,
+                    TransactionDate = t.TransactionDate,
+                    Amount = t.Amount,
+                    Note = t.Note,
+                    Confirmation = confirmationUrl,
+                    Status = t.Status,
+                    CreatedAt = DateTime.Now
+                });
+
+                if (!string.Equals(t.Status, "Approved", StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                hasApprovedTransactions = true;
+                decimal balanceAfter = currentBalance;
+
+                switch (t.TransactionType)
+                {
+                    case "Purchase":
+                        supplierDebt.TotalDebt += t.Amount;
+                        balanceAfter = supplierDebt.TotalDebt - supplierDebt.PaidAmount - supplierDebt.ReturnAmount;
+                        break;
+
+                    case "Payment":
+                        supplierDebt.PaidAmount += t.Amount;
+                        balanceAfter = supplierDebt.TotalDebt - supplierDebt.PaidAmount - supplierDebt.ReturnAmount;
+                        break;
+
+                    case "Return":
+                        supplierDebt.ReturnAmount += t.Amount;
+                        balanceAfter = supplierDebt.TotalDebt - supplierDebt.PaidAmount - supplierDebt.ReturnAmount;
+                        break;
+
+                    case "Custom":
+                        balanceAfter = t.Amount;
+                        supplierDebt.RemainingDebt = t.Amount;
+                        supplierDebt.TotalDebt = Math.Max(t.Amount, 0);
+                        supplierDebt.PaidAmount = supplierDebt.TotalDebt - t.Amount;
+                        supplierDebt.ReturnAmount = 0;
+                        break;
+
+                    default:
+                        throw new Exception($"Invalid TransactionType: {t.TransactionType}");
+                }
+
+                supplierDebt.RemainingDebt = Math.Max(0, balanceAfter);
+                currentBalance = supplierDebt.RemainingDebt ?? 0;
+            }
+
+            if (hasApprovedTransactions)
+            {
                 _unitOfWork.SupplierDebtRepository.Update(supplierDebt);
+            }
 
-                await _unitOfWork.SupplierDebtHistoryRepository.AddRangeAsync(historyEntities);
+            await _unitOfWork.SupplierDebtHistoryRepository.AddRangeAsync(historyEntities);
 
-             await _unitOfWork.SaveChangesAsync();
+            await _unitOfWork.SaveChangesAsync();
 
             return new BusinessResult(Const.HTTP_STATUS_OK, "Supplier transactions created successfully", new
-                {
-                    supplierDebt.TotalDebt,
-                    supplierDebt.PaidAmount,
-                    supplierDebt.ReturnAmount,
-                    supplierDebt.RemainingDebt,
-                });
-            
+            {
+                supplierDebt.TotalDebt,
+                supplierDebt.PaidAmount,
+                supplierDebt.ReturnAmount,
+                supplierDebt.RemainingDebt,
+            });
         }
 
 
@@ -142,6 +165,8 @@ namespace Chibest.Service.Services
                             TransactionDate = h.TransactionDate,
                             Amount = h.Amount,
                             Note = h.Note,
+                            Confirmation = h.Confirmation,
+                            Status = h.Status,
                             CreatedAt = h.CreatedAt
                         })
                         .ToList()
@@ -401,7 +426,7 @@ namespace Chibest.Service.Services
 
 
     #region  Delete Supplier Debt History
-    public async Task<IBusinessResult> DeleteSupplierDebtHistoryAsync(Guid supplierDebtId, Guid historyId)
+        public async Task<IBusinessResult> DeleteSupplierDebtHistoryAsync(Guid supplierDebtId, Guid historyId)
         {
             try
             {
@@ -426,61 +451,7 @@ namespace Chibest.Service.Services
 
                 supplierDebt.SupplierDebtHistories.Remove(history);
 
-                decimal totalDebt = 0;
-                decimal paidAmount = 0;
-                decimal returnAmount = 0;
-                decimal currentBalance = 0;
-                DateTime? lastTransactionDate = null;
-
-                var remainingHistories = supplierDebt.SupplierDebtHistories
-                    .OrderBy(h => h.TransactionDate)
-                    .ThenBy(h => h.CreatedAt)
-                    .ToList();
-
-                foreach (var h in remainingHistories)
-                {
-                    switch (h.TransactionType)
-                    {
-                        case "Purchase":
-                            totalDebt += h.Amount;
-                            break;
-
-                        case "Payment":
-                            paidAmount += h.Amount;
-                            break;
-
-                        case "Return":
-                            returnAmount += h.Amount;
-                            break;
-
-                        case "Custom":
-                            currentBalance = h.Amount;
-                            totalDebt = Math.Max(h.Amount, 0);
-                            paidAmount = totalDebt - h.Amount;
-                            returnAmount = 0;
-                            break;
-
-                        default:
-                            throw new Exception($"Invalid TransactionType: {h.TransactionType}");
-                    }
-
-                    // Calculate RemainingDebt = TotalDebt - PaidAmount - ReturnAmount
-                    if (h.TransactionType != "Custom")
-                    {
-                        currentBalance = totalDebt - paidAmount - returnAmount;
-                    }
-
-                    if (currentBalance < 0)
-                        currentBalance = 0;
-
-                    if (h.TransactionDate > (lastTransactionDate ?? DateTime.MinValue))
-                        lastTransactionDate = h.TransactionDate;
-                }
-
-                supplierDebt.TotalDebt = totalDebt;
-                supplierDebt.PaidAmount = paidAmount;
-                supplierDebt.ReturnAmount = returnAmount;
-                supplierDebt.RemainingDebt = Math.Max(0, currentBalance);
+                RecalculateSupplierDebtTotals(supplierDebt);
 
                 _unitOfWork.SupplierDebtRepository.Update(supplierDebt);
                 await _unitOfWork.SaveChangesAsync();
@@ -501,6 +472,134 @@ namespace Chibest.Service.Services
                 return new BusinessResult(Const.ERROR_EXCEPTION, "Error deleting supplier debt history", ex.Message);
             }
         }
+
+        public async Task<IBusinessResult> UpdateSupplierDebtHistoryAsync(Guid supplierDebtId, Guid historyId, SupplierDebtHistoryUpdateRequest request)
+        {
+            if (request == null)
+                return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "No update data provided");
+
+            var supplierDebt = await _unitOfWork.SupplierDebtRepository
+                .GetByWhere(x => x.Id == supplierDebtId)
+                .Include(x => x.SupplierDebtHistories)
+                .FirstOrDefaultAsync();
+
+            if (supplierDebt == null)
+                return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, "Không tìm thấy công nợ nhà cung cấp");
+
+            var history = supplierDebt.SupplierDebtHistories?
+                .FirstOrDefault(x => x.Id == historyId);
+
+            if (history == null)
+                return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, "Không tìm thấy lịch sử công nợ cần cập nhật");
+
+            string? confirmationUrl = history.Confirmation;
+
+            if (request.ConfirmationFile != null && request.ConfirmationFile.Length > 0)
+            {
+                var confirmationFileName = $"{supplierDebt.SupplierId}_{Guid.NewGuid()}";
+                confirmationUrl = await _fileService.SaveImageAsync(request.ConfirmationFile, confirmationFileName, "confirmation");
+            }
+            else if (!string.IsNullOrWhiteSpace(request.Confirmation))
+            {
+                confirmationUrl = request.Confirmation;
+            }
+
+            history.Confirmation = confirmationUrl;
+
+            if (!string.IsNullOrWhiteSpace(request.Status))
+            {
+                history.Status = request.Status;
+            }
+
+            _unitOfWork.SupplierDebtHistoryRepository.Update(history);
+
+            RecalculateSupplierDebtTotals(supplierDebt);
+            _unitOfWork.SupplierDebtRepository.Update(supplierDebt);
+
+            await _unitOfWork.SaveChangesAsync();
+
+            return new BusinessResult(Const.HTTP_STATUS_OK,
+                "Đã cập nhật lịch sử công nợ nhà cung cấp",
+                new
+                {
+                    supplierDebt.Id,
+                    supplierDebt.TotalDebt,
+                    supplierDebt.PaidAmount,
+                    supplierDebt.ReturnAmount,
+                    supplierDebt.RemainingDebt
+                });
+        }
+
+        private void RecalculateSupplierDebtTotals(SupplierDebt supplierDebt)
+        {
+            if (supplierDebt.SupplierDebtHistories == null)
+            {
+                supplierDebt.TotalDebt = 0;
+                supplierDebt.PaidAmount = 0;
+                supplierDebt.ReturnAmount = 0;
+                supplierDebt.RemainingDebt = 0;
+                return;
+            }
+
+            decimal totalDebt = 0;
+            decimal paidAmount = 0;
+            decimal returnAmount = 0;
+            decimal currentBalance = 0;
+            DateTime? lastTransactionDate = null;
+
+            var orderedHistories = supplierDebt.SupplierDebtHistories
+                .OrderBy(h => h.TransactionDate)
+                .ThenBy(h => h.CreatedAt)
+                .ToList();
+
+            foreach (var h in orderedHistories)
+            {
+                if (!string.Equals(h.Status, "Approved", StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                switch (h.TransactionType)
+                {
+                    case "Purchase":
+                        totalDebt += h.Amount;
+                        break;
+
+                    case "Payment":
+                        paidAmount += h.Amount;
+                        break;
+
+                    case "Return":
+                        returnAmount += h.Amount;
+                        break;
+
+                    case "Custom":
+                        currentBalance = h.Amount;
+                        totalDebt = Math.Max(h.Amount, 0);
+                        paidAmount = totalDebt - h.Amount;
+                        returnAmount = 0;
+                        break;
+
+                    default:
+                        throw new Exception($"Invalid TransactionType: {h.TransactionType}");
+                }
+
+                if (!string.Equals(h.TransactionType, "Custom", StringComparison.OrdinalIgnoreCase))
+                {
+                    currentBalance = totalDebt - paidAmount - returnAmount;
+                }
+
+                if (currentBalance < 0)
+                    currentBalance = 0;
+
+                if (h.TransactionDate > (lastTransactionDate ?? DateTime.MinValue))
+                    lastTransactionDate = h.TransactionDate;
+            }
+
+            supplierDebt.TotalDebt = totalDebt;
+            supplierDebt.PaidAmount = paidAmount;
+            supplierDebt.ReturnAmount = returnAmount;
+            supplierDebt.RemainingDebt = Math.Max(0, currentBalance);
+        }
+
         #endregion
     }
 }

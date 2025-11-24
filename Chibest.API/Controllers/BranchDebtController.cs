@@ -20,7 +20,7 @@ namespace Chibest.API.Controllers
             _branchDebtService = branchDebtService;
         }
         [HttpPost]
-        public async Task<IActionResult> CreateBranchDebt(Guid branchDebtId, [FromBody] List<BranchDebtHistoryRequest> transactions)
+        public async Task<IActionResult> CreateBranchDebt(Guid branchDebtId, [FromForm] List<BranchDebtHistoryRequest> transactions)
         {
             var result = await _branchDebtService.AddBranchTransactionAsync(branchDebtId, transactions);
             return StatusCode(result.StatusCode, result);
@@ -66,6 +66,13 @@ namespace Chibest.API.Controllers
         public async Task<IActionResult> DeleteBranchDebt(Guid branchdebtId, Guid historyId)
         {
             var result = await _branchDebtService.DeleteBranchDebtHistoryAsync(branchdebtId, historyId);
+            return StatusCode(result.StatusCode, result);
+        }
+
+        [HttpPut("{branchdebtId}/histories/{historyId}")]
+        public async Task<IActionResult> UpdateBranchDebtHistory(Guid branchdebtId, Guid historyId, [FromForm] BranchDebtHistoryUpdateRequest request)
+        {
+            var result = await _branchDebtService.UpdateBranchDebtHistoryAsync(branchdebtId, historyId, request);
             return StatusCode(result.StatusCode, result);
         }
 

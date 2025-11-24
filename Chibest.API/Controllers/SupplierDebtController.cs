@@ -20,7 +20,7 @@ namespace Chibest.API.Controllers
             _supplierDebtService = supplierDebtService;
         }
         [HttpPost]
-        public async Task<IActionResult> CreateSupplierDebt(Guid supplierDebtId,[FromBody] List<SupplierDebtHistoryRequest> transactions)
+        public async Task<IActionResult> CreateSupplierDebt(Guid supplierDebtId,[FromForm] List<SupplierDebtHistoryRequest> transactions)
         {
             var result = await _supplierDebtService.AddSupplierTransactionAsync(supplierDebtId, transactions);
             return StatusCode(result.StatusCode, result);
@@ -66,6 +66,13 @@ namespace Chibest.API.Controllers
         public async Task<IActionResult> DeleteSupplierDebt(Guid supplierdebtId, Guid historyId)
         {
             var result = await _supplierDebtService.DeleteSupplierDebtHistoryAsync(supplierdebtId,historyId);
+            return StatusCode(result.StatusCode, result);
+        }
+
+        [HttpPut("{supplierdebtId}/histories/{historyId}")]
+        public async Task<IActionResult> UpdateSupplierDebtHistory(Guid supplierdebtId, Guid historyId, [FromForm] SupplierDebtHistoryUpdateRequest request)
+        {
+            var result = await _supplierDebtService.UpdateSupplierDebtHistoryAsync(supplierdebtId, historyId, request);
             return StatusCode(result.StatusCode, result);
         }
 

@@ -11,6 +11,7 @@ namespace Chibest.Common.Enums
         Draft,
         Submitted,
         Received,
+        Done,
         Cancelled
     }
 }
