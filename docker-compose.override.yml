@@ -1,0 +1,36 @@
+version: "3.9"
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: build
+    entrypoint:
+      - dotnet
+      - watch
+      - run
+      - --project
+      - Chibest.API/Chibest.API.csproj
+      - --urls
+      - http://0.0.0.0:8080
+    working_dir: /src
+    volumes:
+      - ./:/src
+      - nuget-cache:/root/.nuget/packages
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      AUTO_APPLY_MIGRATIONS: "true"
+      DB_PG_CONNECTION_STRING: Host=db;Port=5432;Database=chibest;Username=chibest;Password=chibest_secret;Pooling=true;Maximum Pool Size=50;Timeout=15
+      Jwt_Key: LocalDevJwtKey_ChangeMe_32CharsMinimum!
+      Jwt_Issuer: Chibest.Api
+      Jwt_Audience: Chibest.Client
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  nuget-cache:
+
+

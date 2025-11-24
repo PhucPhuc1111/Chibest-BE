@@ -1,0 +1,46 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: chibest-db-ingress
+  namespace: chibest
+spec:
+  podSelector:
+    matchLabels:
+      app: chibest-postgres
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: chibest-api
+      ports:
+        - protocol: TCP
+          port: 5432
+  policyTypes:
+    - Ingress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: chibest-api-egress
+  namespace: chibest
+spec:
+  podSelector:
+    matchLabels:
+      app: chibest-api
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: chibest-postgres
+      ports:
+        - protocol: TCP
+          port: 5432
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: UDP
+          port: 53
+
+

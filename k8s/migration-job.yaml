@@ -1,0 +1,50 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: chibest-api-migration
+  namespace: chibest
+  labels:
+    app: chibest-api
+spec:
+  backoffLimit: 1
+  ttlSecondsAfterFinished: 300
+  template:
+    metadata:
+      labels:
+        job: chibest-api-migration
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: ef-migrations
+          image: ghcr.io/your-org/chibest-api:latest
+          imagePullPolicy: IfNotPresent
+          command:
+            - dotnet
+            - Chibest.API.dll
+            - --migrate
+          envFrom:
+            - configMapRef:
+                name: chibest-api-config
+          env:
+            - name: DB_PG_CONNECTION_STRING
+              valueFrom:
+                secretKeyRef:
+                  name: chibest-secrets
+                  key: DB_PG_CONNECTION_STRING
+            - name: Jwt_Key
+              valueFrom:
+                secretKeyRef:
+                  name: chibest-secrets
+                  key: Jwt_Key
+            - name: Jwt_Issuer
+              valueFrom:
+                secretKeyRef:
+                  name: chibest-secrets
+                  key: Jwt_Issuer
+            - name: Jwt_Audience
+              valueFrom:
+                secretKeyRef:
+                  name: chibest-secrets
+                  key: Jwt_Audience
+
+

@@ -1,0 +1,50 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: chibest-postgres-backup
+  namespace: chibest
+spec:
+  schedule: "0 2 * * *"
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: pg-backup
+              image: postgres:16-alpine
+              imagePullPolicy: IfNotPresent
+              env:
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: chibest-secrets
+                      key: POSTGRES_PASSWORD
+                - name: POSTGRES_USER
+                  valueFrom:
+                    secretKeyRef:
+                      name: chibest-secrets
+                      key: POSTGRES_USER
+                - name: POSTGRES_DB
+                  valueFrom:
+                    secretKeyRef:
+                      name: chibest-secrets
+                      key: POSTGRES_DB
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -e
+                  timestamp=$(date +"%Y%m%d%H%M%S")
+                  pg_dump -h chibest-postgres -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc > /backups/backup-$timestamp.dump
+              volumeMounts:
+                - name: backup-volume
+                  mountPath: /backups
+          volumes:
+            - name: backup-volume
+              persistentVolumeClaim:
+                claimName: chibest-postgres-pvc
+
+

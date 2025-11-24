@@ -1,0 +1,121 @@
+name: Build & Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: chibest-api
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/packages.lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Setup .NET 8 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Install dotnet-ef tool
+        run: dotnet tool install --global dotnet-ef
+
+      - name: Restore dependencies
+        run: dotnet restore Chibest.API/Chibest.API.csproj
+
+      - name: Build solution
+        run: dotnet build Chibest.API/Chibest.API.csproj --configuration Release --no-restore
+
+      - name: Validate EF Core migrations
+        env:
+          DB_PG_CONNECTION_STRING: Host=localhost;Port=5432;Database=placeholder;Username=placeholder;Password=placeholder;Pooling=true
+          PATH: $HOME/.dotnet/tools:${{ env.PATH }}
+        run: |
+          mkdir -p artifacts
+          dotnet ef migrations script --idempotent --project Chibest.Repository/Chibest.Repository.csproj --startup-project Chibest.API/Chibest.API.csproj --output artifacts/migrations.sql
+
+      - name: Docker login
+        env:
+          REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
+          REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+        run: |
+          echo "${REGISTRY_PASSWORD}" | docker login ${{ env.REGISTRY }} -u "${REGISTRY_USERNAME}" --password-stdin
+
+      - name: Build Docker image
+        run: |
+          IMAGE_REPO=${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}
+          docker build -t ${IMAGE_REPO}:${{ github.sha }} -t ${IMAGE_REPO}:latest .
+
+      - name: Push Docker image
+        run: |
+          IMAGE_REPO=${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}
+          docker push ${IMAGE_REPO}:${{ github.sha }}
+          docker push ${IMAGE_REPO}:latest
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: "latest"
+
+      - name: Configure kubeconfig
+        env:
+          KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
+        run: |
+          mkdir -p ~/.kube
+          echo "${KUBE_CONFIG}" | base64 -d > ~/.kube/config
+
+      - name: Apply Kubernetes base resources
+        run: |
+          kubectl apply -f k8s/namespace.yaml
+          kubectl apply -f k8s/configmap.yaml
+          kubectl apply -f k8s/secret.yaml
+          kubectl apply -f k8s/postgres-pvc.yaml
+          kubectl apply -f k8s/postgres-service.yaml
+          kubectl apply -f k8s/postgres-statefulset.yaml
+          kubectl apply -f k8s/postgres-backup-cronjob.yaml
+          kubectl apply -f k8s/networkpolicy.yaml
+
+      - name: Run EF Core migration job
+        run: |
+          kubectl delete job chibest-api-migration -n chibest --ignore-not-found
+          kubectl apply -f k8s/migration-job.yaml
+          kubectl wait --for=condition=complete job/chibest-api-migration -n chibest --timeout=300s
+
+      - name: Deploy API workload
+        run: |
+          kubectl apply -f k8s/api-service.yaml
+          kubectl apply -f k8s/api-deployment.yaml
+          kubectl apply -f k8s/hpa.yaml
+          kubectl apply -f k8s/ingress.yaml
+
+      - name: Update deployment image
+        run: |
+          IMAGE_REPO=${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}
+          kubectl set image deployment/chibest-api chibest-api=${IMAGE_REPO}:${{ github.sha }} -n chibest
+
+      - name: Verify rollout
+        run: |
+          set +e
+          kubectl rollout status deployment/chibest-api -n chibest --timeout=300s
+          STATUS=$?
+          if [ $STATUS -ne 0 ]; then
+            kubectl rollout undo deployment/chibest-api -n chibest
+            exit 1
+          fi
+

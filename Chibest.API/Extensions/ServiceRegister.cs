@@ -19,15 +19,37 @@ namespace Chibest.API.Extensions;
 
 public static class ServiceRegister
 {
-    public static void RegisterServices(IServiceCollection services, IConfiguration configuration)
+    public static void RegisterServices(
+        IServiceCollection services,
+        IConfiguration configuration,
+        string? providedConnectionString = null)
     {
-        var connectionString = Environment.GetEnvironmentVariable("DB_PG_CONNECTION_STRING")
+        var connectionString = providedConnectionString
+            ?? Environment.GetEnvironmentVariable("DB_PG_CONNECTION_STRING")
             ?? configuration.GetConnectionString("DefaultConnection")
             ?? throw new InvalidOperationException("Database connection string is not configured.");
 
-        services.AddDbContext<ChiBestDbContext>(options =>
+        var isDevelopment = string.Equals(
+            Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"),
+            "Development",
+            StringComparison.OrdinalIgnoreCase);
+
+        services.AddDbContextPool<ChiBestDbContext>(options =>
         {
-            options.UseNpgsql(connectionString);
+            options.UseNpgsql(connectionString, npgsqlOptions =>
+            {
+                npgsqlOptions.EnableRetryOnFailure(
+                    maxRetryCount: 5,
+                    maxRetryDelay: TimeSpan.FromSeconds(15),
+                    errorCodesToAdd: null);
+                npgsqlOptions.CommandTimeout(30);
+            });
+
+            if (isDevelopment)
+            {
+                options.EnableSensitiveDataLogging();
+                options.EnableDetailedErrors();
+            }
         });
 
         services.AddAuthorizeService(configuration);
@@ -70,6 +92,14 @@ public static class ServiceRegister
             AccessTokenExpirationMinutes = int.TryParse(configuration["Jwt_AccessTokenExpirationMinutes"] ?? Environment.GetEnvironmentVariable("Jwt_AccessTokenExpirationMinutes"), out var m) ? m : 15,
             RefreshTokenExpirationDays = int.TryParse(configuration["Jwt_RefreshTokenExpirationDays"] ?? Environment.GetEnvironmentVariable("Jwt_RefreshTokenExpirationDays"), out var d) ? d : 7
         };
+
+        if (string.IsNullOrWhiteSpace(jwtOps.Key) ||
+            string.IsNullOrWhiteSpace(jwtOps.Issuer) ||
+            string.IsNullOrWhiteSpace(jwtOps.Audience))
+        {
+            throw new InvalidOperationException(
+                "JWT settings are missing. Please configure Jwt_Key, Jwt_Issuer, and Jwt_Audience via appsettings or environment variables.");
+        }
 
         services.AddSingleton(jwtOps);
 
