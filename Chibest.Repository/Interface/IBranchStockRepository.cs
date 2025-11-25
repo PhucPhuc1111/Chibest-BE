@@ -9,8 +9,5 @@ public interface IBranchStockRepository : IGenericRepository<BranchStock>
     Task<IBusinessResult> UpdateBranchStockAsync(
     Guid branchId,
     Guid productId,
-    int deltaAvailableQty = 0,
-    int deltaReservedQty = 0,
-    int deltaInTransitQty = 0,
-    int deltaDefectiveQty = 0);
+    int deltaAvailableQty = 0);
 }

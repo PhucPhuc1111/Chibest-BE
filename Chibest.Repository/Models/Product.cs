@@ -65,6 +65,8 @@ public class Product
 
     public virtual ICollection<SalesOrderDetail> SalesOrderDetails { get; set; } = new List<SalesOrderDetail>();
 
+    public virtual ICollection<FranchiseOrderDetail> FranchiseOrderDetails { get; set; } = new List<FranchiseOrderDetail>();
+
     public virtual Size? Size { get; set; }
 
     public virtual ICollection<StockAdjustmentDetail> StockAdjustmentDetails { get; set; } = new List<StockAdjustmentDetail>();

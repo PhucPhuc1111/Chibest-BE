@@ -6,6 +6,7 @@ using Chibest.Service.Interface;
 using Chibest.Service.ModelDTOs.Request;
 using Chibest.Service.ModelDTOs.Response;
 using Chibest.Service.Utilities;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using ClosedXML.Excel;
 using System.IO;
@@ -15,6 +16,8 @@ namespace Chibest.Service.Services
 {
     public class SupplierDebtService : ISupplierDebtService
     {
+        private const string SupplierConfirmationFolder = "supplier-debt-confirmation";
+
         private readonly IUnitOfWork _unitOfWork;
         private readonly IFileService _fileService;
 
@@ -46,12 +49,10 @@ namespace Chibest.Service.Services
                 if (t == null)
                     continue;
 
-                string? confirmationUrl = t.Confirmation;
-                if (t.ConfirmationFile != null && t.ConfirmationFile.Length > 0)
-                {
-                    var confirmationFileName = $"{supplierDebt.SupplierId}_{Guid.NewGuid()}";
-                    confirmationUrl = await _fileService.SaveImageAsync(t.ConfirmationFile, confirmationFileName, "confirmation");
-                }
+                    var confirmationUrl = await SaveConfirmationAsync(
+                        supplierDebt.SupplierId,
+                        t.Confirmation,
+                        t.ConfirmationFile);
 
                 historyEntities.Add(new SupplierDebtHistory
                 {
@@ -494,15 +495,10 @@ namespace Chibest.Service.Services
 
             string? confirmationUrl = history.Confirmation;
 
-            if (request.ConfirmationFile != null && request.ConfirmationFile.Length > 0)
-            {
-                var confirmationFileName = $"{supplierDebt.SupplierId}_{Guid.NewGuid()}";
-                confirmationUrl = await _fileService.SaveImageAsync(request.ConfirmationFile, confirmationFileName, "confirmation");
-            }
-            else if (!string.IsNullOrWhiteSpace(request.Confirmation))
-            {
-                confirmationUrl = request.Confirmation;
-            }
+            confirmationUrl = await SaveConfirmationAsync(
+                supplierDebt.SupplierId,
+                string.IsNullOrWhiteSpace(request.Confirmation) ? confirmationUrl : request.Confirmation,
+                request.ConfirmationFile);
 
             history.Confirmation = confirmationUrl;
 
@@ -528,6 +524,17 @@ namespace Chibest.Service.Services
                     supplierDebt.ReturnAmount,
                     supplierDebt.RemainingDebt
                 });
+        }
+
+        private async Task<string?> SaveConfirmationAsync(Guid supplierId, string? confirmation, IFormFile? confirmationFile)
+        {
+            if (confirmationFile != null && confirmationFile.Length > 0)
+            {
+                var confirmationFileName = $"{supplierId}_{Guid.NewGuid()}";
+                return await _fileService.SaveImageAsync(confirmationFile, confirmationFileName, SupplierConfirmationFolder);
+            }
+
+            return string.IsNullOrWhiteSpace(confirmation) ? null : confirmation;
         }
 
         private void RecalculateSupplierDebtTotals(SupplierDebt supplierDebt)

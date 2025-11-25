@@ -81,7 +81,7 @@ public class CategoryService : ICategoryService
         return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_READ_MSG, response);
     }
 
-    public async Task<IBusinessResult> CreateAsync(CategoryRequest request, Guid accountId)
+    public async Task<IBusinessResult> CreateAsync(CategoryRequest request)
     {
         if (request == null)
             return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
@@ -104,7 +104,7 @@ public class CategoryService : ICategoryService
         return new BusinessResult(Const.HTTP_STATUS_CREATED, Const.SUCCESS_CREATE_MSG, response);
     }
 
-    public async Task<IBusinessResult> UpdateAsync(CategoryRequest request, Guid accountId)
+    public async Task<IBusinessResult> UpdateAsync(CategoryRequest request)
     {
         if (request.Id.HasValue == false || request.Id == Guid.Empty)
             return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
@@ -135,7 +135,7 @@ public class CategoryService : ICategoryService
         return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_UPDATE_MSG, response);
     }
 
-    public async Task<IBusinessResult> DeleteAsync(Guid id, Guid accountId)
+    public async Task<IBusinessResult> DeleteAsync(Guid id)
     {
         var existing = await _unitOfWork.CategoryRepository.GetByIdAsync(id);
         if (existing == null)

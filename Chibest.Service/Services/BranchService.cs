@@ -93,14 +93,16 @@ public class BranchService : IBranchService
         return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_CREATE_MSG);
     }
 
-    public async Task<IBusinessResult> GetBranchList(int pageIndex, int pageSize, string search)
+    public async Task<IBusinessResult> GetBranchList(int pageIndex, int pageSize, string? search = null, bool? isFranchise = null)
     {
-        string searchTerm = search?.ToLower() ?? string.Empty;
+        string searchTerm = search?.Trim().ToLower() ?? string.Empty;
 
         var branches = await _unitOfWork.BranchRepository.GetPagedAsync(
             pageIndex,
             pageSize,
-            x => string.IsNullOrEmpty(searchTerm) || x.Name.ToLower().Contains(searchTerm),
+            x =>
+                (string.IsNullOrEmpty(searchTerm) || (x.Name != null && x.Name.ToLower().Contains(searchTerm))) &&
+                (!isFranchise.HasValue || x.IsFranchise == isFranchise.Value),
             include: q => q.Include(b => b.AccountRoles)
         );
 

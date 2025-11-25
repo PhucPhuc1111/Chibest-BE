@@ -27,6 +27,8 @@ public class PurchaseOrder
 
     public Guid? SupplierId { get; set; }
 
+    public Guid? PurchaseInvoiceId { get; set; }
+
     public virtual Branch? Branch { get; set; }
 
     public virtual Account? Employee { get; set; }
@@ -34,4 +36,6 @@ public class PurchaseOrder
     public virtual ICollection<PurchaseOrderDetail> PurchaseOrderDetails { get; set; } = new List<PurchaseOrderDetail>();
 
     public virtual Account? Supplier { get; set; }
+
+    public virtual PurchaseInvoice? PurchaseInvoice { get; set; }
 }

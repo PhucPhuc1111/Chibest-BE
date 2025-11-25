@@ -22,9 +22,10 @@ namespace Chibest.API.Controllers
         public async Task<IActionResult> GetBranchList(
             [FromQuery] int pageIndex = 1,
             [FromQuery] int pageSize = 10,
-            [FromQuery] string? search = null)
+            [FromQuery] string? search = null,
+            [FromQuery] bool? isFranchise = null)
         {
-            var result = await _branchService.GetBranchList(pageIndex, pageSize, search);
+            var result = await _branchService.GetBranchList(pageIndex, pageSize, search, isFranchise);
             return StatusCode(result.StatusCode, result);
         }
 

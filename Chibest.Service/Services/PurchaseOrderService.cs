@@ -26,9 +26,22 @@ namespace Chibest.Service.Services
             if (request == null)
                 return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Invalid request");
 
-            string invoiceCode = request.InvoiceCode;
+            if (!request.SupplierId.HasValue || request.SupplierId == Guid.Empty)
+                return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "SupplierId is required");
+
+            string? invoiceCode = request.InvoiceCode;
             if (invoiceCode == null)
                 invoiceCode = await GenerateInvoiceCodeAsync();
+
+            var purchaseInvoice = new PurchaseInvoice
+            {
+                Id = Guid.NewGuid(),
+                Code = await GeneratePurchaseInvoiceCodeAsync(),
+                OrderDate = request.OrderDate,
+                Status = OrderStatus.Draft.ToString(),
+                SupplierId = request.SupplierId.Value,
+                TotalMoney = request.SubTotal
+            };
 
             var purchaseOrder = new PurchaseOrder
             {
@@ -42,7 +55,8 @@ namespace Chibest.Service.Services
                 EmployeeId = request.EmployeeId,
                 Status = OrderStatus.Draft.ToString(),
                 CreatedAt = DateTime.Now,
-                UpdatedAt = DateTime.Now
+                UpdatedAt = DateTime.Now,
+                PurchaseInvoiceId = purchaseInvoice.Id
             };
 
             var orderDetails = request.PurchaseOrderDetails.Select(detailReq => new PurchaseOrderDetail
@@ -56,6 +70,7 @@ namespace Chibest.Service.Services
                 Note = detailReq.Note,
             }).ToList();
 
+            await _unitOfWork.PurchaseInvoiceRepository.AddAsync(purchaseInvoice);
             await _unitOfWork.PurchaseOrderRepository.AddAsync(purchaseOrder);
             await _unitOfWork.PurchaseOrderDetailRepository.AddRangeAsync(orderDetails);
             await _unitOfWork.SaveChangesAsync();
@@ -63,6 +78,8 @@ namespace Chibest.Service.Services
             return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_CREATE_MSG, new { purchaseOrder.InvoiceCode });
             
         }
+
+
         public async Task<IBusinessResult> GetPurchaseOrderById(Guid id)
         {
             var po = await _unitOfWork.PurchaseOrderRepository
@@ -202,7 +219,7 @@ namespace Chibest.Service.Services
 
                 _unitOfWork.PurchaseOrderRepository.Update(purchaseOrder);
 
-                if (request.Status == OrderStatus.Received)
+                if (request.Status == OrderStatus.Done)
                 {
                     if (!purchaseOrder.BranchId.HasValue)
                         return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Phiếu nhập chưa gắn chi nhánh để cập nhật tồn kho.");
@@ -258,8 +275,8 @@ namespace Chibest.Service.Services
             if (purchaseOrder == null)
                 return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, "Không tìm thấy phiếu nhập hàng");
 
-            if (purchaseOrder.Status == OrderStatus.Received.ToString())
-                return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Không thể xóa phiếu nhập hàng đã nhận");
+            if (purchaseOrder.Status == OrderStatus.Done.ToString())
+                return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Không thể xóa phiếu nhập hàng đã hoàn thành");
 
             try
             {
@@ -293,6 +310,29 @@ namespace Chibest.Service.Services
                     nextNumber = lastNumber + 1;
                 }
             }
+            return $"{prefix}{nextNumber:D4}";
+        }
+
+        private async Task<string> GeneratePurchaseInvoiceCodeAsync()
+        {
+            string datePart = DateTime.Now.ToString("yyyyMMdd");
+            string prefix = "PI" + datePart;
+
+            var latest = await _unitOfWork.PurchaseInvoiceRepository
+                .GetByWhere(x => x.Code.StartsWith(prefix))
+                .OrderByDescending(x => x.Code)
+                .FirstOrDefaultAsync();
+
+            int nextNumber = 1;
+            if (latest != null)
+            {
+                string lastNumberPart = latest.Code.Substring(prefix.Length);
+                if (int.TryParse(lastNumberPart, out int lastNumber))
+                {
+                    nextNumber = lastNumber + 1;
+                }
+            }
+
             return $"{prefix}{nextNumber:D4}";
         }
 

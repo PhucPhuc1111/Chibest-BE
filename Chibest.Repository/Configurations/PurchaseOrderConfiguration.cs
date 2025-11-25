@@ -18,6 +18,8 @@ public class PurchaseOrderConfiguration : IEntityTypeConfiguration<PurchaseOrder
                     builder.HasIndex(e => e.OrderDate, "ix_transactionorder_orderdate").IsDescending();
         
                     builder.HasIndex(e => e.Status, "ix_transactionorder_status");
+
+                    builder.HasIndex(e => e.PurchaseInvoiceId, "ix_purchaseorder_invoiceid");
         
                     builder.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
                     builder.Property(e => e.CreatedAt)
@@ -48,5 +50,9 @@ public class PurchaseOrderConfiguration : IEntityTypeConfiguration<PurchaseOrder
                         .HasForeignKey(d => d.SupplierId)
                         .OnDelete(DeleteBehavior.Cascade)
                         .HasConstraintName("PurchaseOrder_SupplierId_fkey");
+
+                    builder.HasOne(d => d.PurchaseInvoice).WithMany(p => p.PurchaseOrders)
+                        .HasForeignKey(d => d.PurchaseInvoiceId)
+                        .HasConstraintName("PurchaseOrder_PurchaseInvoiceId_fkey");
     }
 }

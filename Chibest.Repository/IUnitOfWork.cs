@@ -15,6 +15,10 @@ public interface IUnitOfWork
     IProductRepository ProductRepository { get; }
     IProductDetailRepository ProductDetailRepository { get; }
     IProductPriceHistoryRepository ProductPriceHistoryRepository { get; }
+    IPurchaseInvoiceRepository PurchaseInvoiceRepository { get; }
+    IFranchiseInvoiceRepository FranchiseInvoiceRepository { get; }
+    IFranchiseOrderRepository FranchiseOrderRepository { get; }
+    IFranchiseOrderDetailRepository FranchiseOrderDetailRepository { get; }
     ICategoryRepository CategoryRepository { get; }
     IColorRepository ColorRepository { get; }
     ISizeRepository SizeRepository { get; }

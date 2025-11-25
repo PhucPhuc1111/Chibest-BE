@@ -29,6 +29,7 @@ public class ChiBestDbContext : DbContext
     public virtual DbSet<ProductDetail> ProductDetails { get; set; } = null!;
     public virtual DbSet<ProductPlan> ProductPlans { get; set; } = null!;
     public virtual DbSet<ProductPriceHistory> ProductPriceHistories { get; set; } = null!;
+    public virtual DbSet<PurchaseInvoice> PurchaseInvoices { get; set; } = null!;
     public virtual DbSet<PurchaseOrder> PurchaseOrders { get; set; } = null!;
     public virtual DbSet<PurchaseOrderDetail> PurchaseOrderDetails { get; set; } = null!;
     public virtual DbSet<PurchaseReturn> PurchaseReturns { get; set; } = null!;
@@ -46,6 +47,9 @@ public class ChiBestDbContext : DbContext
     public virtual DbSet<TransferOrderDetail> TransferOrderDetails { get; set; } = null!;
     public virtual DbSet<Voucher> Vouchers { get; set; } = null!;
     public virtual DbSet<WorkShift> WorkShifts { get; set; } = null!;
+    public virtual DbSet<FranchiseInvoice> FranchiseInvoices { get; set; } = null!;
+    public virtual DbSet<FranchiseOrder> FranchiseOrders { get; set; } = null!;
+    public virtual DbSet<FranchiseOrderDetail> FranchiseOrderDetails { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -27,6 +27,7 @@ public static class Const
         public const string PurchaseOrder = "PURCHASE_ORDER";
         public const string PurchaseReturn = "PURCHASE_RETURN";
         public const string TransferOrder = "TRANSFER_ORDER";
+        public const string FranchiseOrder = "FRANCHISE_ORDER";
         public const string StockAdjustment = "STOCK_ADJUSTMENT";
         public const string File = "FILE";
     }

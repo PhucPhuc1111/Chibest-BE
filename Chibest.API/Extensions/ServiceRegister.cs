@@ -47,7 +47,6 @@ public static class ServiceRegister
         services.AddScoped<ICategoryService, CategoryService>();
         services.AddScoped<IProductService, ProductService>();
         services.AddScoped<IProductPriceHistoryService, ProductPriceHistoryService>();
-        services.AddScoped<IBranchStockService, BranchStockService>();
         services.AddScoped<IProductPlanService, ProductPlanService>();
         services.AddScoped<IColorService, ColorService>();
         services.AddScoped<ISizeService, SizeService>();
@@ -58,6 +57,9 @@ public static class ServiceRegister
         services.AddScoped<IStockAdjusmentService, StockAdjusmentService>();
         services.AddScoped<ISupplierDebtService, SupplierDebtService>();
         services.AddScoped<IBranchDebtService, BranchDebtService>();
+        services.AddScoped<IFranchiseInvoiceService, FranchiseInvoiceService>();
+        services.AddScoped<IPurchaseInvoiceService, PurchaseInvoiceService>();
+        services.AddScoped<IFranchiseService, FranchiseService>();
     }
 
     public static IServiceCollection AddAuthorizeService(this IServiceCollection services, IConfiguration configuration)

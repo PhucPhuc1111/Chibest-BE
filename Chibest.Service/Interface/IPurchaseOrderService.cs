@@ -1,4 +1,5 @@
 ﻿using Chibest.Common.BusinessResult;
+using Chibest.Common.Enums;
 using Chibest.Service.ModelDTOs.Stock.PurchaseOrder;
 using Microsoft.AspNetCore.Http;
 using System;

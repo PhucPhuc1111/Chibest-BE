@@ -41,14 +41,16 @@ public class ProductService : IProductService
     {
         Expression<Func<Product, bool>> predicate = p => true;
 
-        predicate = predicate.And(p => p.IsMaster == true);
+        predicate = predicate.And(p => p.IsMaster);
 
-        if (!string.IsNullOrEmpty(query.SearchTerm))
+        var searchTerm = query.SearchTerm?.Trim();
+        if (!string.IsNullOrEmpty(searchTerm))
         {
+            var searchLower = searchTerm.ToLowerInvariant();
             predicate = predicate.And(p =>
-                p.Name.ToLower().Contains(query.SearchTerm.ToLower()) ||
-                p.Sku.ToLower().Contains(query.SearchTerm.ToLower()) ||
-                p.Description != null && p.Description.ToLower().Contains(query.SearchTerm.ToLower()));
+                p.Name.ToLower().Contains(searchLower) ||
+                p.Sku.ToLower().Contains(searchLower) ||
+                (p.Description != null && p.Description.ToLower().Contains(searchLower)));
         }
 
         if (!string.IsNullOrEmpty(query.Status))
@@ -73,23 +75,59 @@ public class ProductService : IProductService
             };
         }
 
+        Func<IQueryable<Product>, IQueryable<Product>> includeQuery = q =>
+        {
+            q = q.Include(p => p.ProductPriceHistories)
+                 .Include(p => p.Category);
+
+            q = query.BranchId.HasValue
+                ? q.Include(p => p.BranchStocks.Where(bs => bs.BranchId == query.BranchId.Value))
+                : q.Include(p => p.BranchStocks);
+
+            return q;
+        };
+
         var products = await _unitOfWork.ProductRepository.GetPagedAsync(
             query.PageNumber,
             query.PageSize,
             predicate,
             orderBy,
-            include: q => q.Include(p => p.ProductPriceHistories)
-                          .Include(p => p.BranchStocks)
-                          .Include(p => p.Category)
+            include: includeQuery
         );
 
-        var masterSkus = products.Select(p => p.Sku).ToList();
+        var masterSkus = products
+            .Select(p => p.Sku)
+            .Where(sku => !string.IsNullOrWhiteSpace(sku))
+            .ToList();
 
-        var variantCounts = await _unitOfWork.ProductRepository
-            .GetAllAsync(p => masterSkus.Contains(p.ParentSku) && p.IsMaster == false)
-            .ContinueWith(task => task.Result
-                .GroupBy(p => p.ParentSku)
-                .ToDictionary(g => g.Key, g => g.Count()));
+        Dictionary<string, List<ProductChildResponse>> childrenLookup = new();
+
+        if (masterSkus.Any())
+        {
+            Func<IQueryable<Product>, IQueryable<Product>> childIncludeQuery = q =>
+            {
+                q = q.Include(p => p.ProductPriceHistories);
+                q = query.BranchId.HasValue
+                    ? q.Include(p => p.BranchStocks.Where(bs => bs.BranchId == query.BranchId.Value))
+                    : q.Include(p => p.BranchStocks);
+                return q;
+            };
+
+            var childProducts = await _unitOfWork.ProductRepository.GetAllAsync(
+                predicate: p => !string.IsNullOrEmpty(p.ParentSku) &&
+                                masterSkus.Contains(p.ParentSku) &&
+                                p.IsMaster == false,
+                include: childIncludeQuery
+            );
+
+            childrenLookup = childProducts
+                .Where(p => !string.IsNullOrEmpty(p.ParentSku))
+                .GroupBy(p => p.ParentSku!)
+                .ToDictionary(
+                    g => g.Key,
+                    g => g.Select(child => MapChildProduct(child, query.BranchId)).ToList()
+                );
+        }
 
         var response = products.Select(product =>
         {
@@ -99,20 +137,27 @@ public class ProductService : IProductService
                 ? product.BranchStocks?.FirstOrDefault(bs => bs.BranchId == query.BranchId.Value)
                 : null;
 
-            variantCounts.TryGetValue(product.Sku, out int childrenNo);
+            childrenLookup.TryGetValue(product.Sku, out var childList);
+            var children = childList ?? new List<ProductChildResponse>();
+            var stockQuantity = children.Sum(c => c.StockQuantity);
+            if (!children.Any())
+            {
+                stockQuantity = branchStock?.AvailableQty ?? 0;
+            }
 
             return new ProductListResponse
             {
                 Id = product.Id,
-                AvartarUrl = product.AvatarUrl,
-                Sku = product.Sku,
-                Name = product.Name,
+                AvartarUrl = product.AvatarUrl!,
+                Sku = product.Sku!,
+                Name = product.Name!,
                 IsMaster = product.IsMaster,
-                Status = product.Status,
-                ChildrenNo = childrenNo,
+                Status = product.Status!,
+                ChildrenNo = children.Count,
+                Children = children,
                 CostPrice = latestPrice?.CostPrice,
                 SellingPrice = latestPrice?.SellingPrice,
-                StockQuantity = branchStock?.AvailableQty ?? 0
+                StockQuantity = stockQuantity
             };
         }).ToList();
 
@@ -126,10 +171,18 @@ public class ProductService : IProductService
             return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "ParentSku is required");
         }
 
+        Func<IQueryable<Product>, IQueryable<Product>> includeQuery = q =>
+        {
+            q = q.Include(p => p.ProductPriceHistories);
+            q = branchId.HasValue
+                ? q.Include(p => p.BranchStocks.Where(bs => bs.BranchId == branchId.Value))
+                : q.Include(p => p.BranchStocks);
+            return q;
+        };
+
         var variants = await _unitOfWork.ProductRepository.GetAllAsync(
             predicate: p => p.ParentSku == parentSku && p.IsMaster == false,
-            include: q => q.Include(p => p.ProductPriceHistories)
-                          .Include(p => p.BranchStocks)
+            include: includeQuery
         );
 
         var response = variants.Select(variant =>
@@ -143,11 +196,11 @@ public class ProductService : IProductService
             return new ProductListResponse
             {
                 Id = variant.Id,
-                AvartarUrl = variant.AvatarUrl,
-                Sku = variant.Sku,
-                Name = variant.Name,
+                AvartarUrl = variant.AvatarUrl!,
+                Sku = variant.Sku!,
+                Name = variant.Name!,
                 IsMaster = variant.IsMaster,
-                Status = variant.Status,
+                Status = variant.Status!,
                 ChildrenNo = 0, 
                 CostPrice = latestPrice?.CostPrice,
                 SellingPrice = latestPrice?.SellingPrice,
@@ -156,6 +209,139 @@ public class ProductService : IProductService
         }).ToList();
 
         return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_READ_MSG, response);
+    }
+
+    public async Task<IBusinessResult> UpdateProductFieldsAsync(
+        Guid productId,
+        IFormFile? avatarFile = null,
+        IFormFile? videoFile = null,
+        decimal? costPrice = null,
+        decimal? sellingPrice = null,
+        string? name = null,
+        string? status = null,
+        string? description = null)
+    {
+        if (productId == Guid.Empty)
+            return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Id sản phẩm không hợp lệ.");
+
+        if (avatarFile is null && videoFile is null && costPrice is null &&
+            sellingPrice is null && name is null && status is null && description is null)
+        {
+            return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Không có dữ liệu để cập nhật.");
+        }
+
+        var product = await _unitOfWork.ProductRepository
+            .GetByWhere(p => p.Id == productId)
+            .Include(p => p.ProductPriceHistories)
+            .FirstOrDefaultAsync();
+
+        if (product == null)
+            return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, Const.FAIL_READ_MSG);
+
+        var now = DateTime.Now;
+        var productChanged = false;
+
+        if (avatarFile != null)
+        {
+            string savedPath;
+            try
+            {
+                savedPath = await _fileService.SaveProductImageAsync(avatarFile, product.Sku);
+            }
+            catch (Exception ex)
+            {
+                return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, $"Cập nhật ảnh thất bại: {ex.Message}");
+            }
+
+            if (!string.Equals(product.AvatarUrl, savedPath, StringComparison.Ordinal))
+            {
+                product.AvatarUrl = savedPath;
+            }
+            productChanged = true;
+        }
+
+        if (videoFile != null)
+        {
+            string savedPath;
+            try
+            {
+                savedPath = await _fileService.SaveProductVideoAsync(videoFile, product.Sku);
+            }
+            catch (Exception ex)
+            {
+                return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, $"Cập nhật video thất bại: {ex.Message}");
+            }
+
+            if (!string.Equals(product.VideoUrl, savedPath, StringComparison.Ordinal))
+            {
+                product.VideoUrl = savedPath;
+            }
+            productChanged = true;
+        }
+
+        if (name != null && !string.Equals(product.Name, name, StringComparison.Ordinal))
+        {
+            product.Name = name;
+            productChanged = true;
+        }
+
+        if (status != null && !string.Equals(product.Status, status, StringComparison.Ordinal))
+        {
+            product.Status = status;
+            productChanged = true;
+        }
+
+        if (description != null && !string.Equals(product.Description, description, StringComparison.Ordinal))
+        {
+            product.Description = description;
+            productChanged = true;
+        }
+
+        var priceChanged = false;
+        if (costPrice.HasValue || sellingPrice.HasValue)
+        {
+            var latestPrice = GetLatestPriceHistory(product.ProductPriceHistories, null);
+            var resolvedCost = costPrice ?? latestPrice?.CostPrice;
+            var resolvedSell = sellingPrice ?? latestPrice?.SellingPrice;
+
+            if (!resolvedCost.HasValue || !resolvedSell.HasValue)
+            {
+                return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Giá bán và giá vốn phải được xác định trước khi cập nhật.");
+            }
+
+            var currentCost = latestPrice?.CostPrice;
+            var currentSell = latestPrice?.SellingPrice;
+
+            if (!currentCost.HasValue || !currentSell.HasValue ||
+                currentCost.Value != resolvedCost.Value ||
+                currentSell.Value != resolvedSell.Value)
+            {
+                priceChanged = true;
+                await _unitOfWork.ProductPriceHistoryRepository.AddAsync(new ProductPriceHistory
+                {
+                    Id = Guid.NewGuid(),
+                    ProductId = product.Id,
+                    CostPrice = resolvedCost.Value,
+                    SellingPrice = resolvedSell.Value,
+                    EffectiveDate = now,
+                    CreatedAt = now,
+                    Note = "Manual price update",
+                    BranchId = null
+                });
+            }
+        }
+
+        if (!productChanged && !priceChanged)
+            return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Không có thay đổi nào được áp dụng.");
+
+        if (productChanged)
+        {
+            product.UpdatedAt = now;
+            _unitOfWork.ProductRepository.Update(product);
+        }
+
+        await _unitOfWork.SaveChangesAsync();
+        return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_UPDATE_MSG);
     }
 
     public async Task<IBusinessResult> GetListAsync(ProductQuery query)
@@ -171,13 +357,23 @@ public class ProductService : IProductService
         }
 
         // Include both ProductPriceHistories and BranchStocks
+        Func<IQueryable<Product>, IQueryable<Product>> includeQuery = q =>
+        {
+            q = q.Include(p => p.ProductPriceHistories)
+                 .Include(p => p.Category);
+
+            q = query.BranchId.HasValue
+                ? q.Include(p => p.BranchStocks.Where(bs => bs.BranchId == query.BranchId.Value))
+                : q.Include(p => p.BranchStocks);
+
+            return q;
+        };
+
         var products = await _unitOfWork.ProductRepository.GetPagedAsync(
             query.PageNumber = 1,
             query.PageSize = 5,
             predicate,
-            include: q => q.Include(p => p.ProductPriceHistories)
-            .Include(p => p.BranchStocks)
-            .Include(p => p.Category)
+            include: includeQuery
         );
 
         var response = products.Select(product =>
@@ -191,11 +387,11 @@ public class ProductService : IProductService
             return new ProductListResponse
             {
                 Id = product.Id,
-                AvartarUrl = product.AvatarUrl,
-                Sku = product.Sku,
-                Name = product.Name,
+                AvartarUrl = product.AvatarUrl!,
+                Sku = product.Sku!,
+                Name = product.Name!,
                 IsMaster = product.IsMaster,
-                Status = product.Status,
+                Status = product.Status!,
                 CostPrice = latestPrice?.CostPrice,
                 SellingPrice = latestPrice?.SellingPrice,
                 StockQuantity = branchStock?.AvailableQty ?? 0
@@ -206,42 +402,47 @@ public class ProductService : IProductService
 
     public async Task<IBusinessResult> GetByIdAsync(Guid id, Guid? branchId)
     {
-        var product = await _unitOfWork.ProductRepository
+        IQueryable<Product> productQuery = _unitOfWork.ProductRepository
             .GetByWhere(p => p.Id == id)
             .Include(p => p.ProductPriceHistories)
             .Include(p => p.Category)
             .Include(p => p.Size)
-            .Include(p => p.Color)
+            .Include(p => p.Color);
+
+        productQuery = branchId.HasValue
+            ? productQuery.Include(p => p.BranchStocks.Where(bs => bs.BranchId == branchId.Value))
+            : productQuery.Include(p => p.BranchStocks);
+
+        var product = await productQuery
             .AsNoTracking()
             .FirstOrDefaultAsync();
-        var branchStock = branchId.HasValue ?
-            await _unitOfWork.BranchStockRepository
-                .GetByWhere(bs => bs.ProductId == id && bs.BranchId == branchId.Value)
-                .AsNoTracking()
-                .FirstOrDefaultAsync()
-            : null;
+
         if (product == null)
             return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, Const.FAIL_READ_MSG);
 
         var latestPrice = GetLatestPriceHistory(product.ProductPriceHistories, branchId);
 
+        var branchStock = branchId.HasValue
+            ? product.BranchStocks?.FirstOrDefault(bs => bs.BranchId == branchId.Value)
+            : product.BranchStocks?.FirstOrDefault();
+
         var response = new ProductResponse
         {
             Id = product.Id,
-            AvartarUrl = product.AvatarUrl,
+            AvartarUrl = product.AvatarUrl!,
             VideoUrl = product.VideoUrl,
-            Sku = product.Sku,
-            Name = product.Name,
-            Description = product.Description,
-            Color = product.Color.Code,
-            Size = product.Size.Code,
-            Style = product.Style,
-            Material = product.Material,
+            Sku = product.Sku!,
+            Name = product.Name!,
+            Description = product.Description!,
+            Color = product.Color!.Code,
+            Size = product.Size!.Code,
+            Style = product.Style!,
+            Material = product.Material!,
             Weight = product.Weight,
             IsMaster = product.IsMaster,
-            Status = product.Status,
-            ParentSku = product.ParentSku,
-            CategoryName = product.Category.Name,
+            Status = product.Status!,
+            ParentSku = product.ParentSku!,
+            CategoryName = product.Category!.Name,
             CostPrice = latestPrice?.CostPrice,
             SellingPrice = latestPrice?.SellingPrice,
             StockQuantity = branchStock?.AvailableQty ?? 0,
@@ -569,244 +770,26 @@ public class ProductService : IProductService
         return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_DELETE_MSG);
     }
 
-    //public async Task<IBusinessResult> ImportProductsFromExcelAsync(IFormFile file, Guid accountId)
-    //{
-    //    if (file == null || file.Length == 0)
-    //        return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "File import không hợp lệ.");
+    private static ProductChildResponse MapChildProduct(Product product, Guid? branchId)
+    {
+        var latestPrice = GetLatestPriceHistory(product.ProductPriceHistories, branchId);
 
-    //    using var memoryStream = new MemoryStream();
-    //    await file.CopyToAsync(memoryStream);
-    //    memoryStream.Position = 0;
+        var branchStock = branchId.HasValue
+            ? product.BranchStocks?.FirstOrDefault(bs => bs.BranchId == branchId.Value)
+            : null;
 
-    //    using var workbook = new XLWorkbook(memoryStream);
-    //    var worksheet = workbook.Worksheets
-    //        .FirstOrDefault(ws => string.Equals(ws.Name, "ProductTemplate", StringComparison.OrdinalIgnoreCase))
-    //        ?? workbook.Worksheets.FirstOrDefault();
-
-    //    if (worksheet == null)
-    //        return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Không tìm thấy sheet dữ liệu trong file.");
-
-    //    var headerRow = worksheet.FirstRowUsed();
-    //    if (headerRow == null)
-    //        return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "File import không có dữ liệu.");
-
-    //    var headerLookup = headerRow.CellsUsed()
-    //        .ToDictionary(cell => NormalizeHeader(cell.GetString()), cell => cell.Address.ColumnNumber, StringComparer.OrdinalIgnoreCase);
-
-    //    int? colCategory = GetColumn(headerLookup, "nhóm hàng");
-    //    int? colSku = GetColumn(headerLookup, "mã hàng");
-    //    int? colName = GetColumn(headerLookup, "tên hàng");
-    //    int? colBrand = GetColumn(headerLookup, "thương hiệu");
-    //    int? colSellPrice = GetColumn(headerLookup, "giá bán");
-    //    int? colCostPrice = GetColumn(headerLookup, "giá vốn");
-    //    int? colSize = GetColumn(headerLookup, "size");
-    //    int? colStyle = GetColumn(headerLookup, "style");
-    //    int? colColor = GetColumn(headerLookup, "màu");
-    //    int? colParentSku = GetColumn(headerLookup, "parentsku");
-    //    int? colIsMaster = GetColumn(headerLookup, "ismaster");
-    //    int? colImages = GetColumn(headerLookup, "hình ảnh", "hình ảnh");
-    //    int? colStatus = GetColumn(headerLookup, "đang kinh");
-    //    int? colDescription = GetColumn(headerLookup, "mô tả");
-
-    //    if (colCategory == null || colSku == null || colName == null)
-    //        return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Thiếu cột bắt buộc trong file import (Nhóm hàng, Mã hàng, Tên hàng).");
-
-    //    var lastRow = worksheet.LastRowUsed()?.RowNumber() ?? 1;
-    //    if (lastRow <= headerRow.RowNumber())
-    //        return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "File import không có dữ liệu.");
-
-    //    var categories = await _unitOfWork.CategoryRepository
-    //        .GetAll()
-    //        .Select(c => new { c.Id, c.Name })
-    //        .ToListAsync();
-
-    //    var categoryLookup = categories.ToDictionary(
-    //        c => c.Name.Trim().ToLowerInvariant(),
-    //        c => c.Id);
-
-    //    var importRows = new List<ProductImportRow>();
-    //    var seenSkus = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-    //    var errors = new List<string>();
-
-    //    for (int rowNumber = headerRow.RowNumber() + 1; rowNumber <= lastRow; rowNumber++)
-    //    {
-    //        var row = worksheet.Row(rowNumber);
-    //        if (!row.CellsUsed().Any())
-    //            continue;
-
-    //        var sku = GetCellString(row, colSku).Trim();
-    //        if (string.IsNullOrWhiteSpace(sku))
-    //        {
-    //            errors.Add($"Dòng {rowNumber}: Thiếu Mã hàng.");
-    //            continue;
-    //        }
-
-    //        if (!seenSkus.Add(sku))
-    //        {
-    //            errors.Add($"Dòng {rowNumber}: Mã hàng '{sku}' bị trùng trong file.");
-    //            continue;
-    //        }
-
-    //        var categoryName = GetCellString(row, colCategory).Trim();
-    //        if (string.IsNullOrWhiteSpace(categoryName))
-    //        {
-    //            errors.Add($"Dòng {rowNumber}: Thiếu Nhóm hàng.");
-    //            continue;
-    //        }
-
-    //        var productName = GetCellString(row, colName).Trim();
-    //        if (string.IsNullOrWhiteSpace(productName))
-    //        {
-    //            errors.Add($"Dòng {rowNumber}: Thiếu Tên hàng.");
-    //            continue;
-    //        }
-
-    //        importRows.Add(new ProductImportRow
-    //        {
-    //            RowNumber = rowNumber,
-    //            CategoryName = categoryName,
-    //            Sku = sku,
-    //            Name = productName,
-    //            Brand = ToNullIfEmpty(GetCellString(row, colBrand)),
-    //            SellingPrice = ParseDecimal(GetCellString(row, colSellPrice)),
-    //            CostPrice = ParseDecimal(GetCellString(row, colCostPrice)),
-    //            Size = ToNullIfEmpty(GetCellString(row, colSize)),
-    //            Style = ToNullIfEmpty(GetCellString(row, colStyle)),
-    //            Color = ToNullIfEmpty(GetCellString(row, colColor)),
-    //            ParentSku = ToNullIfEmpty(GetCellString(row, colParentSku)),
-    //            IsMaster = ParseBoolean(GetCellString(row, colIsMaster)),
-    //            AvatarUrl = ExtractFirstImage(GetCellString(row, colImages)),
-    //            Status = !string.IsNullOrWhiteSpace(GetCellString(row, colStatus))
-    //                ? GetCellString(row, colStatus).Trim()
-    //                : "Active",
-    //            Description = ToNullIfEmpty(GetCellString(row, colDescription))
-    //        });
-    //    }
-
-    //    if (!importRows.Any())
-    //        return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Không có dữ liệu hợp lệ trong file import.", errors);
-
-    //    var skuList = importRows.Select(r => r.Sku).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
-    //    var existingProducts = await _unitOfWork.ProductRepository
-    //        .GetByWhere(p => skuList.Contains(p.Sku))
-    //        .ToListAsync();
-
-    //    var existingLookup = existingProducts.ToDictionary(p => p.Sku, StringComparer.OrdinalIgnoreCase);
-    //    var priceHistories = new List<ProductPriceHistory>();
-    //    int created = 0;
-    //    int updated = 0;
-
-    //    foreach (var item in importRows)
-    //    {
-    //        if (!categoryLookup.TryGetValue(item.CategoryName.Trim().ToLowerInvariant(), out var categoryId))
-    //        {
-    //            errors.Add($"Dòng {item.RowNumber}: Không tìm thấy nhóm hàng '{item.CategoryName}'.");
-    //            continue;
-    //        }
-
-    //        if (existingLookup.TryGetValue(item.Sku, out var existingProduct))
-    //        {
-    //            var oldSnapshot = CreateProductLogPayload(existingProduct);
-
-    //            existingProduct.Name = item.Name;
-    //            existingProduct.Brand = item.Brand;
-    //            existingProduct.Size = item.Size;
-    //            existingProduct.Style = item.Style;
-    //            existingProduct.Color = item.Color;
-    //            existingProduct.ParentSku = item.ParentSku;
-    //            existingProduct.IsMaster = item.IsMaster;
-    //            existingProduct.AvatarUrl = item.AvatarUrl;
-    //            existingProduct.Description = item.Description;
-    //            existingProduct.Status = item.Status;
-    //            existingProduct.CategoryId = categoryId;
-    //            existingProduct.UpdatedAt = DateTime.Now;
-
-    //            _unitOfWork.ProductRepository.Update(existingProduct);
-    //            existingLookup[item.Sku] = existingProduct;
-
-    //            if (item.SellingPrice.HasValue && item.CostPrice.HasValue)
-    //            {
-    //                priceHistories.Add(new ProductPriceHistory
-    //                {
-    //                    Id = Guid.NewGuid(),
-    //                    ProductId = existingProduct.Id,
-    //                    SellingPrice = item.SellingPrice.Value,
-    //                    CostPrice = item.CostPrice.Value,
-    //                    EffectiveDate = DateTime.Now,
-    //                    CreatedAt = DateTime.Now,
-    //                    CreatedBy = accountId,
-    //                    Note = "Import Excel"
-    //                });
-    //            }
-
-    //            updated++;
-    //        }
-    //        else
-    //        {
-    //            var now = DateTime.Now;
-    //            var newProduct = new Product
-    //            {
-    //                Id = Guid.NewGuid(),
-    //                Sku = item.Sku,
-    //                Name = item.Name,
-    //                Brand = item.Brand,
-    //                Size = item.Size,
-    //                Style = item.Style,
-    //                Color = item.Color,
-    //                ParentSku = item.ParentSku,
-    //                IsMaster = item.IsMaster,
-    //                AvatarUrl = item.AvatarUrl,
-    //                Description = item.Description,
-    //                Status = item.Status,
-    //                CategoryId = categoryId,
-    //                Weight = 0,
-    //                Material = null,
-    //                CreatedAt = now,
-    //                UpdatedAt = now
-    //            };
-
-    //            await _unitOfWork.ProductRepository.AddAsync(newProduct);
-    //            existingLookup[item.Sku] = newProduct;
-
-    //            if (item.SellingPrice.HasValue && item.CostPrice.HasValue)
-    //            {
-    //                priceHistories.Add(new ProductPriceHistory
-    //                {
-    //                    Id = Guid.NewGuid(),
-    //                    ProductId = newProduct.Id,
-    //                    SellingPrice = item.SellingPrice.Value,
-    //                    CostPrice = item.CostPrice.Value,
-    //                    EffectiveDate = now,
-    //                    CreatedAt = now,
-    //                    CreatedBy = accountId,
-    //                    Note = "Import Excel"
-    //                });
-    //            }
-
-    //            created++;
-    //        }
-    //    }
-
-    //    if (priceHistories.Any())
-    //        await _unitOfWork.ProductPriceHistoryRepository.AddRangeAsync(priceHistories);
-
-    //    if (created > 0 || updated > 0 || priceHistories.Any())
-    //        await _unitOfWork.SaveChangesAsync();
-
-    //    var message = errors.Any()
-    //        ? "Import hoàn tất với một số lỗi. Vui lòng kiểm tra chi tiết."
-    //        : "Import sản phẩm thành công.";
-
-    //    var resultPayload = new
-    //    {
-    //        Created = created,
-    //        Updated = updated,
-    //        Errors = errors
-    //    };
-
-    //    return new BusinessResult(Const.HTTP_STATUS_OK, message, resultPayload);
-    //}
-
+        return new ProductChildResponse
+        {
+            Id = product.Id,
+            AvartarUrl = product.AvatarUrl ?? string.Empty,
+            Sku = product.Sku,
+            Name = product.Name,
+            Status = product.Status,
+            CostPrice = latestPrice?.CostPrice,
+            SellingPrice = latestPrice?.SellingPrice,
+            StockQuantity = branchStock?.AvailableQty ?? 0
+        };
+    }
 
     private static string GenerateCode128Barcode(string content)
     {
@@ -835,44 +818,43 @@ public class ProductService : IProductService
         if (priceHistories == null)
             return null;
 
+        var materialized = priceHistories as IList<ProductPriceHistory> ?? priceHistories.ToList();
+        if (materialized.Count == 0)
+            return null;
+
         var now = DateTime.Now;
+        var ordered = materialized
+            .OrderByDescending(h => h.EffectiveDate)
+            .ThenByDescending(h => h.CreatedAt)
+            .ToList();
 
-        ProductPriceHistory? SelectLatest(IEnumerable<ProductPriceHistory> source) =>
-            source
-                .OrderByDescending(h => h.EffectiveDate)
-                .ThenByDescending(h => h.CreatedAt)
-                .FirstOrDefault();
+        ProductPriceHistory? Pick(Func<ProductPriceHistory, bool> predicate, bool activeOnly)
+        {
+            var filtered = ordered.Where(predicate);
+            if (activeOnly)
+            {
+                filtered = filtered.Where(h => h.EffectiveDate <= now && (h.ExpiryDate == null || h.ExpiryDate > now));
+            }
 
-        ProductPriceHistory? SelectLatestActive(IEnumerable<ProductPriceHistory> source) =>
-            SelectLatest(source.Where(h => h.EffectiveDate <= now &&
-                                            (h.ExpiryDate == null || h.ExpiryDate > now)));
+            return filtered.FirstOrDefault();
+        }
 
         if (branchId.HasValue)
         {
-            var branchSpecificActive = SelectLatestActive(priceHistories.Where(h => h.BranchId == branchId.Value));
-            if (branchSpecificActive != null)
-                return branchSpecificActive;
+            var branchIdValue = branchId.Value;
+            var branchActive = Pick(h => h.BranchId == branchIdValue, true);
+            if (branchActive != null)
+                return branchActive;
 
-            var globalActive = SelectLatestActive(priceHistories.Where(h => h.BranchId == null));
+            var globalActive = Pick(h => h.BranchId == null, true);
             if (globalActive != null)
                 return globalActive;
 
-            var branchSpecific = SelectLatest(priceHistories.Where(h => h.BranchId == branchId.Value));
-            if (branchSpecific != null)
-                return branchSpecific;
+            var branchAny = Pick(h => h.BranchId == branchIdValue, false);
+            if (branchAny != null)
+                return branchAny;
         }
 
-        var latestGlobalActive = SelectLatestActive(priceHistories.Where(h => h.BranchId == null));
-        if (latestGlobalActive != null)
-            return latestGlobalActive;
-
-        if (branchId.HasValue)
-        {
-            var branchFallback = SelectLatest(priceHistories.Where(h => h.BranchId == branchId.Value));
-            if (branchFallback != null)
-                return branchFallback;
-        }
-
-        return SelectLatest(priceHistories.Where(h => h.BranchId == null));
+        return Pick(h => h.BranchId == null, true) ?? Pick(h => h.BranchId == null, false);
     }
 }

@@ -20,6 +20,10 @@ namespace Chibest.Repository
         private ICategoryRepository _categoryRepository;
         private IColorRepository _colorRepository;
         private ISizeRepository _sizeRepository;
+        private IPurchaseInvoiceRepository _purchaseInvoiceRepository;
+        private IFranchiseInvoiceRepository _franchiseInvoiceRepository;
+        private IFranchiseOrderRepository _franchiseOrderRepository;
+        private IFranchiseOrderDetailRepository _franchiseOrderDetailRepository;
         private IPurchaseOrderRepository _purchaseOrderRepository;
         private ITransferOrderRepository _transferOrderRepository;
         private IPurchaseReturnRepository _purchaseReturnRepository;
@@ -53,6 +57,10 @@ namespace Chibest.Repository
         public IProductPriceHistoryRepository ProductPriceHistoryRepository 
             => _productPriceHistoryRepository ??= new ProductPriceHistoryRepository(_context);
 
+        public IPurchaseInvoiceRepository PurchaseInvoiceRepository => _purchaseInvoiceRepository ??= new PurchaseInvoiceRepository(_context);
+        public IFranchiseInvoiceRepository FranchiseInvoiceRepository => _franchiseInvoiceRepository ??= new FranchiseInvoiceRepository(_context);
+        public IFranchiseOrderRepository FranchiseOrderRepository => _franchiseOrderRepository ??= new FranchiseOrderRepository(_context);
+        public IFranchiseOrderDetailRepository FranchiseOrderDetailRepository => _franchiseOrderDetailRepository ??= new FranchiseOrderDetailRepository(_context);
         public IPurchaseOrderRepository PurchaseOrderRepository => _purchaseOrderRepository ??= new PurchaseOrderRepository(_context);
 
         public ITransferOrderRepository TransferOrderRepository => _transferOrderRepository ??= new TransferOrderRepository(_context);

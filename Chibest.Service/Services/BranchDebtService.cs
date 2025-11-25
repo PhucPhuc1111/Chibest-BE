@@ -6,6 +6,7 @@ using Chibest.Service.Interface;
 using Chibest.Service.ModelDTOs.Request;
 using Chibest.Service.ModelDTOs.Response;
 using Chibest.Service.Utilities;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using ClosedXML.Excel;
 using System.IO;
@@ -15,6 +16,8 @@ namespace Chibest.Service.Services
 {
     public class BranchDebtService : IBranchDebtService
     {
+        private const string BranchConfirmationFolder = "branch-debt-confirmation";
+
         private readonly IUnitOfWork _unitOfWork;
         private readonly IFileService _fileService;
 
@@ -46,12 +49,10 @@ namespace Chibest.Service.Services
                 if (t == null)
                     continue;
 
-                string? confirmationUrl = t.Confirmation;
-                if (t.ConfirmationFile != null && t.ConfirmationFile.Length > 0)
-                {
-                    var confirmationFileName = $"{branchDebt.BranchId}_{Guid.NewGuid()}";
-                    confirmationUrl = await _fileService.SaveImageAsync(t.ConfirmationFile, confirmationFileName, "confirmation");
-                }
+                var confirmationUrl = await SaveConfirmationAsync(
+                    branchDebt.BranchId,
+                    t.Confirmation,
+                    t.ConfirmationFile);
 
                 var historyEntity = new BranchDebtHistory
                 {
@@ -501,17 +502,10 @@ namespace Chibest.Service.Services
             if (history == null)
                 return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, "Không tìm thấy lịch sử công nợ cần cập nhật");
 
-            string? confirmationUrl = history.Confirmation;
-
-            if (request.ConfirmationFile != null && request.ConfirmationFile.Length > 0)
-            {
-                var confirmationFileName = $"{branchDebt.BranchId}_{Guid.NewGuid()}";
-                confirmationUrl = await _fileService.SaveImageAsync(request.ConfirmationFile, confirmationFileName, "confirmation");
-            }
-            else if (!string.IsNullOrWhiteSpace(request.Confirmation))
-            {
-                confirmationUrl = request.Confirmation;
-            }
+            var confirmationUrl = await SaveConfirmationAsync(
+                branchDebt.BranchId,
+                string.IsNullOrWhiteSpace(request.Confirmation) ? history.Confirmation : request.Confirmation,
+                request.ConfirmationFile);
 
             history.Confirmation = confirmationUrl;
 
@@ -537,6 +531,17 @@ namespace Chibest.Service.Services
                     branchDebt.ReturnAmount,
                     branchDebt.RemainingDebt
                 });
+        }
+
+        private async Task<string?> SaveConfirmationAsync(Guid branchId, string? confirmation, IFormFile? confirmationFile)
+        {
+            if (confirmationFile != null && confirmationFile.Length > 0)
+            {
+                var confirmationFileName = $"{branchId}_{Guid.NewGuid()}";
+                return await _fileService.SaveImageAsync(confirmationFile, confirmationFileName, BranchConfirmationFolder);
+            }
+
+            return string.IsNullOrWhiteSpace(confirmation) ? null : confirmation;
         }
 
         private void RecalculateBranchDebtTotals(BranchDebt branchDebt)

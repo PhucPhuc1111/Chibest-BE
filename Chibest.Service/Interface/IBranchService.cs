@@ -12,7 +12,7 @@ namespace Chibest.Service.Interface
     {
         Task<IBusinessResult> GetBranchById(Guid id);
         Task<IBusinessResult> CreateBranch(BranchRequest request);
-        Task<IBusinessResult> GetBranchList(int pageIndex, int pageSize, string search);
+        Task<IBusinessResult> GetBranchList(int pageIndex, int pageSize, string? search = null, bool? isFranchise = null);
         Task<IBusinessResult> UpdateBranch(Guid id, BranchRequest request);
         Task<IBusinessResult> DeleteBranch(Guid id);
     }

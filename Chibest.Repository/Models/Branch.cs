@@ -27,6 +27,10 @@ public class Branch
 
     public virtual ICollection<Attendance> Attendances { get; set; } = new List<Attendance>();
 
+    public virtual ICollection<FranchiseInvoice> FranchiseInvoices { get; set; } = new List<FranchiseInvoice>();
+
+    public virtual ICollection<FranchiseOrder> FranchiseOrders { get; set; } = new List<FranchiseOrder>();
+
     public virtual BranchDebt? BranchDebt { get; set; }
 
     public virtual ICollection<BranchStock> BranchStocks { get; set; } = new List<BranchStock>();

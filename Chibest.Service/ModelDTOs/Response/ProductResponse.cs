@@ -20,7 +20,6 @@ public class ProductResponse
     public decimal? CostPrice { get; set; }
     public decimal? SellingPrice { get; set; }
     public decimal StockQuantity { get; set; }
-    public string HandleStatus { get; set; } = null!;
     public string? Note { get; set; }
 }
 
@@ -33,6 +32,19 @@ public class ProductListResponse
     public bool IsMaster { get; set; }
     public string Status { get; set; }
     public int ChildrenNo { get; set; }
+    public List<ProductChildResponse> Children { get; set; } = new();
+    public decimal? CostPrice { get; set; }
+    public decimal? SellingPrice { get; set; }
+    public decimal StockQuantity { get; set; }
+}
+
+public class ProductChildResponse
+{
+    public Guid Id { get; set; }
+    public string AvartarUrl { get; set; } = string.Empty;
+    public string Sku { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
     public decimal? CostPrice { get; set; }
     public decimal? SellingPrice { get; set; }
     public decimal StockQuantity { get; set; }

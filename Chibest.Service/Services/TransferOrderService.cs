@@ -173,36 +173,9 @@ namespace Chibest.Service.Services
                 _unitOfWork.TransferOrderRepository.Update(transferOrder);
                 await _unitOfWork.SaveChangesAsync();
 
-                if (request.Status == OrderStatus.Received && oldStatus != OrderStatus.Received.ToString())
+                if (request.Status == OrderStatus.Done && oldStatus != OrderStatus.Done.ToString())
                 {
-                    var debt = transferOrder.SubTotal;
-                    var note = $"Công nợ từ phiếu chuyển kho #{transferOrder.InvoiceCode}";
-
-                    if (fromBranch.IsFranchise && !toBranch.IsFranchise)
-                    {
-                        var debtResult = await _unitOfWork.BranchDebtRepository.AddBranchTransactionAsync(
-                            fromBranch.Id, "Return", debt, note
-                        );
-
-                        if (debtResult.StatusCode != Const.HTTP_STATUS_OK)
-                        {
-                            return new BusinessResult(Const.ERROR_EXCEPTION,
-                                "Lỗi xử lý công nợ chi nhánh nhận hàng");
-                        }
-                    }
-                    if (!fromBranch.IsFranchise && toBranch.IsFranchise)
-                    {
-                        var debtOutResult = await _unitOfWork.BranchDebtRepository.AddBranchTransactionAsync(
-                            toBranch.Id, "Transfer", debt, note
-                        );
-
-                        if (debtOutResult.StatusCode != Const.HTTP_STATUS_OK)
-                        {
-                            return new BusinessResult(Const.ERROR_EXCEPTION,
-                                "Lỗi xử lý công nợ chi nhánh chuyển hàng");
-                        }
-                    }
-
+                    var toBranchId = transferOrder.ToBranch!.Value;
                     foreach (var detail in transferOrder.TransferOrderDetails)
                     {
                         if (detail.ActualQuantity.HasValue && detail.ActualQuantity.Value > 0)
@@ -210,7 +183,7 @@ namespace Chibest.Service.Services
                             int qty = detail.ActualQuantity.Value;
 
                             var increaseResult = await _unitOfWork.BranchStockRepository.UpdateBranchStockAsync(
-                                branchId: transferOrder.ToBranch.Value,
+                                branchId: toBranchId,
                                 productId: detail.ProductId,
                                 deltaAvailableQty: qty
                             );
@@ -245,7 +218,7 @@ namespace Chibest.Service.Services
 
             orderSubTotal = Math.Max(orderSubTotal, 0m);
 
-            string invoiceCode = request.InvoiceCode;
+            string? invoiceCode = request.InvoiceCode;
             if (invoiceCode == null)
                 invoiceCode = await GenerateInvoiceCodeAsync();
 

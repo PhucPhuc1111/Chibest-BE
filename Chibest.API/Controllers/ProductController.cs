@@ -82,16 +82,26 @@ public class ProductController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    //[HttpPut]
-    //public async Task<IActionResult> Update([FromBody] ProductRequest request)
-    //{
-    //    var accountId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-    //    if (accountId == null || accountId == Guid.Empty.ToString())
-    //        return StatusCode(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
+    [HttpPut("{id}")]
+    [Consumes("multipart/form-data")]
+    public async Task<IActionResult> Update(Guid id, [FromForm] ProductUpdateRequest request)
+    {
+        var accountId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (accountId == null || accountId == Guid.Empty.ToString())
+            return StatusCode(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
 
-    //    var result = await _productService.UpdateAsync(request, Guid.Parse(accountId));
-    //    return StatusCode(result.StatusCode, result);
-    //}
+        var result = await _productService.UpdateProductFieldsAsync(
+            id,
+            request.AvatarFile,
+            request.VideoFile,
+            request.CostPrice,
+            request.SellingPrice,
+            request.Name,
+            request.Status,
+            request.Description);
+
+        return StatusCode(result.StatusCode, result);
+    }
 
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(Guid id)

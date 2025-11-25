@@ -190,7 +190,7 @@ namespace Chibest.Service.Services
                 _unitOfWork.PurchaseReturnRepository.Update(purchaseReturn);
                 await _unitOfWork.SaveChangesAsync();
 
-                if (status == OrderStatus.Received && oldStatus != OrderStatus.Received.ToString())
+                if (status == OrderStatus.Done && oldStatus != OrderStatus.Done.ToString())
                 {
                     if (!purchaseReturn.BranchId.HasValue)
                         return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "Phiếu trả hàng chưa gắn chi nhánh để cập nhật tồn kho.");

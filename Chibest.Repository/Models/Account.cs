@@ -43,6 +43,8 @@ public class Account
 
     public virtual ICollection<ProductPlan> ProductPlans { get; set; } = new List<ProductPlan>();
 
+    public virtual ICollection<PurchaseInvoice> PurchaseInvoices { get; set; } = new List<PurchaseInvoice>();
+
     public virtual ICollection<PurchaseOrder> PurchaseOrderEmployees { get; set; } = new List<PurchaseOrder>();
 
     public virtual ICollection<PurchaseOrder> PurchaseOrderSuppliers { get; set; } = new List<PurchaseOrder>();

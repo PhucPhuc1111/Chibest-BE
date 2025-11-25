@@ -38,33 +38,21 @@ public class CategoryController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CategoryRequest request)
     {
-        var accountId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (accountId == null || accountId == Guid.Empty.ToString())
-            return StatusCode(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
-
-        var result = await _categoryService.CreateAsync(request, Guid.Parse(accountId));
+        var result = await _categoryService.CreateAsync(request);
         return StatusCode(result.StatusCode, result);
     }
 
     [HttpPut]
     public async Task<IActionResult> Update([FromBody] CategoryRequest request)
     {
-        var accountId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (accountId == null || accountId == Guid.Empty.ToString())
-            return StatusCode(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
-
-        var result = await _categoryService.UpdateAsync(request, Guid.Parse(accountId));
+        var result = await _categoryService.UpdateAsync(request);
         return StatusCode(result.StatusCode, result);
     }
 
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete([FromRoute] Guid id)
     {
-        var accountId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (accountId == null || accountId == Guid.Empty.ToString())
-            return StatusCode(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
-
-        var result = await _categoryService.DeleteAsync(id, Guid.Parse(accountId));
+        var result = await _categoryService.DeleteAsync(id);
         return StatusCode(result.StatusCode, result);
     }
 }
