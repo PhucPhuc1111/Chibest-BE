@@ -27,6 +27,7 @@ public class ProductListResponse
 {
     public Guid Id { get; set; }
     public string AvartarUrl { get; set; }
+    public string VideoUrl { get; set; }
     public string Sku { get; set; }
     public string Name { get; set; }
     public bool IsMaster { get; set; }
@@ -42,6 +43,7 @@ public class ProductChildResponse
 {
     public Guid Id { get; set; }
     public string AvartarUrl { get; set; } = string.Empty;
+    public string VideoUrl { get; set; }
     public string Sku { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;

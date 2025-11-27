@@ -56,7 +56,6 @@ public class CategoryService : ICategoryService
         foreach (var category in categories)
         {
             var response = category.Adapt<CategoryResponse>();
-            response.ProductCount = await _unitOfWork.ProductRepository.GetByWhere(p => p.CategoryId == category.Id).CountAsync();
             categoryResponses.Add(response);
         }
 

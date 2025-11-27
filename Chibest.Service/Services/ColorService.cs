@@ -46,12 +46,11 @@ public class ColorService : IColorService
 
     public async Task<IBusinessResult> CreateAsync(ColorRequest request, Guid accountId)
     {
-        if (request == null || string.IsNullOrWhiteSpace(request.Name) || string.IsNullOrWhiteSpace(request.Code))
+        if (request == null || string.IsNullOrWhiteSpace(request.Code))
         {
             return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
         }
 
-        var normalizedName = request.Name.Trim().ToLower();
         var normalizedCode = request.Code.Trim().ToLower();
 
         var existingColor = await _unitOfWork.ColorRepository

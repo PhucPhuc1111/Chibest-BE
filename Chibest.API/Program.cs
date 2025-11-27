@@ -1,6 +1,8 @@
 ﻿using Chibest.API.Extensions;
 using Chibest.API.Middleware;
+using Chibest.Repository.Models;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -52,6 +54,12 @@ Console.WriteLine("For develop environment, ensure .env is in the same folder as
 Console.WriteLine("Make sure .env is at path: " + Directory.GetCurrentDirectory());
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<ChiBestDbContext>();
+    await dbContext.Database.MigrateAsync();
+}
 
 // Swagger trước để tiện debug
 app.UseSwagger();

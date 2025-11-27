@@ -1,4 +1,5 @@
-﻿using Chibest.API.Attributes;
+﻿using System;
+using Chibest.API.Attributes;
 using Chibest.Common;
 using Chibest.Service.Interface;
 using Chibest.Service.ModelDTOs.Request;
@@ -39,6 +40,25 @@ public class FileController : ControllerBase
 
         // Trả về file stream, trình duyệt sẽ tự hiển thị
         return File(fileStream, contentType);
+    }
+
+    [HttpGet("video")]
+    public IActionResult GetVideo([FromQuery] string urlPath)
+    {
+        if (string.IsNullOrEmpty(urlPath))
+            return BadRequest("Đường dẫn file là bắt buộc.");
+
+        try
+        {
+            var (fileStream, contentType, _) = _fileService.GetVideoFile(urlPath);
+            Response.Headers["Accept-Ranges"] = "bytes";
+
+            return File(fileStream, contentType, fileDownloadName: null, enableRangeProcessing: true);
+        }
+        catch (ArgumentException ex)
+        {
+            return NotFound(ex.Message);
+        }
     }
 
     [Permission(Const.Permissions.File)]

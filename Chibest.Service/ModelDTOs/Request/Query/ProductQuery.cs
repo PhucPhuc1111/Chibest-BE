@@ -8,4 +8,6 @@ public class ProductQuery: BaseQuery
     public bool? IsMaster { get; set; }
     public string? Brand { get; set; }
     public Guid? BranchId { get; set; }
+    public Guid? SizeId { get; set; }
+    public Guid? ColorId { get; set; }
 }

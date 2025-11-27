@@ -63,6 +63,16 @@ public class ProductService : IProductService
             predicate = predicate.And(p => p.CategoryId == query.CategoryId.Value);
         }
 
+        if (query.SizeId.HasValue)
+        {
+            predicate = predicate.And(p => p.SizeId == query.SizeId.Value);
+        }
+
+        if (query.ColorId.HasValue)
+        {
+            predicate = predicate.And(p => p.ColorId == query.ColorId.Value);
+        }
+
         Func<IQueryable<Product>, IOrderedQueryable<Product>>? orderBy = null;
         if (!string.IsNullOrEmpty(query.SortBy))
         {
@@ -149,6 +159,7 @@ public class ProductService : IProductService
             {
                 Id = product.Id,
                 AvartarUrl = product.AvatarUrl!,
+                VideoUrl = product.VideoUrl!,
                 Sku = product.Sku!,
                 Name = product.Name!,
                 IsMaster = product.IsMaster,
@@ -197,6 +208,7 @@ public class ProductService : IProductService
             {
                 Id = variant.Id,
                 AvartarUrl = variant.AvatarUrl!,
+                VideoUrl = variant.VideoUrl!,
                 Sku = variant.Sku!,
                 Name = variant.Name!,
                 IsMaster = variant.IsMaster,
@@ -388,6 +400,7 @@ public class ProductService : IProductService
             {
                 Id = product.Id,
                 AvartarUrl = product.AvatarUrl!,
+                VideoUrl = product.VideoUrl!,
                 Sku = product.Sku!,
                 Name = product.Name!,
                 IsMaster = product.IsMaster,
@@ -782,6 +795,7 @@ public class ProductService : IProductService
         {
             Id = product.Id,
             AvartarUrl = product.AvatarUrl ?? string.Empty,
+            VideoUrl = product.VideoUrl ?? string.Empty,
             Sku = product.Sku,
             Name = product.Name,
             Status = product.Status,

@@ -284,6 +284,26 @@ public class FileService : IFileService
         return (fileStream, contentType);
     }
 
+    public (Stream FileStream, string ContentType, long FileLength) GetVideoFile(string relativePath)
+    {
+        if (string.IsNullOrWhiteSpace(relativePath))
+            throw new ArgumentException("Đường dẫn file là bắt buộc.", nameof(relativePath));
+
+        var physicalFilePath = Path.Combine(_privateStoragePath, relativePath);
+        if (!System.IO.File.Exists(physicalFilePath))
+            throw new ArgumentException("Tên file không hợp lệ.");
+
+        if (!_contentTypeProvider.TryGetContentType(physicalFilePath, out var contentType))
+        {
+            contentType = "application/octet-stream";
+        }
+
+        var fileInfo = new FileInfo(physicalFilePath);
+        var fileStream = new FileStream(physicalFilePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+
+        return (fileStream, contentType, fileInfo.Length);
+    }
+
     public async Task<byte[]> ExportProductsToExcelAsync(ExcelExportRequest request)
     {
         // 1. Get data from database
@@ -427,8 +447,8 @@ public class FileService : IFileService
             Name = que.Product.Name,
             Description = que.Product.Description,
             AvatarUrl = que.Product.AvatarUrl, // Lấy URL (đường dẫn tương đối)
-            Color = que.Product.Color.Code,
-            Size = que.Product.Size.Code,
+            Color = que.Product.Color != null ? que.Product.Color.Code : null,
+            Size = que.Product.Size != null ? que.Product.Size.Code : null,
             Style = que.Product.Style,
             Material = que.Product.Material,
             Weight = que.Product.Weight,
