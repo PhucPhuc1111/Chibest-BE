@@ -264,23 +264,31 @@ public class FileService : IFileService
 
     public (Stream FileStream, string ContentType) GetImageFile(string relativePath)
     {
-        // relativePath VD: /images/avatars/file.png
-        var physicalFilePath = Path.Combine(_privateStoragePath, relativePath);
+        const string fallbackRelativePath = "images/noimage.png";
 
-        // Find file
-        if (!System.IO.File.Exists(physicalFilePath))
-            throw new ArgumentException("Tên file không hợp lệ.");
+        string Normalize(string? path) =>
+            string.IsNullOrWhiteSpace(path)
+                ? fallbackRelativePath
+                : path.Replace('\\', '/').TrimStart('/', '\\');
 
-        // Get ContentType (MIME type)
+        var normalizedPath = Normalize(relativePath);
+        var physicalFilePath = Path.Combine(_privateStoragePath, normalizedPath);
+
+        if (!File.Exists(physicalFilePath))
+        {
+            normalizedPath = fallbackRelativePath;
+            physicalFilePath = Path.Combine(_privateStoragePath, normalizedPath);
+
+            if (!File.Exists(physicalFilePath))
+                throw new ArgumentException("Tên file không hợp lệ.");
+        }
+
         if (!_contentTypeProvider.TryGetContentType(physicalFilePath, out var contentType))
         {
-            // Default binary stream type
             contentType = "application/octet-stream";
         }
 
-        // Create file stream
         Stream fileStream = new FileStream(physicalFilePath, FileMode.Open, FileAccess.Read, FileShare.Read);
-
         return (fileStream, contentType);
     }
 
@@ -302,6 +310,29 @@ public class FileService : IFileService
         var fileStream = new FileStream(physicalFilePath, FileMode.Open, FileAccess.Read, FileShare.Read);
 
         return (fileStream, contentType, fileInfo.Length);
+    }
+
+    public void DeletePrivateFile(string? relativePath)
+    {
+        if (string.IsNullOrWhiteSpace(relativePath))
+            return;
+
+        var normalized = relativePath
+            .Replace('\\', '/')
+            .TrimStart('/', '\\');
+
+        if (string.IsNullOrWhiteSpace(normalized))
+            return;
+
+        var fullPath = Path.GetFullPath(Path.Combine(_privateStoragePath, normalized));
+
+        if (!fullPath.StartsWith(_privateStoragePath, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("Invalid storage path.");
+
+        if (File.Exists(fullPath))
+        {
+            File.Delete(fullPath);
+        }
     }
 
     public async Task<byte[]> ExportProductsToExcelAsync(ExcelExportRequest request)

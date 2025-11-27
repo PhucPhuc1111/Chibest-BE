@@ -2,6 +2,8 @@
 using Chibest.Service.ModelDTOs.Request;
 using Chibest.Service.ModelDTOs.Request.Query;
 using Microsoft.AspNetCore.Http;
+using System;
+using System.Collections.Generic;
 
 namespace Chibest.Service.Interface;
 
@@ -21,7 +23,7 @@ public interface IProductService
         string? name = null,
         string? status = null,
         string? description = null);
-    Task<IBusinessResult> DeleteAsync(Guid id, Guid accountId);
+    Task<IBusinessResult> DeleteAsync(IEnumerable<Guid> productIds);
     Task<IBusinessResult> GetByIdAsync(Guid id, Guid? branchId);
     //Task<IBusinessResult> ImportProductsFromExcelAsync(IFormFile file, Guid accountId);
     Task<IBusinessResult> GenerateProductBarcodeAsync(Guid productId, Guid? branchId);

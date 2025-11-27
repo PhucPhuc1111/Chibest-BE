@@ -525,6 +525,7 @@ public class ProductService : IProductService
             return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, "SKU và tên sản phẩm là bắt buộc.");
 
         var baseSku = request.Sku.Trim();
+        var normalizedBaseSku = baseSku.ToUpperInvariant();
         var baseName = request.Name.Trim();
 
         string? avatarUrl = request.AvatarUrl;
@@ -631,10 +632,10 @@ public class ProductService : IProductService
             }
         }
 
-        var candidateSkus = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { baseSku };
+        var candidateSkus = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { normalizedBaseSku };
         foreach (var (color, size) in variantDefinitions)
         {
-            var variantSku = BuildVariantSku(baseSku, color, size);
+            var variantSku = BuildVariantSku(normalizedBaseSku, color, size);
             if (!candidateSkus.Add(variantSku))
                 return new BusinessResult(Const.HTTP_STATUS_CONFLICT, $"SKU biến thể bị trùng: {variantSku}");
         }
@@ -650,8 +651,8 @@ public class ProductService : IProductService
         var now = DateTime.Now;
         var parentProduct = request.Adapt<Product>();
         parentProduct.Id = Guid.NewGuid();
-        parentProduct.Sku = baseSku.ToUpperInvariant();
-        parentProduct.BarCode = baseSku.ToUpperInvariant();
+        parentProduct.Sku = normalizedBaseSku;
+        parentProduct.BarCode = normalizedBaseSku;
         parentProduct.Name = baseName;
         parentProduct.AvatarUrl = avatarUrl;
         parentProduct.VideoUrl = videoUrl;
@@ -663,7 +664,8 @@ public class ProductService : IProductService
         parentProduct.Note = request.Note;
         parentProduct.CreatedAt = now;
         parentProduct.UpdatedAt = now;
-        parentProduct.ParentSku = generateVariants ? null : request.ParentSku;
+        var normalizedParentSku = request.ParentSku?.Trim().ToUpperInvariant();
+        parentProduct.ParentSku = generateVariants ? null : normalizedParentSku;
         parentProduct.IsMaster = generateVariants || request.IsMaster;
 
         if (generateVariants)
@@ -679,7 +681,7 @@ public class ProductService : IProductService
         {
             foreach (var (color, size) in variantDefinitions)
             {
-                var variantSku = BuildVariantSku(baseSku, color, size);
+                var variantSku = BuildVariantSku(normalizedBaseSku, color, size);
                 var variant = new Product
                 {
                     Id = Guid.NewGuid(),
@@ -699,7 +701,7 @@ public class ProductService : IProductService
                     CreatedAt = now,
                     UpdatedAt = now,
                     CategoryId = parentProduct.CategoryId,
-                    ParentSku = baseSku
+                    ParentSku = normalizedBaseSku
                 };
 
                 variants.Add(variant);
@@ -814,15 +816,60 @@ public class ProductService : IProductService
 
     }
 
-    public async Task<IBusinessResult> DeleteAsync(Guid id, Guid accountId)
+    public async Task<IBusinessResult> DeleteAsync(IEnumerable<Guid> productIds)
     {
-        var existing = await _unitOfWork.ProductRepository.GetByIdAsync(id);
-        if (existing == null)
+        if (productIds == null)
+            return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, Const.FAIL_DELETE_MSG);
+
+        var distinctIds = productIds.Distinct().ToList();
+        if (!distinctIds.Any())
+            return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, Const.FAIL_DELETE_MSG);
+
+        var products = await _unitOfWork.ProductRepository
+            .GetAllAsync(predicate: product => distinctIds.Contains(product.Id));
+
+        var productsToDelete = products.ToList();
+        if (!productsToDelete.Any())
             return new BusinessResult(Const.HTTP_STATUS_NOT_FOUND, Const.FAIL_READ_MSG);
 
-        var oldValue = JsonSerializer.Serialize(existing);
+        var masterSkus = productsToDelete
+            .Where(p => p.IsMaster && !string.IsNullOrWhiteSpace(p.Sku))
+            .Select(p => p.Sku.Trim().ToUpperInvariant())
+            .Distinct()
+            .ToList();
 
-        _unitOfWork.ProductRepository.Delete(existing);
+        if (masterSkus.Any())
+        {
+            var childProducts = await _unitOfWork.ProductRepository
+                .GetByWhere(p => p.ParentSku != null && masterSkus.Contains(p.ParentSku!.ToUpper()))
+                .ToListAsync();
+
+            if (childProducts.Any())
+            {
+                var existingIds = new HashSet<Guid>(productsToDelete.Select(p => p.Id));
+                foreach (var child in childProducts)
+                {
+                    if (existingIds.Add(child.Id))
+                    {
+                        productsToDelete.Add(child);
+                    }
+                }
+            }
+        }
+
+        var assetPaths = productsToDelete
+            .SelectMany(p => new[] { p.AvatarUrl, p.VideoUrl })
+            .Where(path => !string.IsNullOrWhiteSpace(path))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var assetPath in assetPaths)
+        {
+            _fileService.DeletePrivateFile(assetPath);
+        }
+
+        var oldValue = JsonSerializer.Serialize(productsToDelete);
+
+        await _unitOfWork.ProductRepository.DeleteRangeAsync(productsToDelete);
         await _unitOfWork.SaveChangesAsync();
 
         return new BusinessResult(Const.HTTP_STATUS_OK, Const.SUCCESS_DELETE_MSG);

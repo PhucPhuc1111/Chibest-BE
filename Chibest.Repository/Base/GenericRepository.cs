@@ -96,6 +96,12 @@ namespace Chibest.Repository.Base
             _context.Set<TEntity>().Remove(entity);
         }
 
+        public Task DeleteRangeAsync(IEnumerable<TEntity> entities)
+        {
+            _context.Set<TEntity>().RemoveRange(entities);
+            return Task.CompletedTask;
+        }
+
         public void RemoveRange(IEnumerable<TEntity> entities)
         {
             _context.Set<TEntity>().RemoveRange(entities);

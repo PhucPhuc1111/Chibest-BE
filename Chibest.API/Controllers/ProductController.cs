@@ -103,14 +103,10 @@ public class ProductController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [HttpDelete("{id}")]
-    public async Task<IActionResult> Delete(Guid id)
+    [HttpDelete]
+    public async Task<IActionResult> Delete(IEnumerable<Guid> productIds)
     {
-        var accountId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (accountId == null || accountId == Guid.Empty.ToString())
-            return StatusCode(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
-
-        var result = await _productService.DeleteAsync(id, Guid.Parse(accountId));
+        var result = await _productService.DeleteAsync(productIds);
         return StatusCode(result.StatusCode, result);
     }
 }

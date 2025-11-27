@@ -22,6 +22,8 @@ namespace Chibest.Repository.Base
 
         void Delete(TEntity entity);
 
+        Task DeleteRangeAsync(IEnumerable<TEntity> entities);
+
         Task AddRangeAsync(IEnumerable<TEntity> entities);
 
         void UpdateRange(IEnumerable<TEntity> entities);

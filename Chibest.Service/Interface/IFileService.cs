@@ -12,4 +12,5 @@ public interface IFileService
     (Stream FileStream, string ContentType) GetImageFile(string relativePath);
     (Stream FileStream, string ContentType, long FileLength) GetVideoFile(string relativePath);
     Task<byte[]> ExportProductsToExcelAsync(ExcelExportRequest request);
+    void DeletePrivateFile(string? relativePath);
 }
