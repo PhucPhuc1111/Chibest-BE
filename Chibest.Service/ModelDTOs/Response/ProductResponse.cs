@@ -32,6 +32,11 @@ public class ProductListResponse
     public string Name { get; set; }
     public bool IsMaster { get; set; }
     public string Status { get; set; }
+    public string Description {get; set; }
+    public string Note { get; set; }
+    public string Material { get; set; }
+    public int Weight { get; set; }
+    public string Style { get; set; }
     public int ChildrenNo { get; set; }
     public List<ProductChildResponse> Children { get; set; } = new();
     public decimal? CostPrice { get; set; }
@@ -47,6 +52,13 @@ public class ProductChildResponse
     public string Sku { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
+    public string Description { get; set; }
+    public string Note { get; set; }
+    public string Material { get; set; }
+    public int Weight { get; set; }
+    public string Style { get; set; }
+    public Guid? ColorId { get; set; }
+    public Guid? SizeId { get; set; }
     public decimal? CostPrice { get; set; }
     public decimal? SellingPrice { get; set; }
     public decimal StockQuantity { get; set; }

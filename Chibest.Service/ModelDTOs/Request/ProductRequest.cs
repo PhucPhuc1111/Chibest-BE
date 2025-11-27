@@ -12,12 +12,9 @@ public class ProductRequest
     public string? Description { get; set; }
     public string? AvatarUrl { get; set; }
     public string? VideoUrl { get; set; }
-    public Guid? ColorId { get; set; }
-    public Guid? SizeId { get; set; }
     public List<Guid>? ColorIds { get; set; }
     public List<Guid>? SizeIds { get; set; }
     public string? Style { get; set; }
-    public string? Brand { get; set; }
     public string? Material { get; set; }
     public int Weight { get; set; }
     public bool IsMaster { get; set; }

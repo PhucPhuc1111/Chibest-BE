@@ -164,6 +164,11 @@ public class ProductService : IProductService
                 Name = product.Name!,
                 IsMaster = product.IsMaster,
                 Status = product.Status!,
+                Description = product.Description!,
+                Note = product.Note!,
+                Style = product.Style!,
+                Material = product.Material!,
+                Weight = product.Weight,
                 ChildrenNo = children.Count,
                 Children = children,
                 CostPrice = latestPrice?.CostPrice,
@@ -213,6 +218,11 @@ public class ProductService : IProductService
                 Name = variant.Name!,
                 IsMaster = variant.IsMaster,
                 Status = variant.Status!,
+                Description = variant.Description!,
+                Note = variant.Note!,
+                Style = variant.Style!,
+                Material = variant.Material!,
+                Weight = variant.Weight,
                 ChildrenNo = 0, 
                 CostPrice = latestPrice?.CostPrice,
                 SellingPrice = latestPrice?.SellingPrice,
@@ -405,6 +415,11 @@ public class ProductService : IProductService
                 Name = product.Name!,
                 IsMaster = product.IsMaster,
                 Status = product.Status!,
+                Description = product.Description!,
+                Note = product.Note!,
+                Style = product.Style!,
+                Material = product.Material!,
+                Weight = product.Weight,
                 CostPrice = latestPrice?.CostPrice,
                 SellingPrice = latestPrice?.SellingPrice,
                 StockQuantity = branchStock?.AvailableQty ?? 0
@@ -635,12 +650,17 @@ public class ProductService : IProductService
         var now = DateTime.Now;
         var parentProduct = request.Adapt<Product>();
         parentProduct.Id = Guid.NewGuid();
-        parentProduct.Sku = baseSku;
-        parentProduct.BarCode = baseSku;
+        parentProduct.Sku = baseSku.ToUpperInvariant();
+        parentProduct.BarCode = baseSku.ToUpperInvariant();
         parentProduct.Name = baseName;
         parentProduct.AvatarUrl = avatarUrl;
         parentProduct.VideoUrl = videoUrl;
-        parentProduct.Status = "UnAvailable";
+        parentProduct.Material = request.Material;
+        parentProduct.Status = (request.Status != null) ? request.Status : "NonCommercial";
+        parentProduct.Style = request.Style;
+        parentProduct.Weight = request.Weight;
+        parentProduct.Description = request.Description;
+        parentProduct.Note = request.Note;
         parentProduct.CreatedAt = now;
         parentProduct.UpdatedAt = now;
         parentProduct.ParentSku = generateVariants ? null : request.ParentSku;
@@ -740,8 +760,11 @@ public class ProductService : IProductService
             if (size != null)
                 suffix += NormalizeCode(size.Code);
 
+            baseSku = baseSku.ToUpperInvariant();
+
             return string.IsNullOrEmpty(suffix) ? baseSku : $"{baseSku}{suffix}";
         }
+
 
         static string BuildVariantName(string baseName, Color? color, Size? size)
         {
@@ -760,13 +783,35 @@ public class ProductService : IProductService
                 : baseName;
         }
 
-        static string NormalizeCode(string? code)
+        static string NormalizeCode(string? value)
         {
-            if (string.IsNullOrWhiteSpace(code))
-                throw new ArgumentException("Mã không hợp lệ.", nameof(code));
+            if (string.IsNullOrWhiteSpace(value))
+                return string.Empty;
 
-            return code.Trim().Replace(" ", string.Empty).ToUpperInvariant();
+            var firstChar = value.Trim()[0].ToString();
+
+            firstChar = RemoveDiacritics(firstChar);
+
+            return firstChar.ToUpperInvariant();
         }
+        static string RemoveDiacritics(string text)
+        {
+            var normalized = text.Normalize(System.Text.NormalizationForm.FormD);
+            var sb = new System.Text.StringBuilder();
+
+            foreach (var ch in normalized)
+            {
+                var unicodeCategory = System.Globalization.CharUnicodeInfo.GetUnicodeCategory(ch);
+                if (unicodeCategory != System.Globalization.UnicodeCategory.NonSpacingMark)
+                {
+                    sb.Append(ch);
+                }
+            }
+
+            return sb.ToString().Normalize(System.Text.NormalizationForm.FormC);
+        }
+
+
     }
 
     public async Task<IBusinessResult> DeleteAsync(Guid id, Guid accountId)
@@ -799,6 +844,13 @@ public class ProductService : IProductService
             Sku = product.Sku,
             Name = product.Name,
             Status = product.Status,
+            Description = product.Description!,
+            Note = product.Note!,
+            Style = product.Style!,
+            Material = product.Material!,
+            Weight = product.Weight,
+            ColorId = product.ColorId,
+            SizeId = product.SizeId,
             CostPrice = latestPrice?.CostPrice,
             SellingPrice = latestPrice?.SellingPrice,
             StockQuantity = branchStock?.AvailableQty ?? 0
