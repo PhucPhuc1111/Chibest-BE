@@ -279,8 +279,6 @@ public class FileService : IFileService
             normalizedPath = fallbackRelativePath;
             physicalFilePath = Path.Combine(_privateStoragePath, normalizedPath);
 
-            if (!File.Exists(physicalFilePath))
-                throw new ArgumentException("Tên file không hợp lệ.");
         }
 
         if (!_contentTypeProvider.TryGetContentType(physicalFilePath, out var contentType))

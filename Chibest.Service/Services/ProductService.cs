@@ -44,13 +44,18 @@ public class ProductService : IProductService
         predicate = predicate.And(p => p.IsMaster);
 
         var searchTerm = query.SearchTerm?.Trim();
-        if (!string.IsNullOrEmpty(searchTerm))
+        var hasSearchTerm = !string.IsNullOrWhiteSpace(searchTerm);
+        var searchLower = hasSearchTerm ? searchTerm!.ToLowerInvariant() : null;
+        if (hasSearchTerm)
         {
-            var searchLower = searchTerm.ToLowerInvariant();
             predicate = predicate.And(p =>
-                p.Name.ToLower().Contains(searchLower) ||
-                p.Sku.ToLower().Contains(searchLower) ||
-                (p.Description != null && p.Description.ToLower().Contains(searchLower)));
+                p.Name.ToLower().Contains(searchLower!) ||
+                p.Sku.ToLower().Contains(searchLower!) ||
+                (p.Description != null && p.Description.ToLower().Contains(searchLower!)) ||
+                p.InverseParentSkuNavigation.Any(child =>
+                    child.Name.ToLower().Contains(searchLower!) ||
+                    child.Sku.ToLower().Contains(searchLower!) ||
+                    (child.Description != null && child.Description.ToLower().Contains(searchLower!))));
         }
 
         if (!string.IsNullOrEmpty(query.Status))
@@ -149,8 +154,25 @@ public class ProductService : IProductService
 
             childrenLookup.TryGetValue(product.Sku, out var childList);
             var children = childList ?? new List<ProductChildResponse>();
-            var stockQuantity = children.Sum(c => c.StockQuantity);
-            if (!children.Any())
+
+            var filteredChildren = children;
+            if (hasSearchTerm)
+            {
+                filteredChildren = children
+                    .Where(child =>
+                        (!string.IsNullOrWhiteSpace(child.Name) && child.Name.ToLower().Contains(searchLower!)) ||
+                        (!string.IsNullOrWhiteSpace(child.Sku) && child.Sku.ToLower().Contains(searchLower!)) ||
+                        (!string.IsNullOrWhiteSpace(child.Description) && child.Description.ToLower().Contains(searchLower!)))
+                    .ToList();
+
+                if (!filteredChildren.Any())
+                {
+                    filteredChildren = children;
+                }
+            }
+
+            var stockQuantity = filteredChildren.Sum(c => c.StockQuantity);
+            if (!filteredChildren.Any())
             {
                 stockQuantity = branchStock?.AvailableQty ?? 0;
             }
@@ -170,7 +192,7 @@ public class ProductService : IProductService
                 Material = product.Material!,
                 Weight = product.Weight,
                 ChildrenNo = children.Count,
-                Children = children,
+                Children = filteredChildren,
                 CostPrice = latestPrice?.CostPrice,
                 SellingPrice = latestPrice?.SellingPrice,
                 StockQuantity = stockQuantity
@@ -812,8 +834,6 @@ public class ProductService : IProductService
 
             return sb.ToString().Normalize(System.Text.NormalizationForm.FormC);
         }
-
-
     }
 
     public async Task<IBusinessResult> DeleteAsync(IEnumerable<Guid> productIds)
@@ -824,6 +844,8 @@ public class ProductService : IProductService
         var distinctIds = productIds.Distinct().ToList();
         if (!distinctIds.Any())
             return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, Const.FAIL_DELETE_MSG);
+
+        var targetIds = new HashSet<Guid>(distinctIds);
 
         var products = await _unitOfWork.ProductRepository
             .GetAllAsync(predicate: product => distinctIds.Contains(product.Id));
@@ -840,21 +862,22 @@ public class ProductService : IProductService
 
         if (masterSkus.Any())
         {
-            var childProducts = await _unitOfWork.ProductRepository
+            var childIds = await _unitOfWork.ProductRepository
                 .GetByWhere(p => p.ParentSku != null && masterSkus.Contains(p.ParentSku!.ToUpper()))
+                .Select(p => p.Id)
                 .ToListAsync();
 
-            if (childProducts.Any())
+            if (childIds.Any())
             {
-                var existingIds = new HashSet<Guid>(productsToDelete.Select(p => p.Id));
-                foreach (var child in childProducts)
-                {
-                    if (existingIds.Add(child.Id))
-                    {
-                        productsToDelete.Add(child);
-                    }
-                }
+                foreach (var childId in childIds)
+                    targetIds.Add(childId);
             }
+        }
+
+        if (targetIds.Count != distinctIds.Count)
+        {
+            productsToDelete = (await _unitOfWork.ProductRepository
+                .GetAllAsync(predicate: product => targetIds.Contains(product.Id))).ToList();
         }
 
         var assetPaths = productsToDelete
