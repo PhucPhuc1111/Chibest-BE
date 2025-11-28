@@ -27,6 +27,8 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
         
                     builder.HasIndex(e => e.SizeId, "ix_product_sizeid");
         
+                    builder.HasIndex(e => e.SupplierId, "ix_product_supplierid");
+        
                     builder.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
                     builder.Property(e => e.AvatarUrl).HasColumnName("AvatarURL");
                     builder.Property(e => e.BarCode).HasMaxLength(100);
@@ -71,5 +73,10 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
                         .HasForeignKey(d => d.SizeId)
                         .OnDelete(DeleteBehavior.SetNull)
                         .HasConstraintName("Product_SizeId_fkey");
+        
+                    builder.HasOne(d => d.Supplier).WithMany(p => p.Products)
+                        .HasForeignKey(d => d.SupplierId)
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("Product_SupplierId_fkey");
     }
 }

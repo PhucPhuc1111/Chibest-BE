@@ -63,5 +63,7 @@ public class Account
 
     public virtual SupplierDebt? SupplierDebt { get; set; }
 
+    public virtual ICollection<Product> Products { get; set; } = new List<Product>();
+
     public virtual ICollection<TransferOrder> TransferOrders { get; set; } = new List<TransferOrder>();
 }

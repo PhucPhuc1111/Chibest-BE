@@ -43,6 +43,8 @@ public class Product
 
     public string? ParentSku { get; set; }
 
+    public Guid? SupplierId { get; set; }
+
     public virtual ICollection<BranchStock> BranchStocks { get; set; } = new List<BranchStock>();
 
     public virtual Category Category { get; set; } = null!;
@@ -68,6 +70,8 @@ public class Product
     public virtual ICollection<FranchiseOrderDetail> FranchiseOrderDetails { get; set; } = new List<FranchiseOrderDetail>();
 
     public virtual Size? Size { get; set; }
+
+    public virtual Account? Supplier { get; set; }
 
     public virtual ICollection<StockAdjustmentDetail> StockAdjustmentDetails { get; set; } = new List<StockAdjustmentDetail>();
 

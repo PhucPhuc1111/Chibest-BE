@@ -15,5 +15,6 @@ public class SizeConfiguration : IEntityTypeConfiguration<Size>
         
                     builder.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
                     builder.Property(e => e.Code).HasMaxLength(20);
+                    builder.Property(e => e.Name).HasMaxLength(200);
     }
 }

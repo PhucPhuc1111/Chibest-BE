@@ -417,6 +417,11 @@ namespace Chibest.Repository.Migrations
                         .HasMaxLength(10)
                         .HasColumnType("character varying(10)");
 
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
                     b.HasKey("Id")
                         .HasName("Color_pkey");
 
@@ -973,6 +978,9 @@ namespace Chibest.Repository.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<Guid?>("SupplierId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime>("UpdatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp(3) without time zone")
@@ -1005,6 +1013,8 @@ namespace Chibest.Repository.Migrations
                     b.HasIndex(new[] { "ParentSku" }, "ix_product_parentsku");
 
                     b.HasIndex(new[] { "SizeId" }, "ix_product_sizeid");
+
+                    b.HasIndex(new[] { "SupplierId" }, "ix_product_supplierid");
 
                     b.ToTable("Product", (string)null);
                 });
@@ -1737,6 +1747,11 @@ namespace Chibest.Repository.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
                     b.HasKey("Id")
                         .HasName("Size_pkey");
 
@@ -2450,6 +2465,12 @@ namespace Chibest.Repository.Migrations
                         .OnDelete(DeleteBehavior.SetNull)
                         .HasConstraintName("Product_SizeId_fkey");
 
+                    b.HasOne("Chibest.Repository.Models.Account", "Supplier")
+                        .WithMany("Products")
+                        .HasForeignKey("SupplierId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("Product_SupplierId_fkey");
+
                     b.Navigation("Category");
 
                     b.Navigation("Color");
@@ -2457,6 +2478,8 @@ namespace Chibest.Repository.Migrations
                     b.Navigation("ParentSkuNavigation");
 
                     b.Navigation("Size");
+
+                    b.Navigation("Supplier");
                 });
 
             modelBuilder.Entity("Chibest.Repository.Models.ProductDetail", b =>
@@ -2846,6 +2869,8 @@ namespace Chibest.Repository.Migrations
                     b.Navigation("Payrolls");
 
                     b.Navigation("ProductPlans");
+
+                    b.Navigation("Products");
 
                     b.Navigation("PurchaseInvoices");
 

@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Chibest.Repository.Migrations
 {
     [DbContext(typeof(ChiBestDbContext))]
-    [Migration("20251124015149_InitialBaseline")]
-    partial class InitialBaseline
+    [Migration("20251128045429_EnsureProductColumnsExist")]
+    partial class EnsureProductColumnsExist
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -420,6 +420,11 @@ namespace Chibest.Repository.Migrations
                         .HasMaxLength(10)
                         .HasColumnType("character varying(10)");
 
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
                     b.HasKey("Id")
                         .HasName("Color_pkey");
 
@@ -626,6 +631,136 @@ namespace Chibest.Repository.Migrations
                         .IsDescending(false, true, true);
 
                     b.ToTable("Deduction", (string)null);
+                });
+
+            modelBuilder.Entity("Chibest.Repository.Models.FranchiseInvoice", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime>("OrderDate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp(3) without time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasDefaultValueSql("'Draft'::character varying");
+
+                    b.Property<decimal>("TotalMoney")
+                        .HasColumnType("money");
+
+                    b.HasKey("Id")
+                        .HasName("FranchiseInvoice_pkey");
+
+                    b.HasIndex("BranchId");
+
+                    b.HasIndex(new[] { "Code" }, "FranchiseInvoice_Code_key")
+                        .IsUnique();
+
+                    b.ToTable("FranchiseInvoice", (string)null);
+                });
+
+            modelBuilder.Entity("Chibest.Repository.Models.FranchiseOrder", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("FranchiseInvoiceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("InvoiceCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime>("OrderDate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp(3) without time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasDefaultValueSql("'Draft'::character varying");
+
+                    b.Property<decimal>("TotalMoney")
+                        .HasColumnType("money");
+
+                    b.HasKey("Id")
+                        .HasName("FranchiseOrder_pkey");
+
+                    b.HasIndex(new[] { "InvoiceCode" }, "FranchiseOrder_InvoiceCode_key")
+                        .IsUnique();
+
+                    b.HasIndex(new[] { "BranchId" }, "ix_franchiseorder_branchid");
+
+                    b.HasIndex(new[] { "FranchiseInvoiceId" }, "ix_franchiseorder_invoiceid");
+
+                    b.HasIndex(new[] { "OrderDate" }, "ix_franchiseorder_orderdate")
+                        .IsDescending();
+
+                    b.HasIndex(new[] { "Status" }, "ix_franchiseorder_status");
+
+                    b.ToTable("FranchiseOrder", (string)null);
+                });
+
+            modelBuilder.Entity("Chibest.Repository.Models.FranchiseOrderDetail", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<int?>("ActualQuantity")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("CommissionFee")
+                        .HasColumnType("money");
+
+                    b.Property<Guid>("FranchiseOrderId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Note")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("UnitPrice")
+                        .HasColumnType("money");
+
+                    b.HasKey("Id")
+                        .HasName("FranchiseOrderDetail_pkey");
+
+                    b.HasIndex(new[] { "FranchiseOrderId" }, "ix_franchiseorderdetail_orderid");
+
+                    b.HasIndex(new[] { "ProductId" }, "ix_franchiseorderdetail_productid");
+
+                    b.ToTable("FranchiseOrderDetail", (string)null);
                 });
 
             modelBuilder.Entity("Chibest.Repository.Models.Payroll", b =>
@@ -846,6 +981,9 @@ namespace Chibest.Repository.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<Guid?>("SupplierId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime>("UpdatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp(3) without time zone")
@@ -878,6 +1016,8 @@ namespace Chibest.Repository.Migrations
                     b.HasIndex(new[] { "ParentSku" }, "ix_product_parentsku");
 
                     b.HasIndex(new[] { "SizeId" }, "ix_product_sizeid");
+
+                    b.HasIndex(new[] { "SupplierId" }, "ix_product_supplierid");
 
                     b.ToTable("Product", (string)null);
                 });
@@ -1032,6 +1172,47 @@ namespace Chibest.Repository.Migrations
                     b.ToTable("ProductPriceHistory", (string)null);
                 });
 
+            modelBuilder.Entity("Chibest.Repository.Models.PurchaseInvoice", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime>("OrderDate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp(3) without time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasDefaultValueSql("'Draft'::character varying");
+
+                    b.Property<Guid>("SupplierId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("TotalMoney")
+                        .HasColumnType("money");
+
+                    b.HasKey("Id")
+                        .HasName("PurchaseInvoice_pkey");
+
+                    b.HasIndex("SupplierId");
+
+                    b.HasIndex(new[] { "Code" }, "PurchaseInvoice_Code_key")
+                        .IsUnique();
+
+                    b.ToTable("PurchaseInvoice", (string)null);
+                });
+
             modelBuilder.Entity("Chibest.Repository.Models.PurchaseOrder", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1063,6 +1244,9 @@ namespace Chibest.Repository.Migrations
                         .HasColumnType("timestamp(3) without time zone")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
+                    b.Property<Guid?>("PurchaseInvoiceId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
@@ -1092,6 +1276,8 @@ namespace Chibest.Repository.Migrations
 
                     b.HasIndex(new[] { "InvoiceCode" }, "PurchaseOrder_InvoiceCode_key")
                         .IsUnique();
+
+                    b.HasIndex(new[] { "PurchaseInvoiceId" }, "ix_purchaseorder_invoiceid");
 
                     b.HasIndex(new[] { "OrderDate" }, "ix_transactionorder_orderdate")
                         .IsDescending();
@@ -1563,6 +1749,11 @@ namespace Chibest.Repository.Migrations
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
 
                     b.HasKey("Id")
                         .HasName("Size_pkey");
@@ -2179,6 +2370,58 @@ namespace Chibest.Repository.Migrations
                     b.Navigation("Employee");
                 });
 
+            modelBuilder.Entity("Chibest.Repository.Models.FranchiseInvoice", b =>
+                {
+                    b.HasOne("Chibest.Repository.Models.Branch", "Branch")
+                        .WithMany("FranchiseInvoices")
+                        .HasForeignKey("BranchId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("FranchiseInvoice_BranchId_fkey");
+
+                    b.Navigation("Branch");
+                });
+
+            modelBuilder.Entity("Chibest.Repository.Models.FranchiseOrder", b =>
+                {
+                    b.HasOne("Chibest.Repository.Models.Branch", "Branch")
+                        .WithMany("FranchiseOrders")
+                        .HasForeignKey("BranchId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("FranchiseOrder_BranchId_fkey");
+
+                    b.HasOne("Chibest.Repository.Models.FranchiseInvoice", "FranchiseInvoice")
+                        .WithMany("FranchiseOrders")
+                        .HasForeignKey("FranchiseInvoiceId")
+                        .HasConstraintName("FranchiseOrder_FranchiseInvoiceId_fkey");
+
+                    b.Navigation("Branch");
+
+                    b.Navigation("FranchiseInvoice");
+                });
+
+            modelBuilder.Entity("Chibest.Repository.Models.FranchiseOrderDetail", b =>
+                {
+                    b.HasOne("Chibest.Repository.Models.FranchiseOrder", "FranchiseOrder")
+                        .WithMany("FranchiseOrderDetails")
+                        .HasForeignKey("FranchiseOrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("FranchiseOrderDetail_FranchiseOrderId_fkey");
+
+                    b.HasOne("Chibest.Repository.Models.Product", "Product")
+                        .WithMany("FranchiseOrderDetails")
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("FranchiseOrderDetail_ProductId_fkey");
+
+                    b.Navigation("FranchiseOrder");
+
+                    b.Navigation("Product");
+                });
+
             modelBuilder.Entity("Chibest.Repository.Models.Payroll", b =>
                 {
                     b.HasOne("Chibest.Repository.Models.Branch", "Branch")
@@ -2225,6 +2468,12 @@ namespace Chibest.Repository.Migrations
                         .OnDelete(DeleteBehavior.SetNull)
                         .HasConstraintName("Product_SizeId_fkey");
 
+                    b.HasOne("Chibest.Repository.Models.Account", "Supplier")
+                        .WithMany("Products")
+                        .HasForeignKey("SupplierId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("Product_SupplierId_fkey");
+
                     b.Navigation("Category");
 
                     b.Navigation("Color");
@@ -2232,6 +2481,8 @@ namespace Chibest.Repository.Migrations
                     b.Navigation("ParentSkuNavigation");
 
                     b.Navigation("Size");
+
+                    b.Navigation("Supplier");
                 });
 
             modelBuilder.Entity("Chibest.Repository.Models.ProductDetail", b =>
@@ -2285,6 +2536,18 @@ namespace Chibest.Repository.Migrations
                     b.Navigation("Product");
                 });
 
+            modelBuilder.Entity("Chibest.Repository.Models.PurchaseInvoice", b =>
+                {
+                    b.HasOne("Chibest.Repository.Models.Account", "Supplier")
+                        .WithMany("PurchaseInvoices")
+                        .HasForeignKey("SupplierId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("PurchaseInvoice_SupplierId_fkey");
+
+                    b.Navigation("Supplier");
+                });
+
             modelBuilder.Entity("Chibest.Repository.Models.PurchaseOrder", b =>
                 {
                     b.HasOne("Chibest.Repository.Models.Branch", "Branch")
@@ -2298,6 +2561,11 @@ namespace Chibest.Repository.Migrations
                         .HasForeignKey("EmployeeId")
                         .HasConstraintName("PurchaseOrder_EmployeeId_fkey");
 
+                    b.HasOne("Chibest.Repository.Models.PurchaseInvoice", "PurchaseInvoice")
+                        .WithMany("PurchaseOrders")
+                        .HasForeignKey("PurchaseInvoiceId")
+                        .HasConstraintName("PurchaseOrder_PurchaseInvoiceId_fkey");
+
                     b.HasOne("Chibest.Repository.Models.Account", "Supplier")
                         .WithMany("PurchaseOrderSuppliers")
                         .HasForeignKey("SupplierId")
@@ -2307,6 +2575,8 @@ namespace Chibest.Repository.Migrations
                     b.Navigation("Branch");
 
                     b.Navigation("Employee");
+
+                    b.Navigation("PurchaseInvoice");
 
                     b.Navigation("Supplier");
                 });
@@ -2603,6 +2873,10 @@ namespace Chibest.Repository.Migrations
 
                     b.Navigation("ProductPlans");
 
+                    b.Navigation("Products");
+
+                    b.Navigation("PurchaseInvoices");
+
                     b.Navigation("PurchaseOrderEmployees");
 
                     b.Navigation("PurchaseOrderSuppliers");
@@ -2633,6 +2907,10 @@ namespace Chibest.Repository.Migrations
                     b.Navigation("BranchDebt");
 
                     b.Navigation("BranchStocks");
+
+                    b.Navigation("FranchiseInvoices");
+
+                    b.Navigation("FranchiseOrders");
 
                     b.Navigation("Payrolls");
 
@@ -2677,9 +2955,21 @@ namespace Chibest.Repository.Migrations
                     b.Navigation("SalesOrders");
                 });
 
+            modelBuilder.Entity("Chibest.Repository.Models.FranchiseInvoice", b =>
+                {
+                    b.Navigation("FranchiseOrders");
+                });
+
+            modelBuilder.Entity("Chibest.Repository.Models.FranchiseOrder", b =>
+                {
+                    b.Navigation("FranchiseOrderDetails");
+                });
+
             modelBuilder.Entity("Chibest.Repository.Models.Product", b =>
                 {
                     b.Navigation("BranchStocks");
+
+                    b.Navigation("FranchiseOrderDetails");
 
                     b.Navigation("InverseParentSkuNavigation");
 
@@ -2703,6 +2993,11 @@ namespace Chibest.Repository.Migrations
             modelBuilder.Entity("Chibest.Repository.Models.ProductDetail", b =>
                 {
                     b.Navigation("SalesOrderDetails");
+                });
+
+            modelBuilder.Entity("Chibest.Repository.Models.PurchaseInvoice", b =>
+                {
+                    b.Navigation("PurchaseOrders");
                 });
 
             modelBuilder.Entity("Chibest.Repository.Models.PurchaseOrder", b =>

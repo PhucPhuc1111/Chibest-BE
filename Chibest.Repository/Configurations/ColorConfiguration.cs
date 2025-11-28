@@ -15,5 +15,6 @@ public class ColorConfiguration : IEntityTypeConfiguration<Color>
         
                     builder.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
                     builder.Property(e => e.Code).HasMaxLength(10);
+                    builder.Property(e => e.Name).HasMaxLength(200);
     }
 }

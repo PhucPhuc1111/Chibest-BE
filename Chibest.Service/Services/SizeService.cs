@@ -46,7 +46,7 @@ public class SizeService : ISizeService
 
     public async Task<IBusinessResult> CreateAsync(SizeRequest request, Guid accountId)
     {
-        if (request == null || string.IsNullOrWhiteSpace(request.Code))
+        if (request == null || string.IsNullOrWhiteSpace(request.Code) || string.IsNullOrWhiteSpace(request.Name))
         {
             return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
         }
@@ -66,7 +66,8 @@ public class SizeService : ISizeService
         var size = new Size
         {
             Id = Guid.NewGuid(),
-            Code = request.Code.Trim()
+            Code = request.Code.Trim(),
+            Name = request.Name.Trim()
         };
 
         await _unitOfWork.SizeRepository.AddAsync(size);

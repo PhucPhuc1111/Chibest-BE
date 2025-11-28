@@ -46,7 +46,7 @@ public class ColorService : IColorService
 
     public async Task<IBusinessResult> CreateAsync(ColorRequest request, Guid accountId)
     {
-        if (request == null || string.IsNullOrWhiteSpace(request.Code))
+        if (request == null || string.IsNullOrWhiteSpace(request.Code) || string.IsNullOrWhiteSpace(request.Name))
         {
             return new BusinessResult(Const.HTTP_STATUS_BAD_REQUEST, Const.ERROR_EXCEPTION_MSG);
         }
@@ -67,7 +67,8 @@ public class ColorService : IColorService
         var color = new Color
         {
             Id = Guid.NewGuid(),
-            Code = request.Code.Trim()
+            Code = request.Code.Trim(),
+            Name = request.Name.Trim()
         };
 
         await _unitOfWork.ColorRepository.AddAsync(color);
